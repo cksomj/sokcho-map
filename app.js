@@ -2091,7 +2091,7 @@ function restoreProgressLine(zoneId){
   const lastPt=z.progress.pts[z.progress.pts.length-1];
   if(S.session.progressMarker){S.rdMap.removeLayer(S.session.progressMarker);}
   S.session.progressMarker=L.marker(lastPt,{icon:L.divIcon({
-    html:'<div style="background:#D85A30;color:#fff;padding:4px 9px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap;">▶ 여기서 이어하기</div>',
+    html:'<div class="resume-marker-label">▶ 여기서 이어하기</div>',
     className:'',iconAnchor:[60,12]
   })}).addTo(S.rdMap);
   // 범례
@@ -2191,7 +2191,7 @@ function openSvcFullscreen(zoneId){
   if(z.progress&&z.progress.pts&&z.progress.pts.length>=2){
     svcLayers.push(L.polyline(z.progress.pts,{color:'#D85A30',weight:5,opacity:.85,dashArray:'8,4'}).addTo(svcMapInst));
     const lastPt=z.progress.pts[z.progress.pts.length-1];
-    svcLayers.push(L.marker(lastPt,{icon:L.divIcon({html:'<div style="background:#D85A30;color:#fff;padding:4px 9px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap;">▶ 여기서 이어하기</div>',className:'',iconAnchor:[60,12]})}).addTo(svcMapInst));
+    svcLayers.push(L.marker(lastPt,{icon:L.divIcon({html:'<div class="resume-marker-label">▶ 여기서 이어하기</div>',className:'',iconAnchor:[60,12]})}).addTo(svcMapInst));
     svcMapInst.setView(lastPt,18);
   }
   // GPS 내 위치 추적
