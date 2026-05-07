@@ -342,6 +342,26 @@ function serviceRoutesFor(zoneId,mode){
   }
   return routes.slice(0,1);
 }
+function generatedGuideRoutesFor(zoneId,mode){
+  const z=S.zones.find(z=>z.id===zoneId);
+  const pts=normalizeRoutePts(z&&z.polygon);
+  if(!z||pts.length<2)return [];
+  const routeMode=mode||S.routeMode;
+  if(routeMode==='4'){
+    const h=Math.ceil(pts.length/2);
+    const dir=(S.session&&S.session.routeDirection)||S.routeDirection;
+    const routes=[
+      {id:`auto-${zoneId}-team1`,zoneId,mode:'4',name:'1조 자동 경로',color:'#378ADD',pts:pts.slice(0,h+1),visible:true},
+      {id:`auto-${zoneId}-team2`,zoneId,mode:'4',name:'2조 자동 경로',color:'#3B6D11',pts:[...pts.slice(h),pts[0]],visible:true},
+    ];
+    return dir?routes.filter((_,idx)=>String(idx+1)===dir):routes;
+  }
+  return [{id:`auto-${zoneId}-team`,zoneId,mode:'2',name:'자동 경로',color:'#378ADD',pts:[...pts,pts[0]],visible:true}];
+}
+function serviceGuideRoutesFor(zoneId,mode){
+  const saved=serviceRoutesFor(zoneId,mode);
+  return saved.length?saved:generatedGuideRoutesFor(zoneId,mode);
+}
 function clearRteDisplayLayers(){
   S.rdRteLayers.forEach(l=>S.rdMap&&S.rdMap.removeLayer(l));
   S.rdRteLayers=[];
@@ -487,7 +507,7 @@ function addSavedRoutesToMap(map,zoneId,mode){
   return drawRouteLineSet(map,sortedVisibleRoutes(zoneId,mode),700);
 }
 function addServiceRoutesToMap(map,zoneId,mode){
-  return drawRouteLineSet(map,serviceRoutesFor(zoneId,mode),800);
+  return drawRouteLineSet(map,serviceGuideRoutesFor(zoneId,mode),800);
 }
 // 카카오 지도 인스턴스 저장
 const _kakaoInstances = {};
@@ -2215,7 +2235,7 @@ function renderSvcRouteLayers(zoneId){
 
 function focusSvcMapOnZone(z){
   if(!svcMapInst||!z)return;
-  const visibleRoute=serviceRoutesFor(z.id,S.routeMode)[0];
+  const visibleRoute=serviceGuideRoutesFor(z.id,S.routeMode)[0];
   if(visibleRoute&&visibleRoute.pts?.length){
     const pts=normalizeRoutePts(visibleRoute.pts);
     if(pts.length)svcMapInst.setView(pts[0],18,{animate:false});
