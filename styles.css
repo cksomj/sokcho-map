@@ -1070,6 +1070,14 @@ tr:last-child td{border-bottom:none;}
 .route-choice-label{display:flex;align-items:center;gap:4px;padding:6px 9px;border-radius:999px;background:#fff;color:#111827;border:2px solid currentColor;box-shadow:0 2px 8px rgba(0,0,0,.22);font-size:12px;font-weight:900;white-space:nowrap;cursor:pointer;}
 .route-choice-label.on{background:#1B5299;color:#fff;border-color:#FACC15;box-shadow:0 0 0 3px rgba(250,204,21,.38),0 4px 12px rgba(0,0,0,.28);}
 .route-start-fixed{margin-top:2px;}
+.route-start-fixed.disabled,
+.route-start-fixed:disabled{
+  background:#CBD5E1!important;
+  color:#475569!important;
+  border-color:#CBD5E1!important;
+  box-shadow:none!important;
+  cursor:not-allowed!important;
+}
 @media(max-width:767px){
   #app{height:100dvh;min-height:0;}
   body{font-size:15px;}
