@@ -825,6 +825,19 @@ function goTab(name){
   if(name==='map'&&S.mainMap) setTimeout(()=>{S.mainMap.invalidateSize();},300);
 }
 
+function refreshMapAfterLayout(map, after){
+  const run=()=>{
+    if(!map)return;
+    map.invalidateSize();
+    if(after)after();
+    keepMapDraggable(map);
+  };
+  if(window.requestAnimationFrame){
+    requestAnimationFrame(()=>requestAnimationFrame(run));
+  }
+  [80,220,520,900].forEach(ms=>setTimeout(run,ms));
+}
+
 function showRouteList(){
   const rd=document.getElementById('rd-view');
   const zl=document.getElementById('zl-view');
@@ -1309,13 +1322,19 @@ function applyZoneNumberEdit(){
 function openRd(id){
   S.curZone=id;
   const z=S.zones.find(z=>z.id===id);
+  if(!z)return;
+  exitRteEditMode();
   document.getElementById('rd-title').textContent=z.name;
   document.getElementById('zl-view').style.display='none';
   document.getElementById('rd-view').style.display='flex';
   setMode('2',document.querySelector('.seg-b'));
   keepMapDraggable(S.rdMap);
-  setTimeout(()=>{S.rdMap.invalidateSize();drawRdZone(z);drawRoute();restoreProgressLine(id);keepMapDraggable(S.rdMap);},80);
-  setTimeout(()=>{S.rdMap.invalidateSize();centerRouteMapOnZone(z,18);keepMapDraggable(S.rdMap);},280);
+  refreshMapAfterLayout(S.rdMap,()=>{
+    drawRdZone(z);
+    drawRoute();
+    restoreProgressLine(id);
+    centerRouteMapOnZone(z,18);
+  });
 }
 function backList(){
   document.getElementById('rd-view').style.display='none';
@@ -1833,10 +1852,9 @@ function updateHomeSessionUI(){
 // ================================================================
 // 봉사자/인도자: 구역 선택 → 경로 화면으로 이동 (세션은 "봉사 시작" 버튼에서)
 function startSessionAndRoute(zoneId, resume){
-  S.pendingResume=resume; // 이어하기 여부 저장
+  S.pendingResume=!!resume; // 이어하기 여부 저장
   goTab('route');
-  setTimeout(()=>openRd(zoneId),120);
-  setTimeout(()=>openRd(zoneId),360);
+  setTimeout(()=>openRd(zoneId),180);
 }
 
 function startSession(zoneId, resume){
@@ -2174,7 +2192,7 @@ function openSvcFullscreen(zoneId){
     stabilizeZoneLabelsOnMove(svcMapInst);
     svcMapInst.on('zoomend',()=>renderSvcRouteLayers(S.session.zoneId));
   }
-  setTimeout(()=>svcMapInst.invalidateSize(),80);
+  refreshMapAfterLayout(svcMapInst);
   clearSvcRouteLayers();
   svcLayers.forEach(l=>svcMapInst.removeLayer(l));svcLayers=[];
   // 구역 폴리곤 표시
@@ -2198,8 +2216,7 @@ function openSvcFullscreen(zoneId){
   startSvcGPS();
   // 타이머 시작
   startSvcTimer();
-  setTimeout(()=>{svcMapInst.invalidateSize();renderSvcRouteLayers(z.id);},260);
-  setTimeout(()=>svcMapInst.invalidateSize(),650);
+  refreshMapAfterLayout(svcMapInst,()=>renderSvcRouteLayers(z.id));
 }
 
 function startSvcGPS(){
