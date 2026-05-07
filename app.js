@@ -828,7 +828,7 @@ function showRouteList(){
   const rd=document.getElementById('rd-view');
   const zl=document.getElementById('zl-view');
   if(rd)rd.style.display='none';
-  if(zl)zl.style.display='block';
+  if(zl)zl.style.display='';
   if(S.rdMap)clearRdLayers();
 }
 
@@ -1310,10 +1310,11 @@ function openRd(id){
   const z=S.zones.find(z=>z.id===id);
   document.getElementById('rd-title').textContent=z.name;
   document.getElementById('zl-view').style.display='none';
-  document.getElementById('rd-view').style.display='block';
+  document.getElementById('rd-view').style.display='flex';
   setMode('2',document.querySelector('.seg-b'));
   keepMapDraggable(S.rdMap);
-  setTimeout(()=>{S.rdMap.invalidateSize();drawRdZone(z);drawRoute();restoreProgressLine(id);keepMapDraggable(S.rdMap);},200);
+  setTimeout(()=>{S.rdMap.invalidateSize();drawRdZone(z);drawRoute();restoreProgressLine(id);keepMapDraggable(S.rdMap);},80);
+  setTimeout(()=>{S.rdMap.invalidateSize();centerRouteMapOnZone(z,18);keepMapDraggable(S.rdMap);},280);
 }
 function backList(){
   document.getElementById('rd-view').style.display='none';
@@ -1323,7 +1324,7 @@ function backList(){
     goTab('home');
     renderHome();
   } else {
-    document.getElementById('zl-view').style.display='block';
+    document.getElementById('zl-view').style.display='';
   }
 }
 function setMode(m,el){
@@ -1797,7 +1798,7 @@ function showLeaderZonesOnly(){
   S.leaderRouteListOpen=true;
   setLeaderZoneView(false);
   document.getElementById('rd-view').style.display='none';
-  document.getElementById('zl-view').style.display='block';
+  document.getElementById('zl-view').style.display='';
   goTab('route');
   renderRouteGrid();
   setTimeout(()=>{const inp=document.getElementById('rte-search');if(inp)inp.focus();},100);
