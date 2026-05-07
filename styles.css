@@ -974,8 +974,8 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
 .rd-edit-tools-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
 .rd-edit-tools .btn{padding:10px 6px;font-size:13px;font-weight:900;}
 .route-start-marker{background:#FACC15;color:#111827;border:2px solid #111827;padding:4px 9px;border-radius:10px;font-size:12px;font-weight:900;white-space:nowrap;box-shadow:0 2px 8px rgba(15,23,42,.28);}
-.route-arrow-label{width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:15px solid currentColor;filter:drop-shadow(0 1px 3px rgba(15,23,42,.42));transform-origin:center;}
-.route-arrow-label:after{content:"";position:absolute;left:-13px;top:-4px;width:7px;height:8px;background:#fff;border-radius:999px;opacity:.9;}
+.route-arrow-label{width:24px;height:24px;border-radius:999px;background:#fff;border:2px solid currentColor;box-shadow:0 1px 6px rgba(15,23,42,.28);position:relative;transform-origin:center;}
+.route-arrow-label:before{content:"";position:absolute;left:8px;top:5px;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:9px solid currentColor;}
 body.route-editing #rd-map-box{position:fixed!important;top:0;left:0;width:100vw!important;height:100vh!important;z-index:9000;border-radius:0!important;margin:0!important;border:none!important;}
 body.route-editing #rd-side-panel,
 body.route-editing #rd-route-toggle-btn,

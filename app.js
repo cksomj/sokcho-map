@@ -381,16 +381,31 @@ function routeArrowAngle(map,a,b){
   const dy=b[0]-a[0],dx=b[1]-a[1];
   return Math.atan2(dy,dx)*180/Math.PI;
 }
-function routeArrowPoints(pts){
+function routePointPair(pt){
+  if(Array.isArray(pt))return [Number(pt[0]),Number(pt[1])];
+  if(pt&&typeof pt.lat==='number'&&typeof pt.lng==='number')return [pt.lat,pt.lng];
+  return null;
+}
+function normalizeRoutePts(pts){
+  return (Array.isArray(pts)?pts:[])
+    .map(routePointPair)
+    .filter(pt=>pt&&Number.isFinite(pt[0])&&Number.isFinite(pt[1]));
+}
+function routeArrowPoints(map,pts){
   const arrows=[];
   if(!Array.isArray(pts)||pts.length<2)return arrows;
-  const maxArrows=Math.min(4,Math.max(1,pts.length-1));
+  const maxArrows=Math.min(8,Math.max(1,pts.length-1));
   const step=Math.max(1,Math.floor((pts.length-1)/maxArrows));
-  for(let i=0;i<pts.length-1;i+=step){
+  for(let i=0;i<pts.length-1&&arrows.length<maxArrows;i+=step){
     const a=pts[i],b=pts[i+1];
+    if(map&&map.latLngToContainerPoint){
+      const p1=map.latLngToContainerPoint(a);
+      const p2=map.latLngToContainerPoint(b);
+      if(p1.distanceTo&&p1.distanceTo(p2)<28)continue;
+    }
     arrows.push({a,b,mid:[(a[0]+b[0])/2,(a[1]+b[1])/2]});
   }
-  return arrows.slice(0,4);
+  return arrows;
 }
 function drawRouteLineSet(map,routes,zIndexOffset=700,selectable=false){
   const layers=[];
@@ -404,18 +419,20 @@ function drawRouteLineSet(map,routes,zIndexOffset=700,selectable=false){
   const selectedWeight=Math.max(lineWeight+1,Math.round(7*s));
   const hitWeight=Math.max(18,Math.round(24*s));
   routes.forEach((l,index)=>{
+    const pts=normalizeRoutePts(l.pts);
+    if(pts.length<2)return;
     const team=routeTeamNo(l,index)==='2'?'2':'1';
     const isSelected=selectable&&S.routeDirection===team;
-    const line=L.polyline(l.pts,{color:l.color,weight:selectable?(isSelected?selectedWeight:lineWeight):lineWeight,opacity:selectable?(isSelected?1:.92):.9,interactive:!!selectable}).addTo(map);
+    const line=L.polyline(pts,{color:l.color,weight:selectable?(isSelected?selectedWeight:lineWeight):lineWeight,opacity:selectable?(isSelected?1:.92):.9,interactive:!!selectable}).addTo(map);
     if(selectable){
       line.on('click',()=>selectRouteDirectionFromMap(team));
-      const hit=L.polyline(l.pts,{color:l.color,weight:hitWeight,opacity:.001,interactive:true}).addTo(map);
+      const hit=L.polyline(pts,{color:l.color,weight:hitWeight,opacity:.001,interactive:true}).addTo(map);
       hit.on('click',()=>selectRouteDirectionFromMap(team));
       layers.push(hit);
     }
     layers.push(line);
-    routeArrowPoints(l.pts).forEach(({a,b,mid})=>{
-      const size=Math.max(18,Math.round(24*s));
+    routeArrowPoints(map,pts).forEach(({a,b,mid})=>{
+      const size=Math.max(24,Math.round(30*s));
       const angle=routeArrowAngle(map,a,b);
       const icon=L.divIcon({
         html:`<div class="route-arrow-label" style="color:${l.color};transform:rotate(${angle}deg);"></div>`,
@@ -427,9 +444,9 @@ function drawRouteLineSet(map,routes,zIndexOffset=700,selectable=false){
       if(selectable)arrow.on('click',()=>selectRouteDirectionFromMap(team));
       layers.push(arrow);
     });
-    l.pts.forEach((pt,ptIdx)=>{
-      const label=ptIdx===0?'시작':ptIdx===l.pts.length-1?'끝':String(ptIdx+1);
-      const bg=ptIdx===l.pts.length-1?'#D85A30':l.color;
+    pts.forEach((pt,ptIdx)=>{
+      const label=ptIdx===0?'시작':ptIdx===pts.length-1?'끝':String(ptIdx+1);
+      const bg=ptIdx===pts.length-1?'#D85A30':l.color;
       const icon=L.divIcon({
         html:`<div style="min-width:${pointMinW}px;height:${pointH}px;border-radius:${pointRadius}px;background:${bg};color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:${pointFont}px;font-weight:800;padding:0 ${pointPad}px;white-space:nowrap;">${label}</div>`,
         className:'',
@@ -440,8 +457,8 @@ function drawRouteLineSet(map,routes,zIndexOffset=700,selectable=false){
       if(selectable)marker.on('click',()=>selectRouteDirectionFromMap(team));
       layers.push(marker);
     });
-    if(selectable&&l.pts.length){
-      const labelPt=routeChoiceLabelPoint(map,l.pts);
+    if(selectable&&pts.length){
+      const labelPt=routeChoiceLabelPoint(map,pts);
       const labelMarker=L.marker(labelPt,{icon:routeChoiceIcon(team,l.color,map),zIndexOffset:zIndexOffset+20}).addTo(map);
       labelMarker.on('click',()=>selectRouteDirectionFromMap(team));
       layers.push(labelMarker);
