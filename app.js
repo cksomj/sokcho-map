@@ -43,8 +43,8 @@ const S={
     zoneId:null,        // 현재 구역
     startTime:null,     // 시작 시간
     companions:[],      // 함께하는 봉사자들
-    progressPts:[],     // 여기까지 진행된 포인트 (GPS 자동 기록)
-    progressLayer:null, // 지도 위 진행 라인
+    progressPts:[],     // 마지막으로 저장한 위치 포인트
+    progressLayer:null, // 이전 버전 진행 라인 정리용
     progressMarker:null,
     gpsWatch:null,      // 세션 GPS
   },
@@ -1872,7 +1872,8 @@ function startSession(zoneId, resume){
   S.session.companions=[];
   S.session.routeMode=S.routeMode;
   S.session.routeDirection=S.routeDirection;
-  S.session.progressPts=resume&&z.progress?.pts?[...z.progress.pts]:[];
+  const savedPts=resume&&Array.isArray(z.progress?.pts)?z.progress.pts:[];
+  S.session.progressPts=savedPts.length?[savedPts[savedPts.length-1]]:[];
   // 봉사 시작 기록 (미완료 상태)
   S.records.push({
     id:S.records.length+1,
@@ -1887,8 +1888,6 @@ function startSession(zoneId, resume){
   });
   persistRecords();
   persistZones();
-  // GPS로 진행 경로 자동 기록
-  startSessionGPS(zoneId);
   // 공유 스토리지에 세션 정보 저장 (함께하는 봉사자 인식용)
   updateSessionStorage();
   toast(`🟢 ${z.name} 봉사를 ${resume?'이어서 ':''}시작합니다!`);
@@ -1899,32 +1898,11 @@ function startSession(zoneId, resume){
 }
 
 function startSessionGPS(zoneId){
-  if(!navigator.geolocation)return;
-  if(S.session.gpsWatch)navigator.geolocation.clearWatch(S.session.gpsWatch);
-  const onPos=pos=>{
-    const pt=[pos.coords.latitude,pos.coords.longitude];
-    S.session.progressPts.push(pt);
-    // 지도에 진행 라인 업데이트
-    updateProgressLine(zoneId);
-    // 스토리지 주기적 저장
-    if(S.session.progressPts.length%5===0)saveProgressToStorage(zoneId);
-  };
-  const onErr=err=>console.warn('GPS 진행 기록 오류',err);
-  const opt={enableHighAccuracy:true,maximumAge:5000,timeout:15000};
-  try{
-    S.session.gpsWatch=navigator.geolocation.watchPosition(onPos,onErr,opt);
-  }catch(e){
-    console.warn('GPS 진행 추적을 시작할 수 없습니다.',e);
-    navigator.geolocation.getCurrentPosition(onPos,onErr,opt);
-  }
+  // 봉사 중 이동 경로 자동 기록은 사용하지 않습니다. 필요한 순간 위치 저장만 합니다.
 }
 
 function updateProgressLine(zoneId){
-  if(!S.rdMap||S.session.progressPts.length<2)return;
-  if(S.session.progressLayer)S.rdMap.removeLayer(S.session.progressLayer);
-  S.session.progressLayer=L.polyline(S.session.progressPts,{
-    color:'#22C55E',weight:5,opacity:.9,dashArray:null,
-  }).addTo(S.rdMap);
+  // 위치 저장 방식에서는 진행 선을 그리지 않습니다.
 }
 
 function saveProgressToStorage(zoneId){
@@ -1932,7 +1910,7 @@ function saveProgressToStorage(zoneId){
   if(!z)return;
   const existing=z.progress||{};
   z.progress={
-    pts:[...S.session.progressPts],
+    pts:S.session.progressPts.length?[S.session.progressPts[S.session.progressPts.length-1]]:[],
     savedAt:new Date().toISOString(),
     volunteer:S.user,
     note:existing.note||'',
@@ -1958,16 +1936,16 @@ function updateSessionStorage(){
   }catch(e){}
 }
 
-// 여기까지 버튼
+// 위치 저장 버튼
 function pauseSession(){
   if(!S.session.active)return;
   const z=S.zones.find(z=>z.id===S.session.zoneId);
-  if(S.session.progressPts.length===0&&svcGpsMarker){
+  if(svcGpsMarker){
     const ll=svcGpsMarker.getLatLng();
-    S.session.progressPts.push([ll.lat,ll.lng]);
+    S.session.progressPts=[[ll.lat,ll.lng]];
   }
   if(S.session.progressPts.length===0&&z){
-    S.session.progressPts.push(zoneCenter(z));
+    S.session.progressPts=[zoneCenter(z)];
   }
   saveProgressToStorage(S.session.zoneId);
   // 기록을 미완료로 남김
@@ -1976,25 +1954,25 @@ function pauseSession(){
   persistRecords();
   // GPS 중지
   if(S.session.gpsWatch){navigator.geolocation.clearWatch(S.session.gpsWatch);S.session.gpsWatch=null;}
-  // 지도에 중단 라인 표시 (붉은색으로 변경)
   if(S.session.progressLayer&&S.rdMap){
     S.rdMap.removeLayer(S.session.progressLayer);
-    S.session.progressLayer=L.polyline(S.session.progressPts,{
-      color:'#D85A30',weight:5,opacity:.9,dashArray:'8,4',
-    }).addTo(S.rdMap);
-    // 끝 지점 마커
-    if(S.session.progressPts.length>0){
-      const lastPt=S.session.progressPts[S.session.progressPts.length-1];
-      L.marker(lastPt,{icon:L.divIcon({
-        html:'<div style="background:#D85A30;color:#fff;padding:4px 9px;border-radius:10px;font-size:11px;font-weight:700;">⏸ 여기까지</div>',
-        className:'',iconAnchor:[40,12]
-      })}).addTo(S.rdMap);
-    }
+    S.session.progressLayer=null;
+  }
+  if(S.session.progressMarker&&S.rdMap){
+    S.rdMap.removeLayer(S.session.progressMarker);
+    S.session.progressMarker=null;
+  }
+  if(S.rdMap&&S.session.progressPts.length>0){
+    const lastPt=S.session.progressPts[S.session.progressPts.length-1];
+    S.session.progressMarker=L.marker(lastPt,{icon:L.divIcon({
+      html:'<div class="resume-marker-label">📍 저장 위치</div>',
+      className:'',iconAnchor:[42,12]
+    })}).addTo(S.rdMap);
   }
   S.session.active=false;
   closeSvcFullscreen();
   hideReturnBanner();
-  toast(`⏸ 여기까지 저장했습니다. 다음에 이어서 할 수 있습니다.`);
+  toast(`📍 위치를 저장했습니다. 다음에 이어서 할 수 있습니다.`);
   renderHomeZoneList(document.getElementById('home-zone-search')?.value||'');
   goTab('home');
   openPauseNote(z?.id);
@@ -2096,34 +2074,23 @@ function endSession(completed){
   renderRecords();
 }
 
-// 기존 openRd에서 진행 라인 복원
+// 기존 openRd에서 저장 위치 복원
 function restoreProgressLine(zoneId){
   const z=S.zones.find(z=>z.id===zoneId);
-  if(!z||!z.progress||!z.progress.pts||z.progress.pts.length<2)return;
-  // 이전 진행 라인 (붉은 점선)
-  if(S.session.progressLayer){S.rdMap.removeLayer(S.session.progressLayer);}
-  S.session.progressLayer=L.polyline(z.progress.pts,{
-    color:'#D85A30',weight:5,opacity:.85,dashArray:'8,4',
-  }).addTo(S.rdMap);
-  // 이어하기 시작 지점 마커
+  if(!z||!z.progress||!Array.isArray(z.progress.pts)||z.progress.pts.length<1)return;
+  if(S.session.progressLayer){S.rdMap.removeLayer(S.session.progressLayer);S.session.progressLayer=null;}
   const lastPt=z.progress.pts[z.progress.pts.length-1];
   if(S.session.progressMarker){S.rdMap.removeLayer(S.session.progressMarker);}
   S.session.progressMarker=L.marker(lastPt,{icon:L.divIcon({
     html:'<div class="resume-marker-label">▶ 여기서 이어하기</div>',
     className:'',iconAnchor:[60,12]
   })}).addTo(S.rdMap);
-  // 범례
-  toast('🔴 붉은 선: 지난번 진행 구간 · 이어서 봉사하세요!');
+  toast('📍 마지막 저장 위치에서 이어서 봉사하세요.');
 }
 
 // 봉사 시작 버튼 클릭 → 세션 생성 + 전체화면 GPS
 function startSvcAndGo(){
   if(!S.curZone){toast('구역을 선택해주세요.');return;}
-  if((S.role==='volunteer'||S.role==='leader')&&S.routeMode==='4'&&!S.routeDirection){
-    toast('4인 2조는 1조/2조 진행방향을 먼저 선택하세요.');
-    openRouteDirectionPrompt();
-    return;
-  }
   const resume=S.pendingResume||false;
   S.pendingResume=false;
   // 봉사자/인도자는 전체화면 GPS 모드
@@ -2173,7 +2140,6 @@ function setSvcGpsMarker(lat,lng,acc){
 function renderSvcRouteLayers(zoneId){
   if(!svcMapInst||!zoneId)return;
   clearSvcRouteLayers();
-  svcRouteLayers.push(...addServiceRoutesToMap(svcMapInst,zoneId,S.routeMode));
 }
 
 function openSvcFullscreen(zoneId){
@@ -2182,9 +2148,7 @@ function openSvcFullscreen(zoneId){
   const fs=document.getElementById('svc-fullscreen');
   fs.style.display='flex';
   document.getElementById('svc-zone-name').textContent=z.name;
-  document.getElementById('svc-companions').textContent=S.routeMode==='4'&&S.routeDirection
-    ? `${S.routeDirection}조 방향으로 진행중`
-    :'혼자 봉사중';
+  document.getElementById('svc-companions').textContent='내 위치를 확인하며 봉사중';
   // 지도 초기화
   if(!svcMapInst){
     svcMapInst=L.map('svc-map',stableMapOptions({center:[38.20138,128.59350],zoom:18,zoomControl:true,attributionControl:false}));
@@ -2198,16 +2162,9 @@ function openSvcFullscreen(zoneId){
   // 구역 폴리곤 표시
   if(svcProgressLayer){svcMapInst.removeLayer(svcProgressLayer);}
   svcLayers.push(L.polygon(z.polygon,{color:zoneStrokeColor(z),weight:3.5,fillColor:zoneFillColor(z),fillOpacity:.05,opacity:1,interactive:false,className:'zone-boundary-line'}).addTo(svcMapInst));
-  const visibleRoute=serviceRoutesFor(z.id,S.routeMode)[0];
-  if(visibleRoute&&visibleRoute.pts?.length){
-    svcMapInst.setView(visibleRoute.pts[0],18);
-  }else{
-    svcMapInst.fitBounds(L.latLngBounds(z.polygon),{padding:[30,30]});
-  }
-  renderSvcRouteLayers(z.id);
-  // 이전 진행 라인 복원 (붉은선)
-  if(z.progress&&z.progress.pts&&z.progress.pts.length>=2){
-    svcLayers.push(L.polyline(z.progress.pts,{color:'#D85A30',weight:5,opacity:.85,dashArray:'8,4'}).addTo(svcMapInst));
+  svcMapInst.fitBounds(L.latLngBounds(z.polygon),{padding:[30,30]});
+  // 마지막 저장 위치 복원
+  if(z.progress&&Array.isArray(z.progress.pts)&&z.progress.pts.length>=1){
     const lastPt=z.progress.pts[z.progress.pts.length-1];
     svcLayers.push(L.marker(lastPt,{icon:L.divIcon({html:'<div class="resume-marker-label">▶ 여기서 이어하기</div>',className:'',iconAnchor:[60,12]})}).addTo(svcMapInst));
     svcMapInst.setView(lastPt,18);
@@ -2216,7 +2173,7 @@ function openSvcFullscreen(zoneId){
   startSvcGPS();
   // 타이머 시작
   startSvcTimer();
-  refreshMapAfterLayout(svcMapInst,()=>renderSvcRouteLayers(z.id));
+  refreshMapAfterLayout(svcMapInst);
 }
 
 function startSvcGPS(){
