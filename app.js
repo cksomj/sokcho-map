@@ -372,6 +372,26 @@ function selectRouteDirectionFromMap(dir){
   if(!(S.role!=='admin'&&S.routeMode==='4'))return;
   setRouteDirection(dir);
 }
+function routeArrowAngle(map,a,b){
+  if(map&&map.latLngToContainerPoint){
+    const p1=map.latLngToContainerPoint(a);
+    const p2=map.latLngToContainerPoint(b);
+    return Math.atan2(p2.y-p1.y,p2.x-p1.x)*180/Math.PI;
+  }
+  const dy=b[0]-a[0],dx=b[1]-a[1];
+  return Math.atan2(dy,dx)*180/Math.PI;
+}
+function routeArrowPoints(pts){
+  const arrows=[];
+  if(!Array.isArray(pts)||pts.length<2)return arrows;
+  const maxArrows=Math.min(4,Math.max(1,pts.length-1));
+  const step=Math.max(1,Math.floor((pts.length-1)/maxArrows));
+  for(let i=0;i<pts.length-1;i+=step){
+    const a=pts[i],b=pts[i+1];
+    arrows.push({a,b,mid:[(a[0]+b[0])/2,(a[1]+b[1])/2]});
+  }
+  return arrows.slice(0,4);
+}
 function drawRouteLineSet(map,routes,zIndexOffset=700,selectable=false){
   const layers=[];
   const s=routeVizScale(map);
@@ -394,6 +414,19 @@ function drawRouteLineSet(map,routes,zIndexOffset=700,selectable=false){
       layers.push(hit);
     }
     layers.push(line);
+    routeArrowPoints(l.pts).forEach(({a,b,mid})=>{
+      const size=Math.max(18,Math.round(24*s));
+      const angle=routeArrowAngle(map,a,b);
+      const icon=L.divIcon({
+        html:`<div class="route-arrow-label" style="color:${l.color};transform:rotate(${angle}deg);"></div>`,
+        className:'',
+        iconSize:[size,size],
+        iconAnchor:[Math.round(size/2),Math.round(size/2)]
+      });
+      const arrow=L.marker(mid,{icon,zIndexOffset:zIndexOffset+10,interactive:!!selectable}).addTo(map);
+      if(selectable)arrow.on('click',()=>selectRouteDirectionFromMap(team));
+      layers.push(arrow);
+    });
     l.pts.forEach((pt,ptIdx)=>{
       const label=ptIdx===0?'시작':ptIdx===l.pts.length-1?'끝':String(ptIdx+1);
       const bg=ptIdx===l.pts.length-1?'#D85A30':l.color;
