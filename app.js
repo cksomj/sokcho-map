@@ -1931,11 +1931,11 @@ function startSession(zoneId, resume){
 }
 
 function startSessionGPS(zoneId){
-  // 봉사 중 이동 경로 자동 기록은 사용하지 않습니다. 필요한 순간 위치 저장만 합니다.
+  // 봉사 중 이동 경로 자동 기록은 사용하지 않습니다. 미완료를 누른 순간의 위치만 저장합니다.
 }
 
 function updateProgressLine(zoneId){
-  // 위치 저장 방식에서는 진행 선을 그리지 않습니다.
+  // 미완료 위치 저장 방식에서는 진행 선을 그리지 않습니다.
 }
 
 function saveProgressToStorage(zoneId){
@@ -1969,7 +1969,7 @@ function updateSessionStorage(){
   }catch(e){}
 }
 
-// 위치 저장 버튼
+// 미완료 버튼: 현재 위치를 저장하고 미완료 기록으로 남김
 function pauseSession(){
   if(!S.session.active)return;
   const z=S.zones.find(z=>z.id===S.session.zoneId);
@@ -2005,7 +2005,7 @@ function pauseSession(){
   S.session.active=false;
   closeSvcFullscreen();
   hideReturnBanner();
-  toast(`📍 위치를 저장했습니다. 다음에 이어서 할 수 있습니다.`);
+  toast(`📍 미완료로 저장했습니다. 현재 위치에서 이어서 할 수 있습니다.`);
   renderHomeZoneList(document.getElementById('home-zone-search')?.value||'');
   goTab('home');
   openPauseNote(z?.id);
