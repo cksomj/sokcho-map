@@ -16,6 +16,7 @@ const S={
   mapFilter:'all',
   curZone:null,
   panelZone:null,
+  homeSelectedZone:null,
   routeMode:'2',
   showTbl:false,
   nextId:0,
@@ -127,6 +128,17 @@ function getVolColor(name){const i=S.volunteers.indexOf(name);return S.volColors
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2600);}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function jsq(s){return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r?\n/g,' ');}
+function activeZoneId(){
+  return S.panelZone||S.homeSelectedZone||S.curZone||null;
+}
+function markSelectedCards(id=activeZoneId()){
+  document.querySelectorAll('.side-zone-item.selected,.home-zone-row.selected,.zc.selected,.admin-zone-row.selected').forEach(el=>el.classList.remove('selected'));
+  if(!id)return;
+  ['side-zone-item-','home-zone-item-','rte-zone-item-','admin-zone-item-'].forEach(prefix=>{
+    const el=document.getElementById(prefix+id);
+    if(el)el.classList.add('selected');
+  });
+}
 function syncRoleUi(){
   const isAdmin=S.role==='admin';
   const isLeader=S.role==='leader';
@@ -1029,7 +1041,9 @@ function openSheet(id){
   const z=S.zones.find(z=>z.id===id);
   if(!z)return;
   S.panelZone=id;
+  S.homeSelectedZone=id;
   drawAllZones(id);
+  markSelectedCards(id);
   S.mainMap.fitBounds(L.latLngBounds(z.polygon),{padding:[40,40]});
   const done=isDone(id);
   const isRes=z.type==='residential';
@@ -1065,8 +1079,8 @@ function openSheet(id){
   }
   syncRoleUi();
 }
-function closeSheet(){const s=document.getElementById('zsheet');s.classList.remove('open');setTimeout(()=>s.style.display='none',280);drawAllZones(null);S.panelZone=null;}
-function closeSideDetail(){document.getElementById('side-zone-list').style.display='block';document.getElementById('side-zone-detail').style.display='none';S.panelZone=null;drawAllZones(null);}
+function closeSheet(){const s=document.getElementById('zsheet');s.classList.remove('open');setTimeout(()=>s.style.display='none',280);drawAllZones(null);S.panelZone=null;markSelectedCards(S.homeSelectedZone||S.curZone);}
+function closeSideDetail(){document.getElementById('side-zone-list').style.display='block';document.getElementById('side-zone-detail').style.display='none';S.panelZone=null;drawAllZones(null);markSelectedCards(S.homeSelectedZone||S.curZone);}
 function gotoRoute(){if(!S.panelZone)return;const id=S.panelZone;closeSheet();closeSideDetail();goTab('route');setTimeout(()=>openRd(id),250);}
 function startFromSheet(){gotoRoute();}
 
@@ -1096,7 +1110,8 @@ function renderSideList(keyword){
     const meta=getZoneStatusMeta(z.id);
     const isRes=z.type==='residential';
     const cnt=S.records.filter(r=>r.zoneId===z.id).length;
-    return `<div class="side-zone-item ${isRes?'res':'com'}" onclick="openSheet(${z.id})">
+    const selected=String(activeZoneId())===String(z.id);
+    return `<div id="side-zone-item-${z.id}" class="side-zone-item ${isRes?'res':'com'} ${selected?'selected':''}" onclick="openSheet(${z.id})">
       <div>
         <div style="font-size:13px;font-weight:600;"><span style="color:var(--txm);font-size:11px;">#${z.id} </span>${z.name}</div>
         <div style="font-size:11px;color:var(--txm);">${z.streets.join(', ').slice(0,30)} · ${cnt}회</div>
@@ -1364,7 +1379,8 @@ function renderRouteGrid(keyword){
     const statusText=meta.text;
     const statusIcon=meta.icon;
     const click=S.role==='admin'||!done?`openRd(${z.id})`:`toast('완료된 구역입니다. 관리자가 초기화한 뒤 다시 봉사할 수 있습니다.')`;
-    return `<div class="zc ${isRes?'res':'com'}" onclick="${click}">
+    const selected=String(activeZoneId())===String(z.id);
+    return `<div id="rte-zone-item-${z.id}" class="zc ${isRes?'res':'com'} ${selected?'selected':''}" onclick="${click}">
       <div class="zc-dot" style="background:${done?'#3B6D11':inProg?'#D85A30':'#d1d5db'};"></div>
       <div class="zc-badge"><span class="badge ${isRes?'badge-res':'badge-com'}">${isRes?'주택':'상가'}</span></div>
       <div class="zc-name"><span style="color:var(--txm);font-size:10px;">#${z.id} </span>${z.name}</div>
@@ -1431,6 +1447,8 @@ function applyZoneNumberEdit(){
 }
 function openRd(id){
   S.curZone=id;
+  S.homeSelectedZone=id;
+  markSelectedCards(id);
   const z=S.zones.find(z=>z.id===id);
   if(!z)return;
   exitRteEditMode();
@@ -1882,7 +1900,9 @@ function filterHomeMap(type,el){
 
 function selectHomeZone(id){
   // 지도에서 구역 선택 시 목록에서 하이라이트 + 스크롤
+  S.homeSelectedZone=id;
   drawHomeZones(id);
+  markSelectedCards(id);
   const z=S.zones.find(z=>z.id===id);
   if(z){
     homeMapInst.fitBounds(L.latLngBounds(z.polygon),{padding:[30,30]});
@@ -1916,12 +1936,13 @@ function renderHomeZoneList(kw){
     const meta=getZoneStatusMeta(z.id);
     const status=meta.text;
     const statusClass=meta.cls;
+    const selected=String(activeZoneId())===String(z.id);
     const action=done
       ?`<span class="home-zone-action" style="font-size:12px;color:#3B6D11;font-weight:800;">완료 잠김</span>`
       :hasProg
         ?`<button onclick="event.stopPropagation();startSessionAndRoute(${z.id},true)" class="btn btn-sm home-zone-action" style="background:#FAEEDA;color:var(--warn);border:1px solid #FAC775;">이어하기</button>`
         :`<button onclick="event.stopPropagation();startSessionAndRoute(${z.id},false)" class="btn btn-sm btn-p home-zone-action">봉사 시작</button>`;
-    return `<div id="home-zone-item-${z.id}" class="home-zone-row ${isRes?'res':'com'}" onclick="selectHomeZone(${z.id})">
+    return `<div id="home-zone-item-${z.id}" class="home-zone-row ${isRes?'res':'com'} ${selected?'selected':''}" onclick="selectHomeZone(${z.id})">
       <div style="min-width:0;">
         <div class="home-zone-title"><span>#${z.id} </span>${z.name}</div>
         <div class="home-zone-meta">${isRes?'주택':'상가'} · ${z.streets.length}개 거리</div>
@@ -2634,7 +2655,8 @@ function renderAdmGrid(){
     const status=meta.text;
     const statusClass=meta.cls;
     const statusColor=meta.color;
-    return `<div class="admin-zone-row ${isRes?'res':'com'}">
+    const selected=String(activeZoneId())===String(z.id);
+    return `<div id="admin-zone-item-${z.id}" class="admin-zone-row ${isRes?'res':'com'} ${selected?'selected':''}">
       <div class="admin-zone-no">#${z.id}</div>
       <div style="min-width:0;">
         <div class="admin-zone-name">${esc(z.name)}</div>
