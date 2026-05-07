@@ -196,15 +196,19 @@ function loadContacts(){
 }
 function persistContacts(){localStorage.setItem('sokcho_contacts',JSON.stringify(S.contacts));}
 function cleanupBuiltInSamples(){
-  if(localStorage.getItem('sokcho_builtin_samples_removed')==='1')return;
   const sampleZoneNames=new Set(['아바이마을 1구역','아바이마을 2구역']);
   const sampleRouteIds=new Set(['abai-z1-2-sample','abai-z1-4-sample','abai-z2-2-sample','abai-z2-4-sample']);
   const sampleRouteNames=new Set(['아바이 1구역 2인1조 예시','아바이 1구역 4인2조 예시','아바이 2구역 2인1조 예시','아바이 2구역 4인2조 예시']);
   const sampleZoneIds=new Set(S.zones.filter(z=>sampleZoneNames.has(z.name)).map(z=>z.id));
   const zoneBefore=S.zones.length;
   const routeBefore=S.rteLines.length;
-  S.zones=S.zones.filter(z=>!sampleZoneNames.has(z.name));
-  S.rteLines=S.rteLines.filter(l=>!sampleRouteIds.has(l.id)&&!sampleRouteNames.has(l.name)&&!sampleZoneIds.has(l.zoneId));
+  S.rteLines=S.rteLines.filter(l=>{
+    const name=String(l.name||'');
+    return !sampleRouteIds.has(l.id)&&!sampleRouteNames.has(name)&&!name.includes('예시')&&!sampleZoneIds.has(l.zoneId);
+  });
+  if(localStorage.getItem('sokcho_builtin_samples_removed')!=='1'){
+    S.zones=S.zones.filter(z=>!sampleZoneNames.has(z.name));
+  }
   if(S.zones.length!==zoneBefore)persistZones();
   if(S.rteLines.length!==routeBefore)persistRteLines();
   localStorage.setItem('sokcho_builtin_samples_removed','1');
