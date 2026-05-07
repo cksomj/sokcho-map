@@ -95,6 +95,9 @@
 .leaflet-container.kakao-layer .leaflet-tile{
 	display:block;
 }
+.leaflet-container.kakao-layer.kakao-ready .leaflet-tile{
+	display:none;
+}
 .leaflet-container{
 	background:transparent !important;
 }
