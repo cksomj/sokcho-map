@@ -411,6 +411,26 @@ function routeArrowPoints(map,pts){
   }
   return arrows;
 }
+function addRouteArrowMarkers(map,pts,color,zIndexOffset=710,onClick=null){
+  const layers=[];
+  const cleanPts=normalizeRoutePts(pts);
+  if(!map||cleanPts.length<2)return layers;
+  const s=routeVizScale(map);
+  routeArrowPoints(map,cleanPts).forEach(({a,b,mid})=>{
+    const size=Math.max(24,Math.round(30*s));
+    const angle=routeArrowAngle(map,a,b);
+    const icon=L.divIcon({
+      html:`<div class="route-arrow-label" style="color:${color};transform:rotate(${angle}deg);"></div>`,
+      className:'',
+      iconSize:[size,size],
+      iconAnchor:[Math.round(size/2),Math.round(size/2)]
+    });
+    const arrow=L.marker(mid,{icon,zIndexOffset,interactive:!!onClick}).addTo(map);
+    if(onClick)arrow.on('click',onClick);
+    layers.push(arrow);
+  });
+  return layers;
+}
 function drawRouteLineSet(map,routes,zIndexOffset=700,selectable=false){
   const layers=[];
   const s=routeVizScale(map);
@@ -435,19 +455,7 @@ function drawRouteLineSet(map,routes,zIndexOffset=700,selectable=false){
       layers.push(hit);
     }
     layers.push(line);
-    routeArrowPoints(map,pts).forEach(({a,b,mid})=>{
-      const size=Math.max(24,Math.round(30*s));
-      const angle=routeArrowAngle(map,a,b);
-      const icon=L.divIcon({
-        html:`<div class="route-arrow-label" style="color:${l.color};transform:rotate(${angle}deg);"></div>`,
-        className:'',
-        iconSize:[size,size],
-        iconAnchor:[Math.round(size/2),Math.round(size/2)]
-      });
-      const arrow=L.marker(mid,{icon,zIndexOffset:zIndexOffset+10,interactive:!!selectable}).addTo(map);
-      if(selectable)arrow.on('click',()=>selectRouteDirectionFromMap(team));
-      layers.push(arrow);
-    });
+    layers.push(...addRouteArrowMarkers(map,pts,l.color,zIndexOffset+10,selectable?()=>selectRouteDirectionFromMap(team):null));
     pts.forEach((pt,ptIdx)=>{
       const label=ptIdx===0?'시작':ptIdx===pts.length-1?'끝':String(ptIdx+1);
       const bg=ptIdx===pts.length-1?'#D85A30':l.color;
@@ -1529,8 +1537,10 @@ function drawRoute(){
   const pts=[];for(let i=0;i<n;i++)pts.push(z.polygon[(si+i)%n]);
   const st=z.streets,sn=st.length;
   if(S.routeMode==='2'){
-    const line=L.polyline([...pts,pts[0]],{color:'#378ADD',weight:4,opacity:.88,interactive:false}).addTo(S.rdMap);
+    const autoPts=[...pts,pts[0]];
+    const line=L.polyline(autoPts,{color:'#378ADD',weight:4,opacity:.88,interactive:false}).addTo(S.rdMap);
     S.rdLayers.push(line);
+    S.rdLayers.push(...addRouteArrowMarkers(S.rdMap,autoPts,'#378ADD',720));
     const spI=L.divIcon({html:'<div class="route-start-marker">🚩 시작</div>',className:'',iconAnchor:[30,14]});
     S.rdLayers.push(L.marker(pts[0],{icon:spI,interactive:false}).addTo(S.rdMap));
     let steps=st.map((_,i)=>`<div class="step-row"><div class="sn b">${i+1}</div><div class="st">${st[(si+i)%sn]}${i<sn-1?' → '+st[(si+i+1)%sn]:' → 시작점 복귀 ✓'}</div></div>`).join('');
@@ -1538,13 +1548,17 @@ function drawRoute(){
   } else if(S.routeMode==='4'){
     const h=Math.ceil(n/2);
     const canPick=S.role!=='admin';
-    const l1=L.polyline(pts.slice(0,h+1),{color:'#378ADD',weight:canPick&&S.routeDirection==='1'?7:4,opacity:.88,interactive:canPick}).addTo(S.rdMap);
-    const l2=L.polyline([...pts.slice(h),pts[0]],{color:'#3B6D11',weight:canPick&&S.routeDirection==='2'?7:4,opacity:.88,interactive:canPick}).addTo(S.rdMap);
+    const pts1=pts.slice(0,h+1);
+    const pts2=[...pts.slice(h),pts[0]];
+    const l1=L.polyline(pts1,{color:'#378ADD',weight:canPick&&S.routeDirection==='1'?7:4,opacity:.88,interactive:canPick}).addTo(S.rdMap);
+    const l2=L.polyline(pts2,{color:'#3B6D11',weight:canPick&&S.routeDirection==='2'?7:4,opacity:.88,interactive:canPick}).addTo(S.rdMap);
     if(canPick){
       l1.on('click',()=>selectRouteDirectionFromMap('1'));
       l2.on('click',()=>selectRouteDirectionFromMap('2'));
     }
     S.rdLayers.push(l1,l2);
+    S.rdLayers.push(...addRouteArrowMarkers(S.rdMap,pts1,'#378ADD',720,canPick?()=>selectRouteDirectionFromMap('1'):null));
+    S.rdLayers.push(...addRouteArrowMarkers(S.rdMap,pts2,'#3B6D11',720,canPick?()=>selectRouteDirectionFromMap('2'):null));
     const mp=pts[h%n];
     const mi=L.divIcon({html:'<div style="background:#D85A30;color:#fff;padding:4px 9px;border-radius:10px;font-size:11px;font-weight:700;">만남</div>',className:'',iconAnchor:[20,12]});
     S.rdLayers.push(L.marker(mp,{icon:mi,interactive:false}).addTo(S.rdMap));
