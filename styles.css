@@ -93,7 +93,7 @@
 	visibility: inherit;
 	}
 .leaflet-container.kakao-layer .leaflet-tile{
-	display:none;
+	display:block;
 }
 .leaflet-container{
 	background:transparent !important;
@@ -800,7 +800,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
   /* 홈 화면 PC: 지도 왼쪽, 목록 오른쪽 */
   #p-home > div:last-child{flex-direction:row!important;}
   #p-home #home-map{min-height:0!important;}
-  #p-home #home-list-panel{width:232px!important;min-width:232px!important;max-width:232px!important;border-top:none!important;border-left:1px solid var(--bd);max-height:100%!important;}
+  #p-home #home-list-panel{width:clamp(320px,34vw,430px)!important;min-width:320px!important;max-width:430px!important;border-top:none!important;border-left:1px solid var(--bd);max-height:100%!important;}
   .tab{flex:0;padding:7px 3px;font-size:11px;min-height:54px;gap:1px;}
   .tab .ti{font-size:20px;margin-bottom:0;}
   #app-content{order:2;}
