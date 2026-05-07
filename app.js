@@ -1907,7 +1907,7 @@ function startSessionAndRoute(zoneId, resume){
   setTimeout(()=>openRd(zoneId),180);
 }
 
-function startSession(zoneId, resume){
+function startSession(zoneId, resume, opts={}){
   const z=S.zones.find(z=>z.id===zoneId);
   if(!z)return;
   // 이미 진행중이면 확인
@@ -1942,9 +1942,11 @@ function startSession(zoneId, resume){
   updateSessionStorage();
   toast(`🟢 ${z.name} 봉사를 ${resume?'이어서 ':''}시작합니다!`);
   updateHomeSessionUI();
-  // 경로 탭으로 이동
-  goTab('route');
-  setTimeout(()=>openRd(zoneId),300);
+  if(opts.openRoute!==false){
+    // 경로 탭으로 이동
+    goTab('route');
+    setTimeout(()=>openRd(zoneId),300);
+  }
 }
 
 function startSessionGPS(zoneId){
@@ -2147,7 +2149,7 @@ function startSvcAndGo(){
   if(S.role==='volunteer'||S.role==='leader'){
     // 세션 시작
     if(!S.session.active){
-      startSession(S.curZone, resume);
+      startSession(S.curZone, resume,{openRoute:false});
     }
     openSvcFullscreen(S.curZone);
   } else {
@@ -2193,6 +2195,18 @@ function renderSvcRouteLayers(zoneId){
   svcRouteLayers.push(...addServiceRoutesToMap(svcMapInst,zoneId,S.routeMode));
 }
 
+function focusSvcMapOnZone(z){
+  if(!svcMapInst||!z)return;
+  const visibleRoute=serviceRoutesFor(z.id,S.routeMode)[0];
+  if(visibleRoute&&visibleRoute.pts?.length){
+    const pts=normalizeRoutePts(visibleRoute.pts);
+    if(pts.length)svcMapInst.setView(pts[0],18,{animate:false});
+    else svcMapInst.fitBounds(L.latLngBounds(z.polygon),{padding:[30,30]});
+  }else{
+    svcMapInst.fitBounds(L.latLngBounds(z.polygon),{padding:[30,30]});
+  }
+}
+
 function openSvcFullscreen(zoneId){
   const z=S.zones.find(z=>z.id===zoneId);
   if(!z)return;
@@ -2207,18 +2221,13 @@ function openSvcFullscreen(zoneId){
     stabilizeZoneLabelsOnMove(svcMapInst);
     svcMapInst.on('zoomend',()=>renderSvcRouteLayers(S.session.zoneId));
   }
-  refreshMapAfterLayout(svcMapInst);
+  refreshMapAfterLayout(svcMapInst,()=>focusSvcMapOnZone(z));
   clearSvcRouteLayers();
   svcLayers.forEach(l=>svcMapInst.removeLayer(l));svcLayers=[];
   // 구역 폴리곤 표시
   if(svcProgressLayer){svcMapInst.removeLayer(svcProgressLayer);}
   svcLayers.push(L.polygon(z.polygon,{color:zoneStrokeColor(z),weight:3.5,fillColor:zoneFillColor(z),fillOpacity:.05,opacity:1,interactive:false,className:'zone-boundary-line'}).addTo(svcMapInst));
-  const visibleRoute=serviceRoutesFor(z.id,S.routeMode)[0];
-  if(visibleRoute&&visibleRoute.pts?.length){
-    svcMapInst.setView(visibleRoute.pts[0],18);
-  }else{
-    svcMapInst.fitBounds(L.latLngBounds(z.polygon),{padding:[30,30]});
-  }
+  focusSvcMapOnZone(z);
   renderSvcRouteLayers(z.id);
   // 마지막 저장 위치 복원
   if(z.progress&&Array.isArray(z.progress.pts)&&z.progress.pts.length>=1){
