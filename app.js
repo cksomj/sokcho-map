@@ -2140,6 +2140,7 @@ function setSvcGpsMarker(lat,lng,acc){
 function renderSvcRouteLayers(zoneId){
   if(!svcMapInst||!zoneId)return;
   clearSvcRouteLayers();
+  svcRouteLayers.push(...addServiceRoutesToMap(svcMapInst,zoneId,S.routeMode));
 }
 
 function openSvcFullscreen(zoneId){
@@ -2162,7 +2163,13 @@ function openSvcFullscreen(zoneId){
   // 구역 폴리곤 표시
   if(svcProgressLayer){svcMapInst.removeLayer(svcProgressLayer);}
   svcLayers.push(L.polygon(z.polygon,{color:zoneStrokeColor(z),weight:3.5,fillColor:zoneFillColor(z),fillOpacity:.05,opacity:1,interactive:false,className:'zone-boundary-line'}).addTo(svcMapInst));
-  svcMapInst.fitBounds(L.latLngBounds(z.polygon),{padding:[30,30]});
+  const visibleRoute=serviceRoutesFor(z.id,S.routeMode)[0];
+  if(visibleRoute&&visibleRoute.pts?.length){
+    svcMapInst.setView(visibleRoute.pts[0],18);
+  }else{
+    svcMapInst.fitBounds(L.latLngBounds(z.polygon),{padding:[30,30]});
+  }
+  renderSvcRouteLayers(z.id);
   // 마지막 저장 위치 복원
   if(z.progress&&Array.isArray(z.progress.pts)&&z.progress.pts.length>=1){
     const lastPt=z.progress.pts[z.progress.pts.length-1];
@@ -2173,7 +2180,7 @@ function openSvcFullscreen(zoneId){
   startSvcGPS();
   // 타이머 시작
   startSvcTimer();
-  refreshMapAfterLayout(svcMapInst);
+  refreshMapAfterLayout(svcMapInst,()=>renderSvcRouteLayers(z.id));
 }
 
 function startSvcGPS(){
