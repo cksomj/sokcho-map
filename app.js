@@ -80,6 +80,15 @@ function getZoneStatusMeta(id){
   if(state==='progress')return {state,text:'미완료',cls:'progress',icon:'!',color:'#D85A30'};
   return {state,text:'봉사대기',cls:'reset',icon:'○',color:'#185FA5'};
 }
+function canStartZone(id){
+  return getZoneState(id)==='standby';
+}
+function guardStartableZone(id){
+  if(canStartZone(id))return true;
+  if(isDone(id))toast('완료된 구역입니다. 관리자가 초기화해 봉사대기로 바꾼 뒤 다시 시작할 수 있습니다.');
+  else toast('미완료 구역입니다. 이어하기로 계속하거나 관리자가 초기화해야 새로 시작할 수 있습니다.');
+  return false;
+}
 function markZoneReset(id){
   const z=getZoneById(id);
   if(z)z.resetAt=new Date().toISOString();
@@ -320,6 +329,12 @@ function persistRteLines(){
 function currentRteLines(){
   return S.rteLines.filter(l=>l.zoneId===S.curZone&&(l.mode||'2')===S.routeMode);
 }
+function routeScreenLines(){
+  const lines=currentRteLines().filter(l=>l.visible!==false);
+  if(S.role==='admin'||S.routeMode!=='4'||!S.routeDirection)return lines;
+  const picked=lines.filter((route,index)=>routeTeamNo(route,index)===S.routeDirection);
+  return picked.length?picked:lines.slice(0,1);
+}
 function sortedVisibleRoutes(zoneId,mode){
   return S.rteLines
     .filter(l=>l.zoneId===zoneId&&(l.mode||'2')===(mode||S.routeMode)&&l.visible!==false)
@@ -503,7 +518,7 @@ function drawRouteLineSet(map,routes,zIndexOffset=700,selectable=false){
 function drawSavedRteLines(){
   if(!S.rdMap)return;
   clearRteDisplayLayers();
-  S.rdRteLayers=drawRouteLineSet(S.rdMap,currentRteLines().filter(l=>l.visible!==false),600,S.role!=='admin'&&S.routeMode==='4');
+  S.rdRteLayers=drawRouteLineSet(S.rdMap,routeScreenLines(),600,S.role!=='admin'&&S.routeMode==='4'&&!S.routeDirection);
 }
 function addSavedRoutesToMap(map,zoneId,mode){
   return drawRouteLineSet(map,sortedVisibleRoutes(zoneId,mode),700);
@@ -907,6 +922,9 @@ function goTab(name){
   if(name==='monitor') initMonitor();
   if(name==='home') renderHome();
   if(name==='map'&&S.mainMap) setTimeout(()=>{S.mainMap.invalidateSize();},300);
+  if(name==='route'&&S.rdMap) refreshMapAfterLayout(S.rdMap);
+  if(name==='home'&&homeMapInst) refreshMapAfterLayout(homeMapInst);
+  if(name==='monitor'&&S.monMap) refreshMapAfterLayout(S.monMap);
 }
 
 function refreshMapAfterLayout(map, after){
@@ -1019,6 +1037,10 @@ function openSheet(id){
   const ih=`거리: ${z.streets.join(' · ')}<br>총 봉사: <strong>${cnt}회</strong>`;
   // 봉사자/인도자는 구역 클릭 시 바로 경로로 진입
   if(S.role==='volunteer'||S.role==='leader'){
+    if(isDone(id)){
+      toast('완료된 구역입니다. 관리자가 초기화한 뒤 다시 봉사할 수 있습니다.');
+      return;
+    }
     closeSheet();closeSideDetail();
     goTab('route');
     setTimeout(()=>openRd(id),250);
@@ -1338,7 +1360,8 @@ function renderRouteGrid(keyword){
     const statusClass=meta.cls;
     const statusText=meta.text;
     const statusIcon=meta.icon;
-    return `<div class="zc ${isRes?'res':'com'}" onclick="openRd(${z.id})">
+    const click=S.role==='admin'||!done?`openRd(${z.id})`:`toast('완료된 구역입니다. 관리자가 초기화한 뒤 다시 봉사할 수 있습니다.')`;
+    return `<div class="zc ${isRes?'res':'com'}" onclick="${click}">
       <div class="zc-dot" style="background:${done?'#3B6D11':inProg?'#D85A30':'#d1d5db'};"></div>
       <div class="zc-badge"><span class="badge ${isRes?'badge-res':'badge-com'}">${isRes?'주택':'상가'}</span></div>
       <div class="zc-name"><span style="color:var(--txm);font-size:10px;">#${z.id} </span>${z.name}</div>
@@ -1409,9 +1432,16 @@ function openRd(id){
   if(!z)return;
   exitRteEditMode();
   document.getElementById('rd-title').textContent=z.name;
+  updateRouteStartButton(id);
   document.getElementById('zl-view').style.display='none';
   document.getElementById('rd-view').style.display='flex';
-  setMode('2',document.querySelector('.seg-b'));
+  const activeSession=S.session.active&&String(S.session.zoneId)===String(id);
+  const preferredMode=(activeSession&&S.session.routeMode)||z.progress?.routeMode||'2';
+  const preferredDirection=(activeSession&&S.session.routeDirection)||z.progress?.direction||null;
+  S.routeDirection=preferredMode==='4'?preferredDirection:null;
+  const modeBtns=document.querySelectorAll('.seg-b');
+  const modeBtn=preferredMode==='4'?modeBtns[1]:preferredMode==='draw'?modeBtns[2]:modeBtns[0];
+  setMode(preferredMode,modeBtn);
   keepMapDraggable(S.rdMap);
   refreshMapAfterLayout(S.rdMap,()=>{
     drawRdZone(z);
@@ -1419,6 +1449,14 @@ function openRd(id){
     restoreProgressLine(id);
     centerRouteMapOnZone(z,18);
   });
+}
+function updateRouteStartButton(zoneId){
+  const btn=document.querySelector('.route-start-fixed');
+  if(!btn)return;
+  const done=isDone(zoneId);
+  btn.disabled=done;
+  btn.textContent=done?'완료됨 - 관리자 초기화 필요':'이 구역 봉사 시작 →';
+  btn.classList.toggle('disabled',done);
 }
 function backList(){
   document.getElementById('rd-view').style.display='none';
@@ -1447,7 +1485,7 @@ function setMode(m,el){
   const z=S.zones.find(z=>z.id===S.curZone);if(z)drawRdZone(z);
   drawRoute();drawSavedRteLines();renderRteLines();
   updateRouteDirectionPanel();
-  if(m==='4'&&S.role!=='admin')openRouteDirectionPrompt();
+  if(m==='4'&&S.role!=='admin'&&!S.routeDirection)openRouteDirectionPrompt();
 }
 
 function setRouteDirection(dir){
@@ -1572,19 +1610,20 @@ function drawRoute(){
     const canPick=S.role!=='admin';
     const pts1=pts.slice(0,h+1);
     const pts2=[pts[0],...pts.slice(h).reverse()];
-    const l1=L.polyline(pts1,{color:'#378ADD',weight:canPick&&S.routeDirection==='1'?7:4,opacity:.88,interactive:canPick}).addTo(S.rdMap);
-    const l2=L.polyline(pts2,{color:'#3B6D11',weight:canPick&&S.routeDirection==='2'?7:4,opacity:.88,interactive:canPick}).addTo(S.rdMap);
-    if(canPick){
-      l1.on('click',()=>selectRouteDirectionFromMap('1'));
-      l2.on('click',()=>selectRouteDirectionFromMap('2'));
-    }
-    S.rdLayers.push(l1,l2);
-    S.rdLayers.push(...addRouteArrowMarkers(S.rdMap,pts1,'#378ADD',720,canPick?()=>selectRouteDirectionFromMap('1'):null));
-    S.rdLayers.push(...addRouteArrowMarkers(S.rdMap,pts2,'#3B6D11',720,canPick?()=>selectRouteDirectionFromMap('2'):null));
+    const routeDefs=[
+      {team:'1',pts:pts1,color:'#378ADD'},
+      {team:'2',pts:pts2,color:'#3B6D11'},
+    ].filter(r=>!canPick||!S.routeDirection||S.routeDirection===r.team);
+    routeDefs.forEach(r=>{
+      const line=L.polyline(r.pts,{color:r.color,weight:canPick&&S.routeDirection===r.team?7:4,opacity:.88,interactive:canPick&&!S.routeDirection}).addTo(S.rdMap);
+      if(canPick&&!S.routeDirection)line.on('click',()=>selectRouteDirectionFromMap(r.team));
+      S.rdLayers.push(line);
+      S.rdLayers.push(...addRouteArrowMarkers(S.rdMap,r.pts,r.color,720,canPick&&!S.routeDirection?()=>selectRouteDirectionFromMap(r.team):null));
+    });
     const mp=pts[h%n];
     const mi=L.divIcon({html:'<div style="background:#D85A30;color:#fff;padding:4px 9px;border-radius:10px;font-size:11px;font-weight:700;">만남</div>',className:'',iconAnchor:[20,12]});
     S.rdLayers.push(L.marker(mp,{icon:mi,interactive:false}).addTo(S.rdMap));
-    if(canPick){
+    if(canPick&&!S.routeDirection){
       const p1=routeChoiceLabelPoint(S.rdMap,pts1);
       const p2=routeChoiceLabelPoint(S.rdMap,pts2);
       const m1=L.marker(p1,{icon:routeChoiceIcon('1','#378ADD',S.rdMap),zIndexOffset:730}).addTo(S.rdMap).on('click',()=>selectRouteDirectionFromMap('1'));
@@ -1874,10 +1913,10 @@ function renderHomeZoneList(kw){
     const meta=getZoneStatusMeta(z.id);
     const status=meta.text;
     const statusClass=meta.cls;
-    const action=hasProg
-      ?`<button onclick="event.stopPropagation();startSessionAndRoute(${z.id},true)" class="btn btn-sm home-zone-action" style="background:#FAEEDA;color:var(--warn);border:1px solid #FAC775;">이어하기</button>`
-      :done
-        ?`<span></span>`
+    const action=done
+      ?`<span class="home-zone-action" style="font-size:12px;color:#3B6D11;font-weight:800;">완료 잠김</span>`
+      :hasProg
+        ?`<button onclick="event.stopPropagation();startSessionAndRoute(${z.id},true)" class="btn btn-sm home-zone-action" style="background:#FAEEDA;color:var(--warn);border:1px solid #FAC775;">이어하기</button>`
         :`<button onclick="event.stopPropagation();startSessionAndRoute(${z.id},false)" class="btn btn-sm btn-p home-zone-action">봉사 시작</button>`;
     return `<div id="home-zone-item-${z.id}" class="home-zone-row ${isRes?'res':'com'}" onclick="selectHomeZone(${z.id})">
       <div style="min-width:0;">
@@ -1942,6 +1981,11 @@ function updateHomeSessionUI(){
 // ================================================================
 // 봉사자/인도자: 구역 선택 → 경로 화면으로 이동 (세션은 "봉사 시작" 버튼에서)
 function startSessionAndRoute(zoneId, resume){
+  if(isDone(zoneId)){
+    toast('완료된 구역입니다. 관리자가 초기화한 뒤 다시 봉사할 수 있습니다.');
+    return;
+  }
+  if(!resume&&!guardStartableZone(zoneId))return;
   S.pendingResume=!!resume; // 이어하기 여부 저장
   goTab('route');
   setTimeout(()=>openRd(zoneId),180);
@@ -1950,6 +1994,11 @@ function startSessionAndRoute(zoneId, resume){
 function startSession(zoneId, resume, opts={}){
   const z=S.zones.find(z=>z.id===zoneId);
   if(!z)return;
+  if(isDone(zoneId)){
+    toast('완료된 구역입니다. 관리자가 초기화한 뒤 다시 봉사할 수 있습니다.');
+    return;
+  }
+  if(!resume&&!guardStartableZone(zoneId))return;
   // 이미 진행중이면 확인
   if(S.session.active){
     if(!confirm(`현재 진행중인 "${S.zones.find(z=>z.id===S.session.zoneId)?.name}" 봉사를 중단하고 "${z.name}"으로 변경하시겠습니까?`))return;
@@ -2169,6 +2218,7 @@ function endSession(completed){
 // 기존 openRd에서 저장 위치 복원
 function restoreProgressLine(zoneId){
   const z=S.zones.find(z=>z.id===zoneId);
+  if(isDone(zoneId))return;
   if(!z||!z.progress||!Array.isArray(z.progress.pts)||z.progress.pts.length<1)return;
   if(S.session.progressLayer){S.rdMap.removeLayer(S.session.progressLayer);S.session.progressLayer=null;}
   const lastPt=z.progress.pts[z.progress.pts.length-1];
@@ -2183,6 +2233,19 @@ function restoreProgressLine(zoneId){
 // 봉사 시작 버튼 클릭 → 세션 생성 + 전체화면 GPS
 function startSvcAndGo(){
   if(!S.curZone){toast('구역을 선택해주세요.');return;}
+  if(isDone(S.curZone)){
+    toast('완료된 구역입니다. 관리자가 초기화한 뒤 다시 봉사할 수 있습니다.');
+    return;
+  }
+  if(!S.pendingResume&&!canStartZone(S.curZone)){
+    toast('미완료 구역입니다. 목록의 이어하기로 계속하거나 관리자가 초기화해야 새로 시작할 수 있습니다.');
+    return;
+  }
+  if(S.routeMode==='4'&&!S.routeDirection){
+    toast('4인 2조는 1조 방향 또는 2조 방향을 먼저 선택하세요.');
+    openRouteDirectionPrompt();
+    return;
+  }
   const resume=S.pendingResume||false;
   S.pendingResume=false;
   // 봉사자/인도자는 전체화면 GPS 모드
@@ -2270,7 +2333,7 @@ function openSvcFullscreen(zoneId){
   focusSvcMapOnZone(z);
   renderSvcRouteLayers(z.id);
   // 마지막 저장 위치 복원
-  if(z.progress&&Array.isArray(z.progress.pts)&&z.progress.pts.length>=1){
+  if(!isDone(z.id)&&z.progress&&Array.isArray(z.progress.pts)&&z.progress.pts.length>=1){
     const lastPt=z.progress.pts[z.progress.pts.length-1];
     svcLayers.push(L.marker(lastPt,{icon:L.divIcon({html:'<div class="resume-marker-label">▶ 여기서 이어하기</div>',className:'',iconAnchor:[60,12]})}).addTo(svcMapInst));
     svcMapInst.setView(lastPt,18);
@@ -2449,7 +2512,10 @@ function hideReturnBanner(){
 
 function startSvc(){
   if(S.role==='volunteer'&&!S.session.active){
-    if(S.curZone){startSession(S.curZone,false);}
+    if(S.curZone){
+      if(S.routeMode==='4'&&!S.routeDirection){toast('4인 2조는 진행 방향을 먼저 선택하세요.');return;}
+      startSession(S.curZone,false);
+    }
     else{toast('구역을 선택하고 봉사를 시작하세요.');goTab('home');}
     return;
   }
@@ -2457,6 +2523,7 @@ function startSvc(){
 }
 function startSvcDirect(){
   const z=S.zones.find(z=>z.id===S.curZone);if(!z)return;
+  if(isDone(z.id)){toast('완료된 구역은 초기화 후 다시 시작할 수 있습니다.');return;}
   const today=new Date().toISOString().split('T')[0];
   const ml=S.routeMode==='2'?'2인1조':S.routeMode==='4'?'4인2조':'직접그리기';
   clearZoneReset(z.id);
