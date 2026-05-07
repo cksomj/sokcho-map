@@ -849,6 +849,23 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
 .side-zone-item:hover{background:var(--bg2);}
 .side-zone-item.res{border-left:3px solid var(--pl);}
 .side-zone-item.com{border-left:3px solid #EF9F27;}
+.side-zone-item.selected,
+.home-zone-row.selected,
+.zc.selected,
+.admin-zone-row.selected{
+  background:#EAF6E7;
+  border-color:#3B6D11;
+  border-left-color:#3B6D11!important;
+  box-shadow:0 0 0 2px rgba(59,109,17,.22);
+}
+.side-zone-item.selected:hover,
+.home-zone-row.selected:hover,
+.zc.selected:hover,
+.admin-zone-row.selected:hover{background:#E1F0DC;}
+.side-zone-item.selected .zc-status,
+.home-zone-row.selected .zc-status,
+.zc.selected .zc-status,
+.admin-zone-row.selected .zc-status{border-color:#3B6D11;}
 
 /* 모바일 구역 시트 */
 .zsheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;border-top:1px solid var(--bd);z-index:500;transform:translateY(100%);transition:transform .28s;display:none;padding:0 16px 20px;max-height:60vh;overflow-y:auto;}
