@@ -637,6 +637,11 @@ function addBaseTiles(map){
       map.getContainer().classList.add('kakao-layer');
 
       let kakaoSyncPending=false;
+      const markKakaoReady=()=>{
+        if(kakaoBgEl.children.length>0){
+          map.getContainer().classList.add('kakao-ready');
+        }
+      };
       const syncKakao=()=>{
         if(kakaoSyncPending)return;
         kakaoSyncPending=true;
@@ -647,12 +652,13 @@ function addBaseTiles(map){
         kakaoInst.relayout();
         kakaoInst.setCenter(new kakao.maps.LatLng(c2.lat, c2.lng));
         kakaoInst.setLevel(Math.max(1, Math.min(14, 20 - z2)));
+        markKakaoReady();
         });
       };
 
       syncKakao();
       map.on('move zoom resize', syncKakao);
-      setTimeout(syncKakao,300);
+      [120,300,650,1200].forEach(ms=>setTimeout(syncKakao,ms));
     },()=>addFallbackTiles(map));
   });
 }
