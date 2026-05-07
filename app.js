@@ -612,6 +612,7 @@ function whenKakaoReady(onReady,onFail,tries=0){
 
 function addBaseTiles(map){
   map.whenReady(function(){
+    addFallbackTiles(map);
     const containerId = map.getContainer().id;
     const kakaoBgId = containerId + '-kakao-bg';
     const kakaoBgEl = document.getElementById(kakaoBgId);
@@ -634,10 +635,6 @@ function addBaseTiles(map){
 
       _kakaoInstances[containerId] = kakaoInst;
       map.getContainer().classList.add('kakao-layer');
-      if(map._fallbackTiles){
-        map.removeLayer(map._fallbackTiles);
-        map._fallbackTiles=null;
-      }
 
       let kakaoSyncPending=false;
       const syncKakao=()=>{
