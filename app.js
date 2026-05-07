@@ -45,6 +45,7 @@ const S={
     companions:[],      // 함께하는 봉사자들
     progressPts:[],     // 여기까지 진행된 포인트 (GPS 자동 기록)
     progressLayer:null, // 지도 위 진행 라인
+    progressMarker:null,
     gpsWatch:null,      // 세션 GPS
   },
 
@@ -1421,7 +1422,12 @@ function updateRouteDirectionPanel(){
   }
   updateMobileRouteTools();
 }
-function clearRdLayers(){S.rdLayers.forEach(l=>S.rdMap.removeLayer(l));S.rdLayers=[];}
+function clearRdLayers(){
+  S.rdLayers.forEach(l=>S.rdMap.removeLayer(l));
+  S.rdLayers=[];
+  if(S.session.progressLayer){S.rdMap.removeLayer(S.session.progressLayer);S.session.progressLayer=null;}
+  if(S.session.progressMarker){S.rdMap.removeLayer(S.session.progressMarker);S.session.progressMarker=null;}
+}
 function drawRdZone(z){
   clearRdLayers();
   keepMapDraggable(S.rdMap);
@@ -1828,14 +1834,9 @@ function updateHomeSessionUI(){
 // 봉사자/인도자: 구역 선택 → 경로 화면으로 이동 (세션은 "봉사 시작" 버튼에서)
 function startSessionAndRoute(zoneId, resume){
   S.pendingResume=resume; // 이어하기 여부 저장
-  // 경로 탭 없이 p-route 직접 표시
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
-  document.getElementById('p-route').classList.add('on');
-  // 경로 탭이 있으면 활성화
-  const rt=document.getElementById('t-route');
-  if(rt&&!rt.classList.contains('hide'))rt.classList.add('on');
-  setTimeout(()=>openRd(zoneId),200);
+  goTab('route');
+  setTimeout(()=>openRd(zoneId),120);
+  setTimeout(()=>openRd(zoneId),360);
 }
 
 function startSession(zoneId, resume){
@@ -2088,7 +2089,8 @@ function restoreProgressLine(zoneId){
   }).addTo(S.rdMap);
   // 이어하기 시작 지점 마커
   const lastPt=z.progress.pts[z.progress.pts.length-1];
-  L.marker(lastPt,{icon:L.divIcon({
+  if(S.session.progressMarker){S.rdMap.removeLayer(S.session.progressMarker);}
+  S.session.progressMarker=L.marker(lastPt,{icon:L.divIcon({
     html:'<div style="background:#D85A30;color:#fff;padding:4px 9px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap;">▶ 여기서 이어하기</div>',
     className:'',iconAnchor:[60,12]
   })}).addTo(S.rdMap);
@@ -2172,7 +2174,7 @@ function openSvcFullscreen(zoneId){
     stabilizeZoneLabelsOnMove(svcMapInst);
     svcMapInst.on('zoomend',()=>renderSvcRouteLayers(S.session.zoneId));
   }
-  setTimeout(()=>svcMapInst.invalidateSize(),100);
+  setTimeout(()=>svcMapInst.invalidateSize(),80);
   clearSvcRouteLayers();
   svcLayers.forEach(l=>svcMapInst.removeLayer(l));svcLayers=[];
   // 구역 폴리곤 표시
@@ -2196,6 +2198,8 @@ function openSvcFullscreen(zoneId){
   startSvcGPS();
   // 타이머 시작
   startSvcTimer();
+  setTimeout(()=>{svcMapInst.invalidateSize();renderSvcRouteLayers(z.id);},260);
+  setTimeout(()=>svcMapInst.invalidateSize(),650);
 }
 
 function startSvcGPS(){
