@@ -1079,10 +1079,13 @@ tr:last-child td{border-bottom:none;}
 .svc-time-box{min-width:58px;}
 .svc-secondary-btn{flex:1;padding:12px 10px;border-radius:var(--r);background:#F8FAFC;color:#111827;border:2px solid #CBD5E1;cursor:pointer;font-size:14px;font-weight:900;}
 .svc-return-btn{flex:1;padding:12px 10px;border-radius:var(--r);background:#EAF3FF;color:#0F3E7A;border:2px solid #7DB8F0;cursor:pointer;font-size:14px;font-weight:900;display:none;}
+.resume-pin-box{display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:9px 10px;border:2px solid #FED7AA;border-radius:var(--r);background:#FFF7ED;}
+.resume-pin-text{flex:1;color:#7C2D12;font-size:13px;font-weight:900;line-height:1.35;}
+.svc-pin-btn{flex-shrink:0;padding:11px 12px;border-radius:var(--r);border:2px solid #D85A30;background:#fff;color:#7C2D12;font-size:14px;font-weight:900;cursor:pointer;box-shadow:0 3px 10px rgba(124,45,18,.12);}
 .svc-main-btn{flex:1;padding:15px 12px;border-radius:var(--r);border:none;cursor:pointer;font-size:16px;font-weight:900;}
 .svc-main-btn.pause{background:#9A5B0F;color:#fff;}
 .svc-main-btn.done{flex:1.5;background:#16A34A;color:#fff;}
-.resume-marker-label{background:#FFF7ED;color:#7C2D12;border:2px solid #D85A30;padding:4px 9px;border-radius:10px;font-size:11px;font-weight:900;white-space:nowrap;box-shadow:0 3px 10px rgba(124,45,18,.22);}
+.resume-marker-label{background:#FFF7ED;color:#7C2D12;border:2px solid #D85A30;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:900;white-space:nowrap;box-shadow:0 4px 12px rgba(124,45,18,.26);}
 .home-wide #home-list-panel{display:none!important;}
 .route-dir-panel{display:none;background:#fff;border:2px solid #7DB8F0;border-radius:var(--r);padding:12px;margin:10px 0;box-shadow:0 8px 22px rgba(27,82,153,.12);}
 .route-dir-panel.on{display:block;}
@@ -1118,6 +1121,8 @@ tr:last-child td{border-bottom:none;}
   .tab{min-height:52px;padding:5px 2px 6px;font-size:12px;font-weight:900;gap:1px;border-radius:12px;pointer-events:auto;}
   .tab.on{background:var(--pbg);color:var(--p);}
   .tab .ti{font-size:22px;margin-bottom:1px;}
+  .resume-pin-box{align-items:stretch;flex-direction:column;gap:7px;padding:8px;}
+  .svc-pin-btn{width:100%;}
   .kakao-mark{width:28px;height:22px;border-radius:8px;font-size:8px;}
   .ph{padding:8px 10px 7px;min-height:42px;}
   .ph h2{font-size:17px;}
