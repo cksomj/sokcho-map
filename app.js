@@ -132,26 +132,48 @@ function validMapPoint(pt){
 function hasCustomStartPoint(z){
   return !!(z&&validMapPoint(z.startPoint));
 }
+function zoneEntryCorner(z){
+  const pts=(z&&Array.isArray(z.polygon))?z.polygon:[];
+  for(const pt of pts){
+    const p=validMapPoint(pt);
+    if(p)return p;
+  }
+  return null;
+}
 function zoneStartPoint(z,mode){
   if(!z)return [38.20138,128.59350];
   const custom=validMapPoint(z.startPoint);
   if(custom)return custom;
+  if(isInProgress(z.id)){
+    const saved=z.progress&&Array.isArray(z.progress.pts)?z.progress.pts:[];
+    const resumePt=saved.length&&validMapPoint(saved[saved.length-1]);
+    if(resumePt)return resumePt;
+  }
   const route=serviceGuideRoutesFor(z.id,mode||S.routeMode)[0];
   const routePt=route&&route.pts&&validMapPoint(route.pts[0]);
-  return routePt||zoneCenter(z);
+  const corner=zoneEntryCorner(z);
+  return routePt||corner||zoneCenter(z);
 }
 function zoneStartName(z){
-  return `${z.card||z.id} ${z.name} 시작점`;
+  return isInProgress(z.id)?'이어하기':'첫집';
 }
 function kakaoStartUrlForZone(z){
   const pt=zoneStartPoint(z);
   return `https://map.kakao.com/link/to/${encodeURIComponent(zoneStartName(z))},${pt[0]},${pt[1]}`;
 }
+function kakaoPointUrlForZone(z){
+  const pt=zoneStartPoint(z);
+  return `https://map.kakao.com/link/map/${pt[0]},${pt[1]}`;
+}
+function kakaoStartAppUrlForZone(z){
+  const pt=zoneStartPoint(z);
+  return `kakaomap://route?ep=${pt[0]},${pt[1]}&by=FOOT`;
+}
 function openZoneKakaoStart(zoneId){
   const z=S.zones.find(z=>String(z.id)===String(zoneId));
   if(!z){toast('구역을 먼저 선택하세요.');return;}
-  const url=kakaoStartUrlForZone(z);
-  openExternalApp(url,url,'카카오맵');
+  const fallback=kakaoStartUrlForZone(z);
+  openExternalApp(kakaoStartAppUrlForZone(z),fallback,'카카오맵');
 }
 function startPinIcon(label='출발지'){
   return L.divIcon({
@@ -672,7 +694,7 @@ function addServiceRoutesToMap(map,zoneId,mode){
 }
 // 카카오 지도 인스턴스 저장
 const _kakaoInstances = {};
-const MAP_MIN_ZOOM=15;
+const MAP_MIN_ZOOM=11;
 const MAP_MAX_ZOOM=19;
 
 function stableMapOptions(opts){
@@ -725,17 +747,36 @@ function centerRouteMapOnZone(z,zoom=18){
   S.rdMap.setView(center,clampMapZoom(S.rdMap,Math.max(S.rdMap.getZoom()||zoom,zoom)),{animate:false});
 }
 
+function extendBoundsWithPoint(bounds,pt){
+  if(!pt||!Number.isFinite(Number(pt[0]))||!Number.isFinite(Number(pt[1])))return bounds;
+  return bounds?bounds.extend(pt):L.latLngBounds([pt]);
+}
+
+function boundsForZoneSet(zones){
+  let bounds=null;
+  (zones||[]).forEach(z=>{
+    (z.polygon||[]).forEach(pt=>{bounds=extendBoundsWithPoint(bounds,pt);});
+    if(z.startPoint)bounds=extendBoundsWithPoint(bounds,z.startPoint);
+    if(z.progress?.pts?.length)bounds=extendBoundsWithPoint(bounds,z.progress.pts[z.progress.pts.length-1]);
+  });
+  return bounds&&bounds.isValid()?bounds:null;
+}
+
+function fitMapBounds(map,bounds,opts={}){
+  if(!map||!bounds||!bounds.isValid())return;
+  keepMapDraggable(map);
+  map.invalidateSize();
+  map.fitBounds(bounds,{
+    padding:opts.padding||[42,42],
+    maxZoom:opts.maxZoom||16,
+    animate:false
+  });
+}
+
 function addFallbackTiles(map){
   if(map._fallbackTiles)return;
-  map.getContainer().classList.remove('kakao-layer');
-  map._fallbackTiles=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    maxZoom:19,
-    subdomains:'abc',
-    updateWhenIdle:true,
-    updateWhenZooming:false,
-    keepBuffer:4,
-    attribution:'&copy; OpenStreetMap'
-  }).addTo(map);
+  map._fallbackTiles=true;
+  map.getContainer().classList.add('kakao-layer','kakao-ready');
 }
 
 function whenKakaoReady(onReady,onFail,tries=0){
@@ -756,13 +797,11 @@ function whenKakaoReady(onReady,onFail,tries=0){
 
 function addBaseTiles(map){
   map.whenReady(function(){
-    addFallbackTiles(map);
     const containerId = map.getContainer().id;
     const kakaoBgId = containerId + '-kakao-bg';
     const kakaoBgEl = document.getElementById(kakaoBgId);
     if(!kakaoBgEl){addFallbackTiles(map);return;}
     if(_kakaoInstances[containerId])return;
-    if(!(window.kakao&&kakao.maps&&kakao.maps.Map))addFallbackTiles(map);
 
     whenKakaoReady(()=>{
       const c = map.getCenter();
@@ -803,7 +842,11 @@ function addBaseTiles(map){
       syncKakao();
       map.on('move zoom resize', syncKakao);
       [120,300,650,1200].forEach(ms=>setTimeout(syncKakao,ms));
-    },()=>addFallbackTiles(map));
+      setTimeout(()=>map.getContainer().classList.add('kakao-ready'),1600);
+    },()=>{
+      map.getContainer().classList.add('kakao-layer','kakao-ready');
+      console.warn('Kakao map SDK is not ready. OSM fallback is disabled.');
+    });
   });
 }
 function stabilizeZoneLabelsOnMove(map){
@@ -1939,10 +1982,21 @@ function addGPSPt(){
   const ll=S.gpsMk.getLatLng();
   S.rtePts.push([ll.lat,ll.lng]);updateRteViz();toast('📍 현재 위치 추가');
 }
+function fitRouteMapToCurrent(){
+  if(!S.rdMap||!S.curZone)return;
+  const z=S.zones.find(z=>z.id===S.curZone);
+  if(!z)return;
+  let bounds=boundsForZoneSet([z]);
+  routeScreenLines().forEach(line=>{
+    (line.pts||[]).forEach(pt=>{bounds=extendBoundsWithPoint(bounds,pt);});
+  });
+  fitMapBounds(S.rdMap,bounds,{padding:[52,52],maxZoom:18});
+}
 function toggleRdFs(){
   const box=document.getElementById('rd-map-box');const btn=document.getElementById('rd-fs-btn');
   const fs=box.classList.toggle('fs');btn.textContent=fs?'✕ 지도 닫기':'⛶ 전체 지도';
-  setTimeout(()=>S.rdMap.invalidateSize(),100);
+  setTimeout(()=>{S.rdMap.invalidateSize();if(fs)fitRouteMapToCurrent();},100);
+  setTimeout(()=>{if(fs)fitRouteMapToCurrent();},320);
 }
 function toggleGPS(){S.rdGpsOn?stopGPS():startGPS();}
 function startGPS(){
@@ -1976,6 +2030,20 @@ function stopGPS(){
 let homeMapInst=null;
 let homeMapLayers=[];
 let homeMapFilter='all';
+
+function homeVisibleZones(){
+  return S.zones.filter(z=>homeMapFilter==='all'||
+    (homeMapFilter==='residential'&&z.type==='residential')||
+    (homeMapFilter==='commercial'&&z.type==='commercial')||
+    (homeMapFilter==='undone'&&isInProgress(z.id))||
+    (homeMapFilter==='standby'&&getZoneState(z.id)==='standby'));
+}
+
+function fitHomeMapToVisible(){
+  if(!homeMapInst)return;
+  const bounds=boundsForZoneSet(homeVisibleZones());
+  fitMapBounds(homeMapInst,bounds,{padding:[44,44],maxZoom:16});
+}
 
 function renderHome(){
   document.getElementById('home-username').textContent=S.user+'님';
@@ -2045,6 +2113,9 @@ function filterHomeMap(type,el){
   homeMapFilter=type;
   drawHomeZones(null);
   renderHomeZoneList('');
+  if(document.getElementById('p-home')?.classList.contains('home-wide')){
+    setTimeout(fitHomeMapToVisible,80);
+  }
 }
 
 function selectHomeZone(id){
@@ -2111,7 +2182,8 @@ function setLeaderZoneView(on){
   if(wideBtn)wideBtn.textContent=on?'▣ 기본 보기':'⛶ 크게 보기';
   const leaderBtn=document.getElementById('leader-zone-btn');
   if(leaderBtn)leaderBtn.classList.toggle('on',!!on);
-  setTimeout(()=>{if(homeMapInst)homeMapInst.invalidateSize();},150);
+  setTimeout(()=>{if(homeMapInst){homeMapInst.invalidateSize();if(on)fitHomeMapToVisible();}},150);
+  setTimeout(()=>{if(on)fitHomeMapToVisible();},320);
 }
 
 function showHomeNormal(){
@@ -2138,7 +2210,8 @@ function toggleHomeWide(){
   if(btn)btn.textContent=wide?'▣ 기본 보기':'⛶ 크게 보기';
   const leaderBtn=document.getElementById('leader-zone-btn');
   if(leaderBtn)leaderBtn.classList.toggle('on',wide);
-  setTimeout(()=>{if(homeMapInst)homeMapInst.invalidateSize();},150);
+  setTimeout(()=>{if(homeMapInst){homeMapInst.invalidateSize();if(wide)fitHomeMapToVisible();}},120);
+  setTimeout(()=>{if(wide)fitHomeMapToVisible();},320);
 }
 
 function locateHomeMap(){
@@ -3202,13 +3275,16 @@ function centerMonitorOnMe(){
 function fitMonitorActive(){
   if(!S.monMap)return;
   const pts=Object.values(S.monLastActive||{}).map(l=>[l.lat,l.lng]).filter(p=>Number.isFinite(p[0])&&Number.isFinite(p[1]));
-  if(pts.length>=2)S.monMap.fitBounds(pts,{padding:[40,40],maxZoom:18});
+  if(pts.length>=2)S.monMap.fitBounds(pts,{padding:[40,40],maxZoom:17});
   else if(pts.length===1)S.monMap.setView(pts[0],18);
+  else fitMapBounds(S.monMap,boundsForZoneSet(S.zones),{padding:[42,42],maxZoom:14});
 }
 function showAllVols(){
   S.monFocus=null;
   refreshMonitor();
-  fitMonitorActive();
+  toggleMonitorSheet(false);
+  setTimeout(()=>{if(S.monMap)S.monMap.invalidateSize();fitMonitorActive();},120);
+  setTimeout(fitMonitorActive,320);
 }
 function toggleMonitorSheet(force){
   const sheet=document.getElementById('monitor-sheet');
