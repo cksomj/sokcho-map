@@ -17,6 +17,7 @@ const S={
   curZone:null,
   panelZone:null,
   homeSelectedZone:null,
+  startPinEdit:false,
   routeMode:'2',
   showTbl:false,
   nextId:0,
@@ -124,6 +125,104 @@ function zoneCenter(z){
   }
   return best;
 }
+function validMapPoint(pt){
+  const p=routePointPair(pt);
+  return p&&Number.isFinite(p[0])&&Number.isFinite(p[1])?p:null;
+}
+function hasCustomStartPoint(z){
+  return !!(z&&validMapPoint(z.startPoint));
+}
+function zoneStartPoint(z,mode){
+  if(!z)return [38.20138,128.59350];
+  const custom=validMapPoint(z.startPoint);
+  if(custom)return custom;
+  const route=serviceGuideRoutesFor(z.id,mode||S.routeMode)[0];
+  const routePt=route&&route.pts&&validMapPoint(route.pts[0]);
+  return routePt||zoneCenter(z);
+}
+function zoneStartName(z){
+  return `${z.card||z.id} ${z.name} 시작점`;
+}
+function kakaoStartUrlForZone(z){
+  const pt=zoneStartPoint(z);
+  return `https://map.kakao.com/link/to/${encodeURIComponent(zoneStartName(z))},${pt[0]},${pt[1]}`;
+}
+function openZoneKakaoStart(zoneId){
+  const z=S.zones.find(z=>String(z.id)===String(zoneId));
+  if(!z){toast('구역을 먼저 선택하세요.');return;}
+  const url=kakaoStartUrlForZone(z);
+  openExternalApp(url,url,'카카오맵');
+}
+function startPinIcon(label='출발지'){
+  return L.divIcon({
+    html:`<div class="zone-start-pin"><span>📍</span>${esc(label)}</div>`,
+    className:'',
+    iconAnchor:[18,34]
+  });
+}
+function addStartPinMarker(map,z,layers=[],opts={}){
+  if(!map||!z||!hasCustomStartPoint(z))return null;
+  const mk=L.marker(zoneStartPoint(z),{
+    icon:startPinIcon(opts.label||'출발지'),
+    zIndexOffset:opts.zIndexOffset||850,
+    draggable:!!opts.draggable
+  }).addTo(map);
+  if(opts.draggable){
+    mk.on('dragend',()=>{
+      const ll=mk.getLatLng();
+      saveZoneStartPin(z.id,ll.lat,ll.lng,{silent:true});
+      toast('시작핀 위치를 수정했습니다.');
+    });
+  }
+  layers.push(mk);
+  return mk;
+}
+function saveZoneStartPin(zoneId,lat,lng,opts={}){
+  const z=S.zones.find(z=>String(z.id)===String(zoneId));
+  if(!z)return;
+  z.startPoint=[Number(lat),Number(lng)];
+  persistZones();
+  drawAllZones(S.panelZone||null);
+  if(homeMapInst)drawHomeZones(S.homeSelectedZone||null);
+  if(S.curZone&&String(S.curZone)===String(zoneId)){
+    drawRdZone(z);
+    drawRoute();
+    drawSavedRteLines();
+    renderRteLines();
+  }
+  renderSideList(document.getElementById('zone-search')?.value||'');
+  renderRouteGrid(document.getElementById('rte-search')?.value||'');
+  if(S.role==='admin')renderAdmin();
+  if(!opts.silent)toast('시작핀이 저장되었습니다.');
+}
+function clearZoneStartPin(zoneId){
+  const z=S.zones.find(z=>String(z.id)===String(zoneId));
+  if(!z||!hasCustomStartPoint(z)){toast('저장된 시작핀이 없습니다.');return;}
+  if(!confirm('이 구역의 시작핀을 삭제할까요?'))return;
+  delete z.startPoint;
+  persistZones();
+  drawAllZones(S.panelZone||null);
+  if(homeMapInst)drawHomeZones(S.homeSelectedZone||null);
+  if(S.curZone&&String(S.curZone)===String(zoneId)){drawRdZone(z);drawRoute();drawSavedRteLines();}
+  renderSideList(document.getElementById('zone-search')?.value||'');
+  renderRouteGrid(document.getElementById('rte-search')?.value||'');
+  if(S.role==='admin')renderAdmin();
+  toast('시작핀을 삭제했습니다.');
+}
+function toggleStartPinEdit(){
+  if(S.role!=='admin'){toast('관리자만 시작핀을 설정할 수 있습니다.');return;}
+  if(!S.curZone){toast('구역을 먼저 선택하세요.');return;}
+  S.startPinEdit=!S.startPinEdit;
+  updateStartPinEditButton();
+  toast(S.startPinEdit?'지도에서 첫 집 위치를 찍으세요.':'시작핀 설정을 취소했습니다.');
+}
+function updateStartPinEditButton(){
+  const btn=document.getElementById('rd-start-pin-btn');
+  if(btn){
+    btn.classList.toggle('on',!!S.startPinEdit);
+    btn.textContent=S.startPinEdit?'📍 찍는 중':'📍 시작핀 설정';
+  }
+}
 function getVolColor(name){const i=S.volunteers.indexOf(name);return S.volColors[i%S.volColors.length]||'#378ADD';}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2600);}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
@@ -148,6 +247,7 @@ function syncRoleUi(){
   if(app)app.classList.toggle('admin-floating-tabs',isAdmin);
   if(app)app.classList.toggle('bottom-tabs',S.role==='leader'||S.role==='volunteer');
   document.querySelectorAll('.admin-service-action').forEach(el=>el.classList.toggle('hide',isAdmin));
+  document.querySelectorAll('.admin-pin-action').forEach(el=>el.classList.toggle('hide',!isAdmin));
   document.querySelectorAll('.leader-zone-action').forEach(el=>el.classList.toggle('hide',!isLeader));
   document.querySelectorAll('.route-home-action').forEach(el=>el.classList.toggle('hide',isAdmin));
   document.querySelectorAll('.monitor-home-action').forEach(el=>el.classList.toggle('hide',isAdmin));
@@ -621,7 +721,7 @@ function keepMapDraggable(map){
 function centerRouteMapOnZone(z,zoom=18){
   if(!S.rdMap||!z)return;
   keepMapDraggable(S.rdMap);
-  const center=zoneCenter(z);
+  const center=zoneStartPoint(z,S.routeMode);
   S.rdMap.setView(center,clampMapZoom(S.rdMap,Math.max(S.rdMap.getZoom()||zoom,zoom)),{animate:false});
 }
 
@@ -1055,6 +1155,7 @@ function drawAllZones(activeId){
     const poly=L.polygon(z.polygon,{color:sc,weight:isActive?5:3.5,fillColor:fillC,fillOpacity:dimmed?.01:.05,opacity:dimmed?.35:1,className:'zone-boundary-line'}).addTo(S.mainMap);
     poly.on('click',()=>openSheet(z.id));
     S.mainLayers.push(poly);
+    if(isActive)addStartPinMarker(S.mainMap,z,S.mainLayers,{label:'시작점'});
     if(!showLabels)return;
     const ctr=zoneCenter(z);
     const op=dimmed?.3:1;
@@ -1479,6 +1580,8 @@ function applyZoneNumberEdit(){
 }
 function openRd(id){
   S.curZone=id;
+  S.startPinEdit=false;
+  updateStartPinEditButton();
   S.homeSelectedZone=id;
   markSelectedCards(id);
   const z=S.zones.find(z=>z.id===id);
@@ -1507,9 +1610,11 @@ function updateRouteStartButton(zoneId){
   const btn=document.querySelector('.route-start-fixed');
   if(!btn)return;
   const done=isDone(zoneId);
+  const inProg=isInProgress(zoneId);
   btn.disabled=done;
-  btn.textContent=done?'완료됨 - 관리자 초기화 필요':'이 구역 봉사 시작 →';
+  btn.textContent=done?'완료됨 - 관리자 초기화 필요':inProg?'미완료 시작하기 →':'이 구역 봉사 시작 →';
   btn.classList.toggle('disabled',done);
+  btn.classList.toggle('resume',!done&&inProg);
 }
 function backList(){
   document.getElementById('rd-view').style.display='none';
@@ -1627,6 +1732,7 @@ function drawRdZone(z){
   keepMapDraggable(S.rdMap);
   const poly=L.polygon(z.polygon,{color:zoneStrokeColor(z),weight:3.8,fillColor:zoneFillColor(z),fillOpacity:.05,opacity:1,interactive:false,className:'zone-boundary-line'}).addTo(S.rdMap);
   S.rdLayers.push(poly);
+  addStartPinMarker(S.rdMap,z,S.rdLayers,{label:'시작점',draggable:S.role==='admin'});
   centerRouteMapOnZone(z,18);
   setTimeout(()=>{S.rdMap.invalidateSize();centerRouteMapOnZone(z,18);},80);
 }
@@ -1693,7 +1799,17 @@ function drawRoute(){
 // ================================================================
 // 경로 직접 그리기
 // ================================================================
-function onRdMapClick(e){if(!S.rteDraw)return;S.rtePts.push([e.latlng.lat,e.latlng.lng]);updateRteViz();}
+function onRdMapClick(e){
+  if(S.startPinEdit&&S.role==='admin'&&S.curZone){
+    S.startPinEdit=false;
+    updateStartPinEditButton();
+    saveZoneStartPin(S.curZone,e.latlng.lat,e.latlng.lng);
+    return;
+  }
+  if(!S.rteDraw)return;
+  S.rtePts.push([e.latlng.lat,e.latlng.lng]);
+  updateRteViz();
+}
 function setRteColor(c,el){S.rteColor=c;document.querySelectorAll('.cdot').forEach(d=>d.classList.remove('on'));el.classList.add('on');if(S.rteLine)S.rteLine.setStyle({color:c});}
 function enterRteEditMode(){
   document.body.classList.add('route-editing');
@@ -1909,6 +2025,7 @@ function drawHomeZones(activeId){
     }).addTo(homeMapInst);
     poly.on('click',()=>selectHomeZone(z.id));
     homeMapLayers.push(poly);
+    if(isActive)addStartPinMarker(homeMapInst,z,homeMapLayers,{label:'시작점'});
     if(!showLabels)return;
     const ctr=zoneCenter(z);
     const labelColor2='#111827';
@@ -2293,7 +2410,8 @@ function startSvcAndGo(){
     toast('완료된 구역입니다. 관리자가 초기화한 뒤 다시 봉사할 수 있습니다.');
     return;
   }
-  if(!S.pendingResume&&!canStartZone(S.curZone)){
+  const resume=S.pendingResume||isInProgress(S.curZone);
+  if(!resume&&!canStartZone(S.curZone)){
     toast('미완료 구역입니다. 목록의 이어하기로 계속하거나 관리자가 초기화해야 새로 시작할 수 있습니다.');
     return;
   }
@@ -2302,7 +2420,6 @@ function startSvcAndGo(){
     openRouteDirectionPrompt();
     return;
   }
-  const resume=S.pendingResume||false;
   S.pendingResume=false;
   // 봉사자/인도자는 전체화면 GPS 모드
   if(S.role==='volunteer'||S.role==='leader'){
@@ -2356,14 +2473,7 @@ function renderSvcRouteLayers(zoneId){
 
 function focusSvcMapOnZone(z){
   if(!svcMapInst||!z)return;
-  const visibleRoute=serviceGuideRoutesFor(z.id,S.routeMode)[0];
-  if(visibleRoute&&visibleRoute.pts?.length){
-    const pts=normalizeRoutePts(visibleRoute.pts);
-    if(pts.length)svcMapInst.setView(pts[0],18,{animate:false});
-    else svcMapInst.fitBounds(L.latLngBounds(z.polygon),{padding:[30,30]});
-  }else{
-    svcMapInst.fitBounds(L.latLngBounds(z.polygon),{padding:[30,30]});
-  }
+  svcMapInst.setView(zoneStartPoint(z,S.routeMode),18,{animate:false});
 }
 
 function openSvcFullscreen(zoneId){
@@ -2386,6 +2496,7 @@ function openSvcFullscreen(zoneId){
   // 구역 폴리곤 표시
   if(svcProgressLayer){svcMapInst.removeLayer(svcProgressLayer);}
   svcLayers.push(L.polygon(z.polygon,{color:zoneStrokeColor(z),weight:3.5,fillColor:zoneFillColor(z),fillOpacity:.05,opacity:1,interactive:false,className:'zone-boundary-line'}).addTo(svcMapInst));
+  addStartPinMarker(svcMapInst,z,svcLayers,{label:'시작점'});
   focusSvcMapOnZone(z);
   renderSvcRouteLayers(z.id);
   // 마지막 저장 위치 복원
