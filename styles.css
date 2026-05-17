@@ -960,6 +960,8 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
 .rd-btn.on{background:var(--p);color:#fff;border-color:var(--p);}
 .rd-btn.stop{background:#D85A30;color:#fff;border-color:#D85A30;}
 .rd-btn.hide{display:none!important;}
+.zone-start-pin{display:inline-flex;align-items:center;gap:3px;background:#16A34A;color:#fff;border:2px solid #fff;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:900;white-space:nowrap;box-shadow:0 3px 10px rgba(22,163,74,.36);}
+.zone-start-pin span{font-size:15px;line-height:1;}
 .rd-mobile-only{display:none;}
 .color-row{background:rgba(255,255,255,.95);border:1px solid var(--bd);border-radius:var(--r);padding:7px 10px;box-shadow:0 2px 6px rgba(0,0,0,.12);}
 .color-row-title{font-size:10px;font-weight:700;color:var(--txm);margin-bottom:5px;}
@@ -1090,6 +1092,12 @@ tr:last-child td{border-bottom:none;}
 .route-choice-label{display:flex;align-items:center;gap:4px;padding:6px 9px;border-radius:999px;background:#fff;color:#111827;border:2px solid currentColor;box-shadow:0 2px 8px rgba(0,0,0,.22);font-size:12px;font-weight:900;white-space:nowrap;cursor:pointer;}
 .route-choice-label.on{background:#1B5299;color:#fff;border-color:#FACC15;box-shadow:0 0 0 3px rgba(250,204,21,.38),0 4px 12px rgba(0,0,0,.28);}
 .route-start-fixed{margin-top:2px;}
+.route-start-fixed.resume{
+  background:#16A34A!important;
+  color:#fff!important;
+  border-color:#16A34A!important;
+  box-shadow:0 10px 24px rgba(22,163,74,.32);
+}
 .route-start-fixed.disabled,
 .route-start-fixed:disabled{
   background:#CBD5E1!important;
