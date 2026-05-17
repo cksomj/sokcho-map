@@ -2250,11 +2250,66 @@ function updateSessionStorage(){
   }catch(e){}
 }
 
+function resumeMarkerIcon(){
+  return L.divIcon({
+    html:'<div class="resume-marker-label">📍 이어하기</div>',
+    className:'',
+    iconAnchor:[46,14]
+  });
+}
+
+function addResumeMarkerToMap(map,pt,layers){
+  if(!map||!pt)return null;
+  const marker=L.marker(pt,{icon:resumeMarkerIcon(),zIndexOffset:980}).addTo(map);
+  if(Array.isArray(layers))layers.push(marker);
+  return marker;
+}
+
+function saveResumePinPoint(lat,lng,opts={}){
+  const pt=[Number(lat),Number(lng)];
+  if(!Number.isFinite(pt[0])||!Number.isFinite(pt[1]))return false;
+  S.session.progressPts=[pt];
+  if(S.session.zoneId)saveProgressToStorage(S.session.zoneId);
+  if(svcMapInst){
+    if(svcResumeMarker){
+      svcMapInst.removeLayer(svcResumeMarker);
+      svcLayers=svcLayers.filter(l=>l!==svcResumeMarker);
+      svcResumeMarker=null;
+    }
+    svcResumeMarker=addResumeMarkerToMap(svcMapInst,pt,svcLayers);
+    svcMapInst.setView(pt,18,{animate:true});
+  }
+  if(!opts.silent)toast('📍 이어하기 핀을 저장했습니다.');
+  return true;
+}
+
+function pinResumePoint(){
+  if(!S.session.active||!S.session.zoneId){
+    toast('봉사 진행 중에 사용할 수 있습니다.');
+    return;
+  }
+  if(svcGpsMarker){
+    const ll=svcGpsMarker.getLatLng();
+    saveResumePinPoint(ll.lat,ll.lng);
+    return;
+  }
+  if(!navigator.geolocation){
+    toast('현재 위치를 사용할 수 없습니다.');
+    return;
+  }
+  toast('현재 위치를 확인하는 중입니다.');
+  navigator.geolocation.getCurrentPosition(pos=>{
+    saveResumePinPoint(pos.coords.latitude,pos.coords.longitude);
+  },()=>{
+    toast('현재 위치를 가져오지 못했습니다. 잠시 후 다시 눌러주세요.');
+  },{enableHighAccuracy:true,maximumAge:3000,timeout:10000});
+}
+
 // 미완료 버튼: 현재 위치를 저장하고 미완료 기록으로 남김
 function pauseSession(){
   if(!S.session.active)return;
   const z=S.zones.find(z=>z.id===S.session.zoneId);
-  if(svcGpsMarker){
+  if(S.session.progressPts.length===0&&svcGpsMarker){
     const ll=svcGpsMarker.getLatLng();
     S.session.progressPts=[[ll.lat,ll.lng]];
   }
@@ -2278,10 +2333,7 @@ function pauseSession(){
   }
   if(S.rdMap&&S.session.progressPts.length>0){
     const lastPt=S.session.progressPts[S.session.progressPts.length-1];
-    S.session.progressMarker=L.marker(lastPt,{icon:L.divIcon({
-      html:'<div class="resume-marker-label">📍 저장 위치</div>',
-      className:'',iconAnchor:[42,12]
-    })}).addTo(S.rdMap);
+    S.session.progressMarker=addResumeMarkerToMap(S.rdMap,lastPt);
   }
   S.session.active=false;
   closeSvcFullscreen();
@@ -2396,10 +2448,7 @@ function restoreProgressLine(zoneId){
   if(S.session.progressLayer){S.rdMap.removeLayer(S.session.progressLayer);S.session.progressLayer=null;}
   const lastPt=z.progress.pts[z.progress.pts.length-1];
   if(S.session.progressMarker){S.rdMap.removeLayer(S.session.progressMarker);}
-  S.session.progressMarker=L.marker(lastPt,{icon:L.divIcon({
-    html:'<div class="resume-marker-label">▶ 여기서 이어하기</div>',
-    className:'',iconAnchor:[60,12]
-  })}).addTo(S.rdMap);
+  S.session.progressMarker=addResumeMarkerToMap(S.rdMap,lastPt);
   toast('📍 마지막 저장 위치에서 이어서 봉사하세요.');
 }
 
@@ -2442,6 +2491,7 @@ let svcProgressLayer=null;
 let svcGpsWatch=null;
 let svcLayers=[];
 let svcRouteLayers=[];
+let svcResumeMarker=null;
 
 function clearSvcRouteLayers(){
   svcRouteLayers.forEach(l=>svcMapInst&&svcMapInst.removeLayer(l));
@@ -2493,6 +2543,7 @@ function openSvcFullscreen(zoneId){
   refreshMapAfterLayout(svcMapInst,()=>focusSvcMapOnZone(z));
   clearSvcRouteLayers();
   svcLayers.forEach(l=>svcMapInst.removeLayer(l));svcLayers=[];
+  svcResumeMarker=null;
   // 구역 폴리곤 표시
   if(svcProgressLayer){svcMapInst.removeLayer(svcProgressLayer);}
   svcLayers.push(L.polygon(z.polygon,{color:zoneStrokeColor(z),weight:3.5,fillColor:zoneFillColor(z),fillOpacity:.05,opacity:1,interactive:false,className:'zone-boundary-line'}).addTo(svcMapInst));
@@ -2502,7 +2553,7 @@ function openSvcFullscreen(zoneId){
   // 마지막 저장 위치 복원
   if(!isDone(z.id)&&z.progress&&Array.isArray(z.progress.pts)&&z.progress.pts.length>=1){
     const lastPt=z.progress.pts[z.progress.pts.length-1];
-    svcLayers.push(L.marker(lastPt,{icon:L.divIcon({html:'<div class="resume-marker-label">▶ 여기서 이어하기</div>',className:'',iconAnchor:[60,12]})}).addTo(svcMapInst));
+    svcResumeMarker=addResumeMarkerToMap(svcMapInst,lastPt,svcLayers);
     svcMapInst.setView(lastPt,18);
   }
   // GPS 내 위치 추적
