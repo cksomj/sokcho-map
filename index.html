@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
-<link rel="stylesheet" href="styles.css?v=20260517-resume-start-local">
+<link rel="stylesheet" href="styles.css?v=20260517-resume-pin-local">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20"></script>
 </head>
 <body>
@@ -566,6 +566,11 @@
             <button onclick="svcReturnZone()" id="svc-return-btn" class="svc-return-btn">📍 구역으로</button>
           </div>
 
+          <div class="resume-pin-box">
+            <div class="resume-pin-text">마지막 집앞에서 핀버튼을 눌러주세요.</div>
+            <button onclick="pinResumePoint()" class="svc-pin-btn">📍 이어하기 핀 찍기</button>
+          </div>
+
           <!-- 2행: 주요 버튼 -->
           <div style="display:flex;gap:10px;">
             <button onclick="pauseSession()" class="svc-main-btn pause">📍 미완료</button>
@@ -617,6 +622,6 @@
 
 <script src="leaflet.js?v=20260507-meetup-route"></script>
 <script src="zones_seed.js?v=20260507-meetup-route"></script>
-<script src="app.js?v=20260517-resume-start-local"></script>
+<script src="app.js?v=20260517-resume-pin-local"></script>
 </body>
 </html>
