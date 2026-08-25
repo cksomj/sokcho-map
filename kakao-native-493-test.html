@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>속초 493 Polygon Kakao-native 안정성 테스트</title>
+<style>
+html,body,#map{width:100%;height:100%;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif}.hud{position:fixed;z-index:20;left:10px;top:10px;background:rgba(255,255,255,.96);border:1px solid #d1d5db;border-radius:10px;padding:9px 11px;box-shadow:0 3px 12px rgba(0,0,0,.16);font-size:12px;line-height:1.5}.hud b{font-size:13px}.ok{color:#166534}.bad{color:#b91c1c}.hint{color:#475569}.btns{position:fixed;z-index:20;right:10px;top:10px;display:flex;flex-direction:column;gap:6px}.btns button{border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:9px 11px;font-weight:800;box-shadow:0 2px 8px rgba(0,0,0,.14)}
+</style>
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20"></script>
+<script src="zones_seed.js?v=20260826-kakao-native-493"></script>
+</head>
+<body>
+<div id="map"></div>
+<div class="hud"><b>Kakao-native Polygon Test</b><div id="status">초기화 중…</div><div id="selected" class="hint">선택: 없음</div><div class="hint">지도를 이동·확대/축소한 뒤 경계가 지도에 붙어 있는지 확인하세요.</div></div>
+<div class="btns"><button onclick="zoom(1)">＋ 확대</button><button onclick="zoom(-1)">－ 축소</button><button onclick="fitAll()">전체 보기</button><button onclick="clearSelection()">선택 해제</button></div>
+<script>
+(()=>{
+ const seed=Array.isArray(window.SOKCHO_ZONES_SEED)?window.SOKCHO_ZONES_SEED:[];
+ const status=document.getElementById('status');
+ const selectedEl=document.getElementById('selected');
+ if(!window.kakao||!kakao.maps){status.innerHTML='<span class="bad">Kakao SDK 로드 실패</span>';return;}
+ if(!seed.length){status.innerHTML='<span class="bad">zones_seed.js 데이터 없음</span>';return;}
+ const map=new kakao.maps.Map(document.getElementById('map'),{center:new kakao.maps.LatLng(38.20138,128.59350),level:5});
+ window.__testMap=map;
+ const rows=[]; const bounds=new kakao.maps.LatLngBounds(); let selected=null;
+ function styleRow(row,isSelected){
+   row.poly.setOptions(isSelected?{strokeColor:'#0057D9',strokeWeight:4,strokeOpacity:1,fillColor:row.color,fillOpacity:.40}:{strokeColor:'#9E9E9E',strokeWeight:1,strokeOpacity:.32,fillColor:'#9E9E9E',fillOpacity:.13});
+ }
+ seed.forEach(z=>{
+   if(!Array.isArray(z.polygon)||z.polygon.length<3)return;
+   const path=z.polygon.map(p=>{const ll=new kakao.maps.LatLng(Number(p[0]),Number(p[1]));bounds.extend(ll);return ll;});
+   const row={z,color:z.color||'#378ADD'};
+   row.poly=new kakao.maps.Polygon({map,path,strokeColor:'#9E9E9E',strokeWeight:1,strokeOpacity:.32,fillColor:'#9E9E9E',fillOpacity:.13});
+   kakao.maps.event.addListener(row.poly,'click',()=>selectRow(row));
+   rows.push(row);
+ });
+ function selectRow(row){if(selected===row)return;selected=row;rows.forEach(r=>styleRow(r,r===row));selectedEl.textContent='선택: '+(row.z.name||row.z.id);}
+ window.clearSelection=()=>{selected=null;rows.forEach(r=>styleRow(r,false));selectedEl.textContent='선택: 없음';};
+ window.fitAll=()=>map.setBounds(bounds);
+ window.zoom=(delta)=>map.setLevel(Math.max(1,map.getLevel()-delta),{animate:true});
+ status.innerHTML='<span class="ok">지도 PASS</span> · seed '+seed.length+'개 · polygon '+rows.length+'개';
+ map.setBounds(bounds);
+ let lastSize='';
+ const ro=new ResizeObserver(()=>{const el=document.getElementById('map');const s=el.clientWidth+'x'+el.clientHeight;if(s!==lastSize){lastSize=s;map.relayout();}});ro.observe(document.getElementById('map'));
+})();
+</script>
+</body>
+</html>
