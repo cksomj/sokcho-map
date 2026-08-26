@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>조양회중 route-only 복구 검증</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#111827;font-family:system-ui,sans-serif}
+#frame{border:0;width:100%;height:100%;background:#fff}
+#badge{position:fixed;z-index:99999;left:10px;bottom:10px;background:#111827;color:#fff;padding:7px 10px;border-radius:8px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+</style>
+</head>
+<body>
+<iframe id="frame" src="./index.html" title="조양회중 구역관리 복구 검증"></iframe>
+<div id="badge">RECOVERY BRANCH · route-only overlay</div>
+<script>
+(function(){
+  const frame=document.getElementById('frame');
+  frame.addEventListener('load',()=>{
+    try{
+      const doc=frame.contentDocument;
+      if(!doc) throw new Error('iframe document unavailable');
+      if(doc.getElementById('sokcho-recovery-routeonly-script')) return;
+      const script=doc.createElement('script');
+      script.id='sokcho-recovery-routeonly-script';
+      script.src='./recovery_routeonly_patch.js?v=20260826-a2';
+      script.onload=()=>{
+        doc.documentElement.dataset.sokchoRecoveryRouteOnly='loaded';
+        const badge=document.getElementById('badge');
+        if(badge) badge.textContent='RECOVERY BRANCH · route-only overlay LOADED';
+      };
+      script.onerror=()=>{
+        const badge=document.getElementById('badge');
+        if(badge) badge.textContent='RECOVERY BRANCH · overlay LOAD FAILED';
+      };
+      doc.body.appendChild(script);
+    }catch(err){
+      const badge=document.getElementById('badge');
+      if(badge) badge.textContent='RECOVERY BRANCH · '+err.message;
+      console.error(err);
+    }
+  });
+})();
+</script>
+</body>
+</html>
