@@ -744,14 +744,19 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
 /* ========== 앱 메인 ========== */
 #scr-app{flex-direction:column!important;}
 
-/* 탭바 - 모바일: 아래, PC: 왼쪽 */
-#tabbar{display:flex;flex-direction:row;background:#fff;border-top:1px solid var(--bd);flex-shrink:0;order:2;}
-.tab{flex:1;padding:9px 3px 11px;text-align:center;font-size:12px;color:var(--txm);cursor:pointer;user-select:none;border:none;background:none;line-height:1.2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:62px;}
-.tab .ti{font-size:24px;display:block;margin-bottom:3px;}
-.tab.on{color:var(--p);font-weight:700;}
+/* V2 H33: 통합 접이식 메뉴(PC/모바일 공통) — 평소엔 작은 토글 버튼
+   하나만 우측 하단에 떠 있다가, 누르면 #tabbar가 그 위로 펼쳐지는
+   세로 팝업 메뉴로 나타난다. 화면 크기별로 사이드바/하단pill/
+   floating을 따로 두던 기존 방식(H29 등)을 이 통일 규칙 하나로
+   대체한다. 각 .tab 버튼 자체의 onclick(기능)은 무수정. */
+.menu-toggle-btn{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:6600;width:52px;height:52px;border-radius:50%;background:var(--p);color:#fff;border:none;font-size:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.28);}
+#tabbar{display:none;position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:6550;flex-direction:column;background:#fff;border:1px solid rgba(15,23,42,.15);border-radius:14px;box-shadow:0 12px 34px rgba(15,23,42,.24);width:auto;min-width:180px;max-width:min(260px,calc(100vw - 32px));max-height:70vh;overflow-y:auto;padding:6px;gap:2px;}
+#tabbar.menu-open{display:flex;}
+.tab{flex:0 0 auto;flex-direction:row;justify-content:flex-start;text-align:left;padding:10px 12px;min-height:0;gap:10px;border-radius:10px;font-size:13px;color:var(--txm);cursor:pointer;user-select:none;border:none;background:none;line-height:1.2;display:flex;align-items:center;}
+.tab .ti{font-size:19px;margin-bottom:0;width:22px;text-align:center;flex-shrink:0;}
+.tab.on{color:var(--p);font-weight:700;background:var(--pbg);}
 .tab.hide{display:none!important;}
 .tab.exit{margin-top:0;color:var(--dan);}
-#scr-app.bottom-tabs #t-home,#scr-app.bottom-tabs #t-exit{display:none!important;}
 .admin-service-action.hide{display:none!important;}
 .kakao-mark{display:inline-flex;align-items:center;justify-content:center;width:30px;height:28px;border-radius:12px;background:#FEE500;color:#111;font-size:9px;font-weight:900;letter-spacing:-.2px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);}
 
@@ -774,20 +779,14 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
 /* ========== PC/태블릿 반응형 ========== */
 @media(min-width:768px){
   #scr-app{flex-direction:row!important;}
-  #tabbar{flex-direction:column;width:64px;min-width:64px;height:100%;border-top:none;border-right:1px solid var(--bd);padding:4px 0;order:1;overflow-y:auto;}
-  #scr-app.no-side-tabs #tabbar{display:none!important;}
-  #scr-app.bottom-tabs #tabbar{display:flex!important;position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:6500;width:auto;min-width:0;height:auto;max-width:520px;flex-direction:row;gap:4px;padding:6px;border:1px solid rgba(15,23,42,.15);border-radius:14px;background:rgba(255,255,255,.96);box-shadow:0 12px 34px rgba(15,23,42,.22);overflow:visible;}
-  #scr-app.bottom-tabs .tab{flex:0;min-width:60px;min-height:50px;padding:6px 8px;font-size:11px;border-radius:10px;}
-  #scr-app.bottom-tabs .tab.on{background:var(--pbg);color:var(--p);}
-  #scr-app.bottom-tabs .tab .ti{font-size:19px;margin-bottom:1px;}
-  #scr-app.bottom-tabs #t-home,#scr-app.bottom-tabs #t-exit{display:none!important;}
-  #scr-app.admin-floating-tabs #tabbar{position:fixed;right:16px;bottom:16px;z-index:6500;width:auto;min-width:0;height:auto;max-width:520px;flex-direction:row;gap:4px;padding:6px;border:1px solid rgba(15,23,42,.15);border-radius:14px;background:rgba(255,255,255,.96);box-shadow:0 12px 34px rgba(15,23,42,.22);overflow:visible;}
-  #scr-app.admin-floating-tabs .tab{flex:0;min-width:58px;min-height:50px;padding:6px 7px;font-size:11px;border-radius:10px;}
-  #scr-app.admin-floating-tabs .tab.on{background:var(--pbg);color:var(--p);}
-  #scr-app.admin-floating-tabs .tab .ti{font-size:19px;margin-bottom:1px;}
-  #scr-app.admin-floating-tabs #t-exit{display:flex!important;color:var(--dan);}
-  #scr-app:not(.bottom-tabs) #t-home,#scr-app:not(.bottom-tabs) #t-exit{display:none!important;}
-  #scr-app.admin-floating-tabs:not(.bottom-tabs) #t-exit{display:flex!important;color:var(--dan);}
+  /* V2 H39/H40: 홈/나가기 표시 여부는 finishLogin()/syncRoleUi()의
+     .tab.hide 토글이 이미 역할별로 정확히 관리한다(H33 팝업 메뉴
+     기준). 여기 있던 .bottom-tabs/.admin-floating-tabs 기반
+     display:none!important 규칙들은 H33 이전 레이아웃(사이드바/
+     하단pill/floating 분기) 시절의 잔재로, .bottom-tabs가 붙는
+     봉사자·인도자 화면에서 t-home/t-exit를 무조건 강제로 숨겨
+     팝업 메뉴가 항목 없이 쪼그라드는 버그(H39/H40)의 원인이었다.
+     JS 쪽 로직과 중복/충돌하므로 제거한다. */
   .monitor-sheet{left:12px;right:12px;bottom:12px;max-height:210px;border-radius:12px;}
   .monitor-sheet-body{padding:6px 8px;}
   .monitor-sheet.open #monitor-vol-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 6px;}
@@ -801,9 +800,6 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
   #p-home > div:last-child{flex-direction:row!important;}
   #p-home #home-map{min-height:0!important;}
   #p-home #home-list-panel{width:clamp(320px,34vw,430px)!important;min-width:320px!important;max-width:430px!important;border-top:none!important;border-left:1px solid var(--bd);max-height:100%!important;}
-  .tab{flex:0;padding:7px 3px;font-size:11px;min-height:54px;gap:1px;}
-  .tab .ti{font-size:20px;margin-bottom:0;}
-  #app-content{order:2;}
   #p-map{flex-direction:row;}
   #map-wrap{max-height:none;height:100%;}
   #p-map .map-right{top:26px;right:18px;z-index:700;}
@@ -820,8 +816,6 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
   #p-record .pb,#p-admin .pb,#p-monitor .pb{max-width:900px;margin:0 auto;width:100%;}
 }
 @media(min-width:1200px){
-  #tabbar{width:78px;min-width:78px;}
-  .tab{font-size:12px;min-height:58px;}
   .map-side{width:260px!important;min-width:260px!important;}
   .zone-grid{grid-template-columns:repeat(4,1fr);}
   #rte-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));}
@@ -835,6 +829,9 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
 .chip{padding:6px 11px;border-radius:16px;background:#fff;border:1px solid var(--bd);font-size:11px;font-weight:600;cursor:pointer;color:var(--txm);box-shadow:0 1px 4px rgba(0,0,0,.12);white-space:nowrap;}
 .chip.on{background:var(--p);color:#fff;border-color:var(--p);}
 .mbtn{min-width:82px;height:38px;padding:0 10px;border-radius:var(--r);background:#fff;border:1px solid var(--bd);cursor:pointer;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:4px;box-shadow:0 2px 8px rgba(0,0,0,.12);white-space:nowrap;color:var(--tx);}
+/* V2 H28: 모바일 전용 요소 — PC(데스크톱)에서는 기본적으로 숨김 */
+.home-mobile-overlay-btn{display:none;}
+.home-list-handle{display:none;}
 .map-legend{position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,.95);border-top:1px solid var(--bd);padding:8px 14px;display:flex;gap:12px;flex-wrap:wrap;z-index:400;}
 .leg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--txm);}
 .ld{width:14px;height:10px;border-radius:3px;}
@@ -1112,12 +1109,10 @@ tr:last-child td{border-bottom:none;}
   #scr-login{justify-content:center;}
   #scr-login .login-box{transform:translateY(18px);padding-top:0;}
   #scr-app.active{height:100dvh;min-height:0;}
-  #scr-app.active #app-content{min-height:0;padding-bottom:calc(78px + env(safe-area-inset-bottom));}
-  #scr-app.active #tabbar{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:6500;height:auto;min-height:0;padding:5px;border:1px solid rgba(15,23,42,.16);border-radius:16px;background:rgba(255,255,255,.97);box-shadow:0 12px 34px rgba(15,23,42,.22);gap:3px;pointer-events:none;}
-  #tabbar{height:56px;min-height:56px;}
-  .tab{min-height:52px;padding:5px 2px 6px;font-size:12px;font-weight:900;gap:1px;border-radius:12px;pointer-events:auto;}
-  .tab.on{background:var(--pbg);color:var(--p);}
-  .tab .ti{font-size:22px;margin-bottom:1px;}
+  /* V2 H33: 통합 접이식 메뉴(토글 버튼)는 fixed라 문서 흐름에 영향을
+     안 주므로, 예전처럼 콘텐츠 하단에 tabbar 높이만큼 여백을 미리
+     확보해둘 필요가 없다(78px 패딩 제거). */
+  #scr-app.active #app-content{min-height:0;}
   .resume-pin-box{align-items:stretch;flex-direction:column;gap:7px;padding:8px;}
   .svc-pin-btn{width:100%;}
   .kakao-mark{width:28px;height:22px;border-radius:8px;font-size:8px;}
@@ -1128,11 +1123,17 @@ tr:last-child td{border-bottom:none;}
   .home-header-actions .btn-sm{padding:7px 9px;font-size:13px;font-weight:900;}
   .pb{padding:10px;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;}
   .page.on{min-height:0;}
-  #map-wrap,#main-map,#rd-map-box,#rd-map,#monitor-map-wrap,#monitor-map{touch-action:none;pointer-events:auto;}
-  #p-home .ph{padding:7px 10px;min-height:40px;}
-  #home-username{font-size:17px!important;}
-  #home-role-label{font-size:12px!important;}
-  #home-list-panel{max-height:30vh!important;}
+  #map-wrap,#main-map,#rd-map-box,#rd-map,#monitor-map-wrap,#monitor-map,#home-map{touch-action:none;pointer-events:auto;}
+  /* V2 H28: 모바일 홈 화면 지도 확장 — 이름표시 영역과 홈/나가기
+     헤더 버튼을 숨기고(공간은 지도가 흡수), 그 버튼들은 지도 위
+     오버레이 버튼(.home-mobile-overlay-btn)으로 대체한다. "구역"
+     버튼(leader-zone-btn)은 인도자 전용 기능이라 그대로 남겨둔다. */
+  #p-home .ph{padding:4px 10px;min-height:0;}
+  #home-username,#home-role-label,#home-header-home-btn,#home-header-exit-btn{display:none!important;}
+  .home-mobile-overlay-btn{display:flex;}
+  .home-list-handle{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;background:var(--bg2);border-top:1px solid var(--bd);font-size:13px;font-weight:800;color:var(--tx);cursor:pointer;flex-shrink:0;}
+  #home-list-panel{max-height:72vh!important;transition:max-height .2s ease;}
+  #home-list-panel.home-list-collapsed{max-height:0!important;overflow:hidden;border-top:none!important;}
   #home-list-panel > div:first-child{padding:7px 10px 5px!important;}
   #home-zone-list{padding:0 10px 10px!important;}
   .map-legend{padding:5px 8px;gap:7px;}
@@ -1218,6 +1219,50 @@ tr:last-child td{border-bottom:none;}
   #svc-fullscreen .svc-main-btn{padding:10px 8px!important;font-size:14px!important;}
   #toast{bottom:calc(92px + env(safe-area-inset-bottom));}
 }
+.s13-viewer-modal{display:none;position:fixed;inset:0;z-index:9000;background:rgba(17,24,39,.55);align-items:center;justify-content:center;padding:14px;}
+.s13-viewer-modal.on{display:flex;}
+.s13-viewer-card{width:100%;max-width:1100px;max-height:92vh;background:#fff;border-radius:12px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.28);display:flex;flex-direction:column;overflow:hidden;}
+.s13-viewer-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;flex-shrink:0;}
+.s13-viewer-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px;flex-shrink:0;}
+.s13-viewer-controls select,.s13-viewer-controls input{display:block;margin-top:3px;padding:7px 9px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg2);color:var(--tx);font-size:13px;}
+.s13-table-wrap{overflow:auto;flex:1;min-height:0;}
+.s13-table{border-collapse:collapse;width:100%;font-size:12px;white-space:nowrap;}
+.s13-table th,.s13-table td{border:1px solid var(--bd);padding:5px 7px;text-align:center;}
+.s13-table thead th{background:var(--bg2);font-weight:800;}
+.s13-table td.s13-editable{cursor:pointer;}
+.s13-table td.s13-editable:hover{background:var(--pbg);}
+.s13-admin-hint{font-size:11px;color:var(--txm);align-self:center;}
+/* 인쇄/미리보기 전용 상단 제목·하단 각주 — 평소 화면에서는 숨김 */
+.s13-print-header,.s13-print-footer{display:none;}
+.s13-print-header{text-align:center;margin-bottom:14px;}
+.s13-print-title-line1{font-size:15px;font-weight:900;color:var(--tx);}
+.s13-print-title-line2{font-size:20px;font-weight:900;color:var(--tx);margin:2px 0 8px;}
+.s13-print-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--txm);font-weight:700;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);padding:6px 2px;}
+.s13-print-footer{margin-top:10px;font-size:11px;color:var(--txm);}
+.s13-print-pageno{margin-top:4px;}
+/* 미리보기 모드: 화면 안에서 인쇄 결과와 동일하게(원본 서식) 보여줌 */
+.s13-viewer-card.s13-preview-mode .s13-viewer-controls{display:none;}
+.s13-viewer-card.s13-preview-mode .s13-print-header,
+.s13-viewer-card.s13-preview-mode .s13-print-footer{display:block;}
+.s13-viewer-card.s13-preview-mode .s13-table{border:2px solid #111;}
+.s13-viewer-card.s13-preview-mode .s13-table th,
+.s13-viewer-card.s13-preview-mode .s13-table td{border:1px solid #111;}
+.s13-viewer-card.s13-preview-mode .s13-table td.s13-editable{cursor:default;}
+.s13-viewer-card.s13-preview-mode .s13-table td.s13-editable:hover{background:transparent;}
+@media print{
+  body *{visibility:hidden;}
+  #s13-viewer,#s13-viewer *{visibility:visible;}
+  #s13-viewer{position:absolute;top:0;left:0;width:100%;background:#fff;padding:0;display:block;z-index:auto;}
+  .s13-viewer-card{width:100%;max-width:none;max-height:none;box-shadow:none;border-radius:0;padding:0;overflow:visible;}
+  .s13-viewer-head,.s13-viewer-controls{display:none!important;}
+  .s13-print-header,.s13-print-footer{display:block!important;}
+  .s13-table{border:2px solid #000;font-size:11px;white-space:normal;}
+  .s13-table th,.s13-table td{border:1px solid #000;}
+  .s13-table thead{display:table-header-group;}
+  .s13-table tr{page-break-inside:avoid;}
+  .s13-table td.s13-editable{cursor:default;}
+  .s13-table td.s13-editable:hover{background:transparent;}
+}
 .note-modal{display:none;position:fixed;inset:0;z-index:9000;background:rgba(17,24,39,.55);align-items:center;justify-content:center;padding:18px;}
 .note-modal.on{display:flex;}
 .note-card{width:100%;max-width:420px;background:#fff;border-radius:12px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.28);}
@@ -1244,6 +1289,39 @@ tr:last-child td{border-bottom:none;}
 .live-btn.call{background:#EAF3DE;border-color:#A8D878;}
 .live-btn.kakao{background:#FEE500;border-color:#F0D000;}
 .leader-card{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--bd);border-radius:var(--r);padding:9px 12px;margin-bottom:6px;}
+.apt-complex-row{background:#fff;border:1px solid var(--bd);border-radius:var(--r);margin-bottom:6px;overflow:hidden;}
+.apt-complex-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;cursor:pointer;}
+.apt-complex-body{padding:0 12px 12px;border-top:1px solid var(--bd);}
+.apt-building-row{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:10px;margin:10px 0 0;}
+.apt-building-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.apt-unit-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.apt-unit-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:14px;background:#fff;border:1px solid var(--bd);font-size:12px;color:var(--tx);}
+.apt-unit-chip button{border:none;background:none;color:var(--txm);cursor:pointer;font-size:11px;padding:0;line-height:1;}
+.apt-unit-chip.forbidden{opacity:.45;background:var(--bg2);}
+.apt-gen-complex-row{background:#fff;border:1px solid var(--bd);border-radius:var(--r);padding:9px 12px;margin-bottom:6px;}
+.apt-check-row{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;padding:4px 0;cursor:pointer;}
+.apt-check-row.apt-check-sub{font-size:12px;font-weight:400;color:var(--txm);padding-left:22px;}
+.apt-check-row input{flex-shrink:0;}
+.home-apt-section{border-top:1px solid var(--bd);margin-top:6px;flex-shrink:0;}
+.home-apt-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;color:var(--tx);}
+.home-apt-body{max-height:260px;overflow-y:auto;}
+.home-apt-body.hide{display:none;}
+.home-apt-card-row{grid-template-columns:minmax(0,1.1fr) auto auto auto;}
+.home-zone-row-kakao{grid-template-columns:minmax(0,1.35fr) auto auto auto;}
+.apt-svc-point-card{background:#fff;border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;}
+.apt-svc-point-head{font-size:13px;font-weight:800;margin-bottom:8px;}
+.apt-svc-unit-list{display:flex;flex-wrap:wrap;gap:8px;}
+.apt-svc-unit-row{display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:var(--r);background:var(--bg2);border:1px solid var(--bd);font-size:13px;cursor:pointer;}
+.apt-svc-unit-row.forbidden{opacity:.45;cursor:not-allowed;}
+.apt-svc-unit-row.last-checked{border-color:#16A34A;box-shadow:0 0 0 2px rgba(22,163,74,.25);}
+.apt-svc-point-nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.apt-svc-point-nav-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--bd);background:#fff;color:var(--tx);font-size:13px;font-weight:800;cursor:pointer;}
+.apt-svc-point-nav-btn.active{background:#378ADD;border-color:#378ADD;color:#fff;}
+.apt-svc-point-nav-btn.done{background:#16A34A;border-color:#16A34A;color:#fff;}
+.apt-svc-point-nav-btn.done.active{background:#0F7A34;border-color:#0F7A34;}
+.apt-svc-floor-group{margin-bottom:10px;}
+.apt-svc-floor-head{font-size:12px;font-weight:800;color:var(--txm);margin-bottom:6px;}
+.apt-svc-advance-banner{background:#EAF6EC;border:1px solid #86D8A0;border-radius:var(--r);padding:12px;margin-top:6px;}
 @media(min-width:768px){
   .monitor-sheet{top:12px!important;left:auto!important;right:12px!important;bottom:12px!important;width:292px!important;max-height:none!important;transform:translateX(calc(100% + 16px))!important;border-radius:12px!important;}
   .monitor-sheet.open{transform:translateX(0)!important;}
