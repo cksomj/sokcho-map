@@ -690,8 +690,13 @@ svg.leaflet-image-layer.leaflet-interactive path {
   --tx:#111827;--txm:#6b7280;
   --bg:#fff;--bg2:#f9fafb;--bd:#e5e7eb;
   --r:8px;--rl:14px;
+  /* V2 H70: 디자인 다듬기 — 색상 톤(hue)은 그대로 두고 그림자/포커스링
+     토큰만 추가해서 카드·버튼 등 공통요소에 일관되게 재사용한다. */
+  --shadow-sm:0 1px 3px rgba(15,23,42,.07),0 1px 2px rgba(15,23,42,.05);
+  --shadow-md:0 6px 18px rgba(15,23,42,.10),0 2px 5px rgba(15,23,42,.06);
+  --ring:0 0 0 3px rgba(55,138,221,.22);
 }
-html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;font-size:14px;background:#e8edf2;overflow:hidden;}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;font-size:14px;background:#e8edf2;overflow:hidden;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
 
 .leaflet-div-icon{background:transparent!important;border:none!important;}
 /* ========== 앱 레이아웃 ========== */
@@ -702,17 +707,37 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
 .screen.active{display:flex!important;flex-direction:column;flex:1;overflow:hidden;min-height:0;}
 
 /* ========== 로그인 ========== */
-#scr-login{overflow-y:auto;padding:24px 20px;align-items:center;justify-content:center;background:#f0f4fa;}
+#scr-login{overflow-y:auto;padding:24px 20px;align-items:center;justify-content:center;background:radial-gradient(circle at 50% -10%,#eef4fb 0%,#e8eef7 45%,#e3ebf5 100%);}
 .login-box{width:100%;max-width:420px;transform:translateY(-26px);}
-.login-logo{text-align:center;margin-bottom:24px;}
-.login-logo .ico{width:86px;height:86px;background:linear-gradient(135deg,#1B5299,#378ADD);border-radius:22px;display:flex;align-items:center;justify-content:center;margin:12px auto 10px;box-shadow:0 6px 20px rgba(27,82,153,.28);}
+.login-logo{text-align:center;margin-bottom:26px;}
+.login-logo .ico{width:86px;height:86px;background:linear-gradient(135deg,#1B5299,#378ADD);border-radius:24px;display:flex;align-items:center;justify-content:center;margin:12px auto 12px;box-shadow:0 10px 26px rgba(27,82,153,.32),0 2px 6px rgba(27,82,153,.18);}
 .login-logo .ico svg{width:58px;height:58px;display:block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));}
-.role-btn-wrap{display:flex;gap:10px;margin-bottom:16px;}
-.role-btn-wrap .btn{flex:1;padding:18px 6px;font-size:12px;border-radius:12px;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:4px;}
-.role-btn-wrap .btn .ri{font-size:24px;}
-.login-role-btn{display:flex!important;align-items:center!important;justify-content:center!important;min-height:58px;line-height:1.2;gap:4px;}
-.login-logo h1{font-size:24px;font-weight:800;color:var(--p);}
-.login-logo p{font-size:13px;color:var(--txm);margin-top:4px;}
+/* V2 H76: 승인된 로그인 디자인 — 역할 카드(아이콘+제목+한줄설명).
+   테두리 얇게(1.5px), 모서리 둥글게(--rl=14px), 그림자는 최소화(기본
+   상태는 그림자 없음 — 테두리만으로 카드임을 표현). */
+.role-card-wrap{display:flex;flex-direction:column;gap:10px;margin-bottom:18px;}
+/* H88: 미선택 카드가 옅은 배경(그라디언트) 위에서 테두리(--bd
+   #e5e7eb)가 거의 안 보여 3개 버튼이 흐릿하게 뭉쳐 보이던 문제 —
+   테두리를 hover 때 쓰던 더 뚜렷한 회색(#c7ccd4)으로 기본값부터
+   적용하고 그림자를 추가해 배경과 분리, 설명 텍스트도 살짝 진하게. */
+.role-card{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border-radius:var(--rl);border:1.75px solid #c7ccd4;background:#fff;box-shadow:var(--shadow-sm);cursor:pointer;text-align:left;transition:border-color .15s,background .15s,transform .1s,box-shadow .15s;}
+.role-card-icon{font-size:24px;flex-shrink:0;width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:var(--bg2);}
+.role-card-body{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.role-card-title{font-size:16px;font-weight:800;color:var(--tx);}
+.role-card-desc{font-size:12px;color:#4b5563;line-height:1.3;}
+.role-card:active{transform:scale(.99);}
+@media(hover:hover){.role-card:hover{border-color:#9aa3af;box-shadow:var(--shadow-md);}}
+.role-card[data-accent="vol"].on{border-color:var(--p);background:var(--pbg);}
+.role-card[data-accent="vol"].on .role-card-icon{background:#fff;}
+.role-card[data-accent="vol"].on .role-card-title{color:var(--p);}
+.role-card[data-accent="leader"].on{border-color:#3B6D11;background:var(--okbg);}
+.role-card[data-accent="leader"].on .role-card-icon{background:#fff;}
+.role-card[data-accent="leader"].on .role-card-title{color:#3B6D11;}
+.role-card[data-accent="admin"].on{border-color:#D85A30;background:var(--warnbg);}
+.role-card[data-accent="admin"].on .role-card-icon{background:#fff;}
+.role-card[data-accent="admin"].on .role-card-title{color:#D85A30;}
+.login-logo h1{font-size:25px;font-weight:800;color:var(--p);letter-spacing:-.3px;}
+.login-logo p{font-size:13px;color:var(--txm);margin-top:5px;}
 @media(max-height:720px){.login-box{transform:translateY(-12px);}.login-logo{margin-bottom:18px;}.login-logo .ico{width:76px;height:76px;}.login-logo .ico svg{width:50px;height:50px;}}
 @media(max-width:430px){
   #scr-login{padding:18px 14px;justify-content:center;}
@@ -722,22 +747,43 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
   .login-logo .ico{width:74px;height:74px;border-radius:18px;margin:10px auto 8px;}
   .login-logo .ico svg{width:48px;height:48px;}
   .login-logo p{font-size:12px;}
-  .login-role-btn{min-height:50px!important;padding:13px 4px!important;font-size:12px!important;}
+  .role-card{padding:12px 13px;}
+  .role-card-icon{width:36px;height:36px;font-size:20px;}
   .card{padding:14px;margin-bottom:10px;}
   .field{margin-bottom:10px;}
 }
-.card{background:#fff;border:1px solid var(--bd);border-radius:var(--rl);padding:20px;margin-bottom:14px;}
+.card{background:#fff;border:1px solid var(--bd);border-radius:var(--rl);padding:20px;margin-bottom:14px;box-shadow:var(--shadow-sm);}
 .field{margin-bottom:14px;}
 .field label{display:block;font-size:11px;font-weight:700;color:var(--txm);margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase;}
-.field input,.field select{width:100%;padding:11px 13px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg2);color:var(--tx);font-size:14px;outline:none;}
-.field input:focus,.field select:focus{border-color:var(--pl);}
+.field input,.field select{width:100%;padding:11px 13px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg2);color:var(--tx);font-size:14px;outline:none;transition:border-color .15s,box-shadow .15s,background .15s;}
+.field input:focus,.field select:focus{border-color:var(--pl);background:#fff;box-shadow:var(--ring);}
+
+/* ========== V2 H75: 로그인 이름 검색형 입력 ========== */
+/* 노인 사용자 배려: 입력창/후보 글자를 본문(14px)보다 크게(16~17px),
+   후보 한 줄 높이도 넉넉하게(터치하기 쉽도록) */
+.name-search-field{position:relative;}
+.name-search-inputwrap{position:relative;}
+.name-search-inputwrap .name-search-input{padding-left:40px!important;}
+.name-search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;color:var(--txm);}
+.name-search-input{font-size:17px!important;padding:13px 14px!important;}
+.name-search-results{margin-top:6px;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;display:none;max-height:260px;overflow-y:auto;box-shadow:var(--shadow-sm);}
+.name-search-results.on{display:block;}
+.name-search-item{width:100%;text-align:left;padding:13px 14px;font-size:16px;font-weight:600;color:var(--tx);background:#fff;border:none;border-bottom:1px solid var(--bd);cursor:pointer;}
+.name-search-item:last-child{border-bottom:none;}
+.name-search-item:active{background:var(--bg2);}
+@media(hover:hover){.name-search-item:hover{background:var(--bg2);}}
+.name-search-item.single{background:var(--pbg);color:var(--p);font-weight:800;}
+@media(hover:hover){.name-search-item.single:hover{background:#DCEAFA;}}
+.name-search-empty{padding:14px;font-size:14px;color:var(--txm);text-align:center;}
 
 /* ========== 버튼 ========== */
-.btn{width:100%;padding:12px;border-radius:var(--r);border:none;cursor:pointer;font-size:14px;font-weight:700;transition:all .15s;}
-.btn-p{background:var(--p);color:#fff;}
-.btn-p:active{background:#154080;}
-.btn-sm{width:auto;padding:6px 12px;font-size:12px;}
+.btn{width:100%;padding:13px 12px;border-radius:var(--r);border:none;cursor:pointer;font-size:14px;font-weight:700;transition:all .15s;}
+.btn-p{background:var(--p);color:#fff;box-shadow:0 2px 8px rgba(27,82,153,.25);}
+.btn-p:active{background:#154080;transform:translateY(1px);box-shadow:0 1px 3px rgba(27,82,153,.25);}
+@media(hover:hover){.btn-p:hover{background:#194A87;box-shadow:0 4px 12px rgba(27,82,153,.32);}}
+.btn-sm{width:auto;padding:7px 12px;font-size:12px;min-height:32px;}
 .btn-out{background:#fff;border:1px solid var(--bd);color:var(--tx);}
+@media(hover:hover){.btn-out:hover{border-color:#c7ccd4;background:var(--bg2);}}
 .btn-dk{background:var(--danbg);color:var(--dan);border:1px solid #f5c0c0;}
 .btn-ok{background:var(--okbg);color:var(--ok);border:1px solid #b3d98a;}
 
@@ -766,10 +812,11 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
 /* 페이지 */
 .page{display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0;}
 .page.on{display:flex;}
-.ph{padding:13px 16px 10px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fff;}
-.ph h2{font-size:17px;font-weight:700;}
+.ph{padding:13px 16px 10px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fff;box-shadow:0 1px 0 rgba(15,23,42,.02),0 2px 6px rgba(15,23,42,.04);position:relative;z-index:2;}
+.ph h2{font-size:18px;font-weight:800;letter-spacing:-.2px;color:var(--tx);}
 .home-header-actions{display:flex;gap:6px;align-items:center;flex-shrink:0;}
 .leader-zone-action.hide{display:none!important;}
+.admin-pin-action.hide{display:none!important;} /* V2 H44: 이 규칙이 아예 없어서 H30/H41의 admin-pin-action이 실제로는 한 번도 안 숨겨지고 있던 버그 수정 */
 .leader-zone-action.on{background:var(--p);border-color:var(--p);color:#fff;}
 .route-home-action.hide{display:none!important;}
 .monitor-home-action.hide{display:none!important;}
@@ -813,7 +860,8 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
   .stat-grid{grid-template-columns:repeat(4,1fr);}
   .zone-grid{grid-template-columns:repeat(3,1fr);}
   #rte-grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));}
-  #p-record .pb,#p-admin .pb,#p-monitor .pb{max-width:900px;margin:0 auto;width:100%;}
+  #p-record .pb,#p-monitor .pb{max-width:900px;margin:0 auto;width:100%;}
+  #p-admin .pb{max-width:1200px;margin:0 auto;width:100%;} /* V2 H55: 900px가 구역관리 버튼 줄과 안 맞아 이름이 안 보이던 문제 — 딘 요청대로 관리자 화면만 폭을 넓힘 */
 }
 @media(min-width:1200px){
   .map-side{width:260px!important;min-width:260px!important;}
@@ -826,8 +874,8 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
 #main-map{width:100%;height:100%;}
 .map-left{position:absolute;top:10px;left:10px;z-index:400;display:flex;flex-direction:column;gap:5px;}
 .map-right{position:absolute;top:10px;right:10px;z-index:400;display:flex;flex-direction:column;gap:6px;}
-.chip{padding:6px 11px;border-radius:16px;background:#fff;border:1px solid var(--bd);font-size:11px;font-weight:600;cursor:pointer;color:var(--txm);box-shadow:0 1px 4px rgba(0,0,0,.12);white-space:nowrap;}
-.chip.on{background:var(--p);color:#fff;border-color:var(--p);}
+.chip{padding:6px 11px;border-radius:16px;background:#fff;border:1px solid var(--bd);font-size:11px;font-weight:600;cursor:pointer;color:var(--txm);box-shadow:0 1px 4px rgba(0,0,0,.12);white-space:nowrap;transition:background .12s,color .12s,border-color .12s,box-shadow .12s;}
+.chip.on{background:var(--p);color:#fff;border-color:var(--p);box-shadow:0 2px 8px rgba(27,82,153,.3);}
 .mbtn{min-width:82px;height:38px;padding:0 10px;border-radius:var(--r);background:#fff;border:1px solid var(--bd);cursor:pointer;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:4px;box-shadow:0 2px 8px rgba(0,0,0,.12);white-space:nowrap;color:var(--tx);}
 /* V2 H28: 모바일 전용 요소 — PC(데스크톱)에서는 기본적으로 숨김 */
 .home-mobile-overlay-btn{display:none;}
@@ -839,8 +887,8 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
 /* PC 사이드패널 */
 .map-side{display:none;flex-direction:column;width:232px;min-width:232px;flex-shrink:0;border-left:1px solid var(--bd);overflow-y:auto;background:#fff;}
 .map-side-inner{padding:8px;}
-.side-zone-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid var(--bd);border-radius:var(--r);margin-bottom:5px;cursor:pointer;}
-.side-zone-item:hover{background:var(--bg2);}
+.side-zone-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid var(--bd);border-radius:var(--r);margin-bottom:5px;cursor:pointer;transition:background .12s,box-shadow .12s;}
+.side-zone-item:hover{background:var(--bg2);box-shadow:var(--shadow-sm);}
 .side-zone-item.res{border-left:3px solid var(--pl);}
 .side-zone-item.com{border-left:3px solid #EF9F27;}
 .side-zone-item.selected,
@@ -890,10 +938,11 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
 
 /* ========== 경로 탭 ========== */
 .zone-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
-.zc{background:#fff;border:1px solid var(--bd);border-radius:var(--rl);padding:12px;cursor:pointer;position:relative;}
+.zc{background:#fff;border:1px solid var(--bd);border-radius:var(--rl);padding:12px;cursor:pointer;position:relative;box-shadow:var(--shadow-sm);transition:box-shadow .15s,transform .1s;}
 .zc.res{border-left:3px solid var(--pl);}
 .zc.com{border-left:3px solid #EF9F27;}
-.zc:active{opacity:.8;}
+.zc:active{opacity:.8;transform:scale(.99);}
+@media(hover:hover){.zc:hover{box-shadow:var(--shadow-md);}}
 .zc-dot{position:absolute;top:10px;right:10px;width:9px;height:9px;border-radius:50%;}
 .zc-name{font-size:13px;font-weight:700;margin:5px 0 3px;}
 .zc-meta{font-size:11px;color:var(--txm);}
@@ -914,7 +963,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
 .route-list-controls .route-search{position:relative;min-width:0;}
 .route-list-controls .route-search input{width:100%;padding:9px 34px 9px 12px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg2);font-size:13px;outline:none;}
 .route-list-controls .route-search button{display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--txm);}
-.home-zone-row{display:grid;grid-template-columns:minmax(0,1.35fr) auto auto;align-items:center;gap:7px;background:#fff;border:1px solid var(--bd);border-radius:8px;border-left:5px solid #378ADD;padding:7px 8px;margin-bottom:4px;cursor:pointer;}
+.home-zone-row{display:grid;grid-template-columns:minmax(0,1.35fr) auto auto;align-items:center;gap:7px;background:#fff;border:1px solid var(--bd);border-radius:8px;border-left:5px solid #378ADD;padding:7px 8px;margin-bottom:4px;cursor:pointer;box-shadow:var(--shadow-sm);}
 .home-zone-row.com{border-left-color:#EF9F27;}
 .home-zone-title{font-size:12px;font-weight:900;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .home-zone-title span{font-size:9px;color:var(--txm);}
@@ -923,17 +972,22 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
 @media(max-width:430px){
   .route-list-controls{grid-template-columns:1fr;gap:5px;}
   .route-list-controls .admin-zone-toolbar .btn-sm{flex:1;padding:8px 6px;}
-  .admin-zone-row{grid-template-columns:36px minmax(0,1fr);align-items:start;}
-  .admin-zone-status-box,.admin-zone-manage-box{grid-column:1/-1;justify-content:flex-start;padding-left:0;border-left:none;border-top:1px solid #EEF2F7;padding-top:5px;}
   .admin-zone-status-box .btn-sm,.admin-zone-manage-box .btn-sm{font-size:11px;padding:6px 8px;}
 }
 .admin-zone-list{display:flex;flex-direction:column;gap:4px;}
-.admin-zone-row{display:grid;grid-template-columns:44px minmax(0,1fr) auto auto;gap:7px;align-items:center;background:#fff;border:1px solid var(--bd);border-radius:8px;padding:6px 7px;border-left:5px solid var(--pl);}
+/* V2 H55: 번호|이름을 상태/관리 버튼들과 한 줄에서 폭 경쟁시키지 않고,
+   버튼 그룹은 항상 그 아래 줄로 쌓는다(화면 폭·버튼 글자수가 얼마나
+   늘어나도 이름 칸이 절대 0으로 눌리지 않는 방식 — PC/폰 공통).
+   과거엔 PC 화면에서만 4칼럼 한 줄이었는데, 관리 버튼이 늘고(H49
+   명칭수정 추가, H52 "그리기"→"구역경계그리기") #p-admin .pb의
+   900px 폭 제한과 맞물려 이름이 완전히 안 보이는 상태였음. */
+.admin-zone-row{display:grid;grid-template-columns:minmax(44px,auto) minmax(0,1fr);align-items:start;gap:7px;background:#fff;border:1px solid var(--bd);border-radius:8px;padding:6px 7px;border-left:5px solid var(--pl);box-shadow:var(--shadow-sm);}
 .admin-zone-row.com{border-left-color:#EF9F27;}
-.admin-zone-no{font-size:11px;font-weight:900;color:var(--txm);}
-.admin-zone-name{font-size:12px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.admin-zone-no{font-size:11px;font-weight:900;color:var(--txm);white-space:nowrap;padding-top:2px;}
+.admin-zone-name{font-size:12px;font-weight:900;display:flex;align-items:center;gap:5px;min-width:0;} /* V2 H46: 이름 텍스트만 잘리게 하고 "✏ 명칭수정" 버튼은 항상 보이게(이전엔 이 div 전체에 overflow:hidden이 걸려 좁은(PC) 화면에서 버튼까지 함께 잘려 안 보였음) */
+.admin-zone-name-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .admin-zone-meta{font-size:10px;color:var(--txm);white-space:nowrap;}
-.admin-zone-status-box,.admin-zone-manage-box{display:flex;align-items:center;gap:4px;justify-content:flex-end;flex-wrap:wrap;padding-left:7px;border-left:1px solid #E5E7EB;}
+.admin-zone-status-box,.admin-zone-manage-box{grid-column:1/-1;display:flex;align-items:center;gap:4px;justify-content:flex-start;flex-wrap:wrap;padding-left:0;border-left:none;border-top:1px solid #EEF2F7;padding-top:5px;}
 .admin-zone-box-label{font-size:10px;font-weight:900;color:var(--txm);margin-right:2px;white-space:nowrap;}
 .admin-zone-actions{display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap;}
 .admin-zone-actions .btn-sm{padding:5px 7px;font-size:10px;}
@@ -974,7 +1028,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
 .draw-panel.on{display:block;}
 .draw-panel-title{font-size:13px;font-weight:700;color:var(--warn);margin-bottom:6px;}
 .draw-panel-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
-.rte-item{display:grid;grid-template-columns:auto minmax(0,1fr);background:#fff;border:1px solid var(--bd);border-left:5px solid var(--p);border-radius:8px;padding:9px 10px;margin-bottom:6px;gap:8px;align-items:center;}
+.rte-item{display:grid;grid-template-columns:auto minmax(0,1fr);background:#fff;border:1px solid var(--bd);border-left:5px solid var(--p);border-radius:8px;padding:9px 10px;margin-bottom:6px;gap:8px;align-items:center;box-shadow:var(--shadow-sm);}
 .rte-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
 .rte-status{display:inline-flex;align-items:center;gap:4px;background:var(--okbg);color:var(--ok);border:1px solid #B7D990;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:900;white-space:nowrap;}
 .rte-line-head{display:flex;align-items:center;gap:6px;min-width:0;}
@@ -1024,7 +1078,7 @@ body.route-editing #rd-map .leaflet-marker-icon{pointer-events:none!important;}
 
 /* ========== 관리자/모니터 탭 ========== */
 .adm-sec{margin-bottom:20px;}
-.adm-title{font-size:10px;font-weight:700;color:var(--txm);letter-spacing:.9px;text-transform:uppercase;margin-bottom:8px;}
+.adm-title{font-size:11px;font-weight:800;color:var(--txm);letter-spacing:.8px;text-transform:uppercase;margin-bottom:9px;}
 .chart-box{background:#fff;border:1px solid var(--bd);border-radius:var(--rl);padding:12px;margin-bottom:8px;}
 .chart-box h4{font-size:13px;font-weight:700;margin-bottom:10px;}
 .compact-counts{display:flex;flex-wrap:wrap;gap:5px;}
@@ -1071,14 +1125,16 @@ tr:last-child td{border-bottom:none;}
 .svc-person-icon:after{content:"";position:absolute;bottom:5px;width:16px;height:9px;border-radius:10px 10px 5px 5px;background:#111827;}
 .svc-locate-btn{padding:9px 11px;border-radius:8px;border:2px solid #1B5299;background:#EAF3FF;color:#0F3E7A;font-size:13px;font-weight:900;cursor:pointer;white-space:nowrap;}
 .svc-time-box{min-width:58px;}
-.svc-secondary-btn{flex:1;padding:12px 10px;border-radius:var(--r);background:#F8FAFC;color:#111827;border:2px solid #CBD5E1;cursor:pointer;font-size:14px;font-weight:900;}
+.svc-secondary-btn{flex:1;padding:12px 10px;border-radius:var(--r);background:#F8FAFC;color:#111827;border:2px solid #CBD5E1;cursor:pointer;font-size:14px;font-weight:900;transition:background .15s,box-shadow .15s;}
+@media(hover:hover){.svc-secondary-btn:hover{background:#EEF2F7;box-shadow:var(--shadow-sm);}}
 .svc-return-btn{flex:1;padding:12px 10px;border-radius:var(--r);background:#EAF3FF;color:#0F3E7A;border:2px solid #7DB8F0;cursor:pointer;font-size:14px;font-weight:900;display:none;}
 .resume-pin-box{display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:9px 10px;border:2px solid #FED7AA;border-radius:var(--r);background:#FFF7ED;}
 .resume-pin-text{flex:1;color:#7C2D12;font-size:13px;font-weight:900;line-height:1.35;}
 .svc-pin-btn{flex-shrink:0;padding:11px 12px;border-radius:var(--r);border:2px solid #D85A30;background:#fff;color:#7C2D12;font-size:14px;font-weight:900;cursor:pointer;box-shadow:0 3px 10px rgba(124,45,18,.12);}
-.svc-main-btn{flex:1;padding:15px 12px;border-radius:var(--r);border:none;cursor:pointer;font-size:16px;font-weight:900;}
-.svc-main-btn.pause{background:#9A5B0F;color:#fff;}
-.svc-main-btn.done{flex:1.5;background:#16A34A;color:#fff;}
+.svc-main-btn{flex:1;padding:15px 12px;border-radius:var(--r);border:none;cursor:pointer;font-size:16px;font-weight:900;transition:transform .1s,box-shadow .15s;}
+.svc-main-btn:active{transform:translateY(1px);}
+.svc-main-btn.pause{background:#9A5B0F;color:#fff;box-shadow:0 3px 10px rgba(154,91,15,.3);}
+.svc-main-btn.done{flex:1.5;background:#16A34A;color:#fff;box-shadow:0 3px 10px rgba(22,163,74,.3);}
 .resume-marker-label{background:#FFF7ED;color:#7C2D12;border:2px solid #D85A30;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:900;white-space:nowrap;box-shadow:0 4px 12px rgba(124,45,18,.26);}
 .home-wide #home-list-panel{display:none!important;}
 .route-dir-panel{display:none;background:#fff;border:2px solid #7DB8F0;border-radius:var(--r);padding:12px;margin:10px 0;box-shadow:0 8px 22px rgba(27,82,153,.12);}
@@ -1205,6 +1261,26 @@ tr:last-child td{border-bottom:none;}
   #svc-fullscreen{height:100svh!important;max-height:100svh!important;}
   #svc-fullscreen > div:first-child{min-height:220px;}
   #svc-fullscreen > div:last-child{padding:8px 10px calc(66px + env(safe-area-inset-bottom))!important;}
+  /* H83: 아파트구역 진행화면(#apt-svc-fullscreen)에는 위 #svc-fullscreen
+     (주택구역)과 같은 모바일 보정이 빠져있어서 "미완료/완료" 버튼이
+     폰 하단 UI(주소창 높이 변화·홈 인디케이터)에 가려지는 문제가
+     있었음 — 원인 확정 후 동일 패턴 그대로 적용(height:100vh는 모바일
+     브라우저 주소창이 접힐 때 실제 화면보다 커질 수 있어 100svh로
+     보정, 하단 패딩은 기존 env(safe-area-inset-bottom) 관례를
+     동일하게 적용). PC(768px 이상)는 이 미디어쿼리 밖이라 영향 없음. */
+  #apt-svc-fullscreen{height:100svh!important;max-height:100svh!important;}
+  #apt-svc-fullscreen > .svc-panel:last-child{padding:10px 16px calc(22px + env(safe-area-inset-bottom))!important;}
+  /* H83: 관리자 화면의 "이 기기를 최신 상태로 맞추기" 버튼이 418개
+     구역 목록(보호 기능, 손대지 않음) 아래로 밀려나 폰에서 스크롤로
+     찾기 매우 어려웠음 — 원인 확정. 목록 구조는 그대로 두고 이 버튼만
+     화면에 항상 떠있는 고정 버튼으로 전환(같은 동작, 위치만 이동).
+     #p-admin이 비활성 탭일 때는 상위 .page{display:none}이 그대로
+     적용되어 다른 화면에서는 보이지 않음. */
+  button[onclick="runDeviceSyncAll()"]{
+    position:fixed;left:16px;bottom:calc(16px + env(safe-area-inset-bottom));
+    z-index:6400;box-shadow:0 6px 18px rgba(0,0,0,.28);
+    max-width:calc(100vw - 32px);
+  }
   #svc-zone-name{font-size:16px!important;color:#111827!important;}
   #svc-status-label{font-size:12px!important;color:#111827!important;font-weight:900;margin-bottom:3px!important;}
   #svc-companions{font-size:12px!important;color:#334155!important;font-weight:800;margin-bottom:7px!important;}
@@ -1303,7 +1379,8 @@ tr:last-child td{border-bottom:none;}
 .apt-check-row.apt-check-sub{font-size:12px;font-weight:400;color:var(--txm);padding-left:22px;}
 .apt-check-row input{flex-shrink:0;}
 .home-apt-section{border-top:1px solid var(--bd);margin-top:6px;flex-shrink:0;}
-.home-apt-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;color:var(--tx);}
+.home-apt-header{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;font-size:13px;font-weight:800;cursor:pointer;color:var(--tx);transition:background .12s;}
+@media(hover:hover){.home-apt-header:hover{background:var(--bg2);}}
 .home-apt-body{max-height:260px;overflow-y:auto;}
 .home-apt-body.hide{display:none;}
 .home-apt-card-row{grid-template-columns:minmax(0,1.1fr) auto auto auto;}

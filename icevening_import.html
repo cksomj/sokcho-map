@@ -185,14 +185,17 @@ function importZones(){
   if(!convertedZones.length){setMsg('먼저 변환 확인을 해주세요.',false);return;}
   try{
     const existing=readZones();
-    const importedIds=new Set(convertedZones.map(z=>z.id));
+    const deletedIds=readDeletedZoneIds();
+    const toInsert=convertedZones.filter(z=>!deletedIds.has(String(z.id)));
+    const skippedCount=convertedZones.length-toInsert.length;
+    const importedIds=new Set(toInsert.map(z=>z.id));
     const cleaned=existing.filter(z=>!(z?.source?.system==='icevening'||importedIds.has(z.id)));
-    const zones=cleaned.concat(convertedZones.map((z,i)=>compactZone(z,i,true)));
+    const zones=cleaned.concat(toInsert.map((z,i)=>compactZone(z,i,true)));
     const payload=JSON.stringify(zones);
     localStorage.setItem('sokcho_zones',payload);
     localStorage.setItem('sokcho_builtin_samples_removed','1');
     updateSavedStatus();
-    setMsg(`우리 앱에 ${convertedZones.length}개 구역을 넣었습니다. 저장 크기 ${formatBytes(payload.length)}입니다. 앱을 새로고침하면 보입니다.`,true);
+    setMsg(`우리 앱에 ${toInsert.length}개 구역을 넣었습니다.${skippedCount?` (앱에서 이미 삭제했던 ${skippedCount}개는 다시 넣지 않았습니다.)`:''} 저장 크기 ${formatBytes(payload.length)}입니다. 앱을 새로고침하면 보입니다.`,true);
   }catch(e){
     const detail=e&&e.name==='QuotaExceededError'?'브라우저 저장공간이 부족합니다.':(e.message||'알 수 없는 오류');
     setMsg(`저장 실패: ${detail} 변환 파일 저장을 눌러 백업한 뒤, 다시 시도해 주세요.`,false);
@@ -238,6 +241,16 @@ function readZones(){
     const zones=JSON.parse(localStorage.getItem('sokcho_zones')||'[]');
     return Array.isArray(zones)?zones:[];
   }catch(e){return [];}
+}
+
+// V2 H7: 우리 앱(app-core.js)에서 관리자가 명시적으로 삭제한 구역 id 목록.
+// 같은 localStorage key(sokcho_deleted_zone_ids)를 공유해서, 이 도구로
+// 다시 가져오기를 해도 이미 삭제된 구역(id 기준)은 되살리지 않는다.
+function readDeletedZoneIds(){
+  try{
+    const ids=JSON.parse(localStorage.getItem('sokcho_deleted_zone_ids')||'[]');
+    return Array.isArray(ids)?new Set(ids.map(String)):new Set();
+  }catch(e){return new Set();}
 }
 
 function downloadBackup(){

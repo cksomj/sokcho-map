@@ -65,6 +65,39 @@ const S={
   apartmentCards:[],
 };
 
+// ================================================================
+// V2 H69: 저장소 추상화(읽기/쓰기 래퍼 함수만 도입). localStorage를
+// 직접 호출하던 77곳(getItem 35 / setItem 40 / removeItem 2)을 전부
+// 이 세 함수로 통일했다. 지금은 내부 동작이 기존과 100% 동일하게
+// localStorage를 그대로 쓰지만(동기 방식, 데이터 형태 무변경), 나중에
+// Firebase 등 다른 저장소로 바꿀 때 이 세 함수만 고치면 되도록
+// 호출부(app-core.js 전체)를 미리 이 창구 하나로 모아둔 것뿐이다.
+// 실제 저장소 교체(비동기 전환 등)는 이번 작업 범위가 아니다.
+// ================================================================
+function storageGet(key){return localStorage.getItem(key);}
+function storageSet(key,value){localStorage.setItem(key,value);}
+function storageRemove(key){localStorage.removeItem(key);}
+
+// V2 H69-B: Firebase 연결 준비(스캐폴딩만). firebase_config.js에 값이
+// 채워지고 실제 SDK 스크립트 태그(index.html에 주석으로 미리 자리만
+// 잡아둠)의 주석이 풀리기 전까지는 아무 동작도 하지 않는다. 실제로
+// storageGet/storageSet의 내부를 Firebase 호출로 바꾸는 작업은 이
+// 함수가 하는 일이 아니라 다음 단계(딘이 콘솔에서 프로젝트를 만든
+// 뒤)에서 별도로 진행한다 — 지금은 "연결 안 됨" 상태를 정상적으로
+// 감지하고 조용히 넘어가는 안전한 자리表시일 뿐이다.
+function initFirebaseIfConfigured(){
+  if(typeof FIREBASE_CONFIG==='undefined'||typeof isFirebaseConfigReady!=='function'||!isFirebaseConfigReady()){
+    return false;
+  }
+  if(typeof firebase==='undefined'){
+    console.log('[Firebase] config는 채워졌지만 SDK 스크립트가 아직 로드되지 않았습니다(index.html 주석 해제 필요).');
+    return false;
+  }
+  // TODO(딘 준비 완료 후 다음 단계에서 구현): firebase.initializeApp(FIREBASE_CONFIG) 등
+  console.log('[Firebase] config 준비됨 — 실제 연동은 다음 단계 작업에서 진행합니다.');
+  return false;
+}
+
 // 유틸
 function isDone(id){
   const now=new Date();
@@ -73,8 +106,11 @@ function isDone(id){
   return S.records.some(r=>r.zoneId===id&&r.date.startsWith(ym)&&r.completed===true);
 }
 function isInProgress(id){
-  // 현재 진행중이거나 미완료 기록이 있는지
-  return S.records.some(r=>r.zoneId===id&&r.completed===false);
+  // 해당 구역의 가장 최근 기록 기준으로 판단(과거에 완료 안 된 채
+  // 남은 기록이 있어도, 그 뒤에 완료 처리가 새로 됐다면 진행중이 아님)
+  const recs=S.records.filter(r=>r.zoneId===id);
+  if(recs.length===0)return false;
+  return recs[recs.length-1].completed===false;
 }
 function getZoneById(id){return S.zones.find(z=>String(z.id)===String(id));}
 function isResetZone(id){
@@ -284,8 +320,8 @@ function syncRoleUi(){
   document.querySelectorAll('.monitor-home-action').forEach(el=>el.classList.toggle('hide',isAdmin));
   const exit=document.getElementById('t-exit');
   if(exit)exit.classList.toggle('hide',!S.role);
-  const research=document.getElementById('t-research'); // V2 H41: 전 역할 열람 가능(관리자만 CRUD)
-  if(research)research.classList.toggle('hide',!S.role);
+  const research=document.getElementById('t-research'); // V2 H44: 인도자 전용 탭(봉사자는 안 보임). 관리자는 관리자 탭 안의 별도 섹션에서 관리
+  if(research)research.classList.toggle('hide',!isLeader);
   const adminTools=document.getElementById('admin-zone-tools');
   if(adminTools)adminTools.classList.toggle('hide',!isAdmin);
   const monitorTitle=document.getElementById('monitor-title');
@@ -298,22 +334,22 @@ function syncRoleUi(){
   if(s13Btn)s13Btn.classList.toggle('hide',!isAdmin);
 }
 function onlyDigits(v,len){return new RegExp(`^\\d{${len}}$`).test(String(v||''));}
-function getAdminPin(){return localStorage.getItem('sokcho_admin_pin')||'123456';}
-function setAdminPin(pin){localStorage.setItem('sokcho_admin_pin',pin);}
-function getAdminRecoveryEmail(){return localStorage.getItem('sokcho_admin_recovery_email')||'';}
-function setAdminRecoveryEmail(email){localStorage.setItem('sokcho_admin_recovery_email',email.trim().toLowerCase());}
-function getLeaderPin(){return localStorage.getItem('sokcho_leader_pin')||'0000';}
-function setLeaderPin(pin){localStorage.setItem('sokcho_leader_pin',pin);}
+function getAdminPin(){return storageGet('sokcho_admin_pin')||'123456';}
+function setAdminPin(pin){storageSet('sokcho_admin_pin',pin);}
+function getAdminRecoveryEmail(){return storageGet('sokcho_admin_recovery_email')||'';}
+function setAdminRecoveryEmail(email){storageSet('sokcho_admin_recovery_email',email.trim().toLowerCase());}
+function getLeaderPin(){return storageGet('sokcho_leader_pin')||'0000';}
+function setLeaderPin(pin){storageSet('sokcho_leader_pin',pin);}
 function getLeaderLock(){
-  try{return JSON.parse(localStorage.getItem('sokcho_active_leader')||'null');}catch(e){return null;}
+  try{return JSON.parse(storageGet('sokcho_active_leader')||'null');}catch(e){return null;}
 }
 function setLeaderLock(name){
-  localStorage.setItem('sokcho_active_leader',JSON.stringify({name,ts:Date.now()}));
+  storageSet('sokcho_active_leader',JSON.stringify({name,ts:Date.now()}));
 }
 function clearLeaderLock(name){
   const lock=getLeaderLock();
   if(!lock)return;
-  if(!name||lock.name===name)localStorage.removeItem('sokcho_active_leader');
+  if(!name||lock.name===name)storageRemove('sokcho_active_leader');
 }
 function isLeaderLockedFor(name){
   const lock=getLeaderLock();
@@ -324,33 +360,55 @@ function isLeaderLockedFor(name){
 function loadLeaders(){
   if(S._leadersLoaded)return;
   try{
-    const saved=JSON.parse(localStorage.getItem('sokcho_leaders')||'[]');
+    const saved=JSON.parse(storageGet('sokcho_leaders')||'[]');
     if(Array.isArray(saved)&&saved.length)S.leaders=saved;
   }catch(e){}
   S.leaders=S.leaders.map(({name,color})=>({name,color:color||'#D85A30'}));
   S._leadersLoaded=true;
 }
 function persistLeaders(){
-  localStorage.setItem('sokcho_leaders',JSON.stringify(S.leaders.map(({name,color})=>({name,color}))));
+  storageSet('sokcho_leaders',JSON.stringify(S.leaders.map(({name,color})=>({name,color}))));
+}
+// V2 H58: 봉사자 명단에 추가할 이름 목록(기존 이름 유지, 없는 이름만 추가).
+// 실제 데이터가 기기별 localStorage(sokcho_volunteers)에 있으므로,
+// loadVolunteers() 최초 로드 시 1회 기존 addVol()과 동일한 중복검사
+// 로직으로 병합한다(각 기기에서 처음 새로고침될 때 자동 반영).
+const PUBLISHER_SEED_H58=['강경필','강인경','김강용','김구산','김금영','김미영','김상철','김선길','김선민',
+  '김성주','김애경','김영화','김유훈','김일자','김춘자','나양숙','류춘한','문정란',
+  '박경옥','박금주','박수찬','박순자','박정남','사재천','서봉배','설양','성정단',
+  '신서영','신순식','안동주','오민진','오수연','오애숙','오제윤','우순월','유경숙',
+  '유인환','유재호','윤미선','이건우','이건희','이광자','이근숙','이기남','이문자',
+  '이삼룡','이상호','이선희','이순의','이실로','이여리','이영애','이옥자','이윤정',
+  '이정순','이준영','이해영','이향숙','이현준','이희원','장미자','장인규','전경남',
+  '정기훈','정득자','정성숙','정순덕','정영철','조경미','조경자','조동진','조미연',
+  '조선애','조회림','지영숙','차혜원','최경환','최규석','최옥희','최진원','최철영',
+  '한정희','홍문자','홍용희','홍정애','황신애','황운성','황재영','황희숙'];
+function mergePublisherSeedH58(){
+  let added=0;
+  PUBLISHER_SEED_H58.forEach(nm=>{
+    if(!S.volunteers.includes(nm)){S.volunteers.push(nm);added++;}
+  });
+  if(added>0)persistVolunteers();
 }
 function loadVolunteers(){
   if(S._volunteersLoaded)return;
   try{
-    const saved=JSON.parse(localStorage.getItem('sokcho_volunteers')||'[]');
+    const saved=JSON.parse(storageGet('sokcho_volunteers')||'[]');
     if(Array.isArray(saved)&&saved.length)S.volunteers=saved;
   }catch(e){}
+  mergePublisherSeedH58();
   S._volunteersLoaded=true;
 }
-function persistVolunteers(){localStorage.setItem('sokcho_volunteers',JSON.stringify(S.volunteers));}
+function persistVolunteers(){storageSet('sokcho_volunteers',JSON.stringify(S.volunteers));}
 function loadContacts(){
   if(S._contactsLoaded)return;
   try{
-    const saved=JSON.parse(localStorage.getItem('sokcho_contacts')||'{}');
+    const saved=JSON.parse(storageGet('sokcho_contacts')||'{}');
     if(saved&&typeof saved==='object')S.contacts={...S.contacts,...saved};
   }catch(e){}
   S._contactsLoaded=true;
 }
-function persistContacts(){localStorage.setItem('sokcho_contacts',JSON.stringify(S.contacts));}
+function persistContacts(){storageSet('sokcho_contacts',JSON.stringify(S.contacts));}
 
 // ================================================================
 // 아파트 단지 레지스트리 (V2 STEP1: 등록/조회/수정/삭제만. 구역 카드 연결은 STEP2)
@@ -358,13 +416,13 @@ function persistContacts(){localStorage.setItem('sokcho_contacts',JSON.stringify
 function loadApartmentRegistry(){
   if(S._apartmentRegistryLoaded)return;
   try{
-    const saved=JSON.parse(localStorage.getItem('sokcho_apartment_registry_v1')||'null');
+    const saved=JSON.parse(storageGet('sokcho_apartment_registry_v1')||'null');
     if(saved&&Array.isArray(saved.complexes))S.apartmentComplexes=saved.complexes;
   }catch(e){}
   S._apartmentRegistryLoaded=true;
 }
 function persistApartmentRegistry(){
-  localStorage.setItem('sokcho_apartment_registry_v1',JSON.stringify({schemaVersion:1,complexes:S.apartmentComplexes}));
+  storageSet('sokcho_apartment_registry_v1',JSON.stringify({schemaVersion:1,complexes:S.apartmentComplexes}));
 }
 function nextApartmentComplexId(){
   return Math.max(0,...S.apartmentComplexes.map(c=>Number(c.id)||0))+1;
@@ -441,6 +499,98 @@ function saveApartmentBuildingPin(complexId,bIdx,lat,lng){
   goTab('admin');
   renderApartmentComplexList(complexId);
   toast('지도에서 동 좌표를 저장했습니다.');
+}
+// ================================================================
+// V2 H62: 동 좌표 카카오 키워드검색 자동찾기. 완전자동확정이 아니라
+// 후보를 보여주고 관리자가 고른 것만 저장(주소검색이 틀릴 수 있어서).
+// kakao.maps.services는 index.html의 SDK 로드 URL에 &libraries=services가
+// 있어야 존재함(H62에서 추가). 좌표 저장 자체는 기존 saveApartmentBuildingPin
+// 을 그대로 재사용 — 지도클릭으로 찍는 것과 결과적으로 동일한 저장 경로.
+// ================================================================
+let apartmentGeoSearchState={}; // `${complexId}-${bIdx}` -> {query,loading,results:[{name,addr,lat,lng}]}
+function searchApartmentBuildingCoord(complexId,bIdx){
+  const c=S.apartmentComplexes.find(c=>c.id===complexId);
+  const b=c&&c.buildings[bIdx];
+  if(!b)return;
+  if(typeof kakao==='undefined'||!kakao.maps.services){
+    toast('카카오 지도 검색 기능을 불러오지 못했습니다. 잠시 후 다시 시도하거나 "지도에서 찍기"를 이용하세요.');
+    return;
+  }
+  const key=complexId+'-'+bIdx;
+  const query=`속초 ${c.name} ${b.dong}`.trim();
+  apartmentGeoSearchState[key]={query,loading:true,results:null};
+  renderApartmentComplexList(complexId);
+  const places=new kakao.maps.services.Places();
+  places.keywordSearch(query,(data,status)=>{
+    if(status!==kakao.maps.services.Status.OK||!data||!data.length){
+      apartmentGeoSearchState[key]={query,loading:false,results:[]};
+      renderApartmentComplexList(complexId);
+      toast(`"${query}" 검색 결과가 없습니다. "지도에서 찍기"로 직접 지정해주세요.`);
+      return;
+    }
+    apartmentGeoSearchState[key]={
+      query,loading:false,
+      results:data.slice(0,5).map(d=>({
+        name:d.place_name,
+        addr:d.road_address_name||d.address_name||'',
+        lat:parseFloat(d.y),
+        lng:parseFloat(d.x),
+      })),
+    };
+    renderApartmentComplexList(complexId);
+    setTimeout(()=>renderApartmentGeoPreviewMap(complexId,bIdx),50);
+  });
+}
+function confirmApartmentGeoCandidate(complexId,bIdx,idx){
+  const key=complexId+'-'+bIdx;
+  const state=apartmentGeoSearchState[key];
+  const cand=state&&state.results&&state.results[idx];
+  if(!cand)return;
+  saveApartmentBuildingPin(complexId,bIdx,cand.lat,cand.lng); // 기존 지도클릭 저장 로직 그대로 재사용
+  delete apartmentGeoSearchState[key];
+  toast(`"${cand.name}" 위치로 좌표를 저장했습니다.`);
+}
+function cancelApartmentGeoSearch(complexId,bIdx){
+  delete apartmentGeoSearchState[complexId+'-'+bIdx];
+  renderApartmentComplexList(complexId);
+}
+function renderApartmentGeoResultsHtml(complexId,bIdx){
+  const state=apartmentGeoSearchState[complexId+'-'+bIdx];
+  if(!state)return '';
+  if(state.loading)return `<div style="font-size:12px;color:var(--txm);padding:6px 0;">"${esc(state.query)}" 검색 중...</div>`;
+  if(!state.results||!state.results.length)return '';
+  return `<div class="apt-geo-results" style="border:1px solid var(--bd);border-radius:8px;padding:8px;margin:-2px 0 8px;">
+    <div style="font-size:11px;color:var(--txm);margin-bottom:6px;">"${esc(state.query)}" 검색 결과 — 아래 목록/지도에서 정확한 위치를 골라 확정하세요.</div>
+    <div id="apt-geo-preview-map-${complexId}-${bIdx}" style="height:200px;border-radius:6px;margin-bottom:8px;"></div>
+    ${state.results.map((r,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:6px 0;border-top:1px solid #EEF2F7;">
+      <div style="min-width:0;">
+        <div style="font-size:12px;font-weight:700;">${i+1}. ${esc(r.name)}</div>
+        <div style="font-size:11px;color:var(--txm);">${esc(r.addr)}</div>
+      </div>
+      <button class="btn btn-sm btn-p" style="flex-shrink:0;" onclick="confirmApartmentGeoCandidate(${complexId},${bIdx},${i})">이 위치 확정</button>
+    </div>`).join('')}
+    <button class="btn btn-sm btn-out" style="width:100%;margin-top:8px;" onclick="cancelApartmentGeoSearch(${complexId},${bIdx})">검색결과 닫기</button>
+  </div>`;
+}
+function renderApartmentGeoPreviewMap(complexId,bIdx){
+  const state=apartmentGeoSearchState[complexId+'-'+bIdx];
+  const container=document.getElementById(`apt-geo-preview-map-${complexId}-${bIdx}`);
+  if(!container||!state||!state.results||!state.results.length||typeof kakao==='undefined')return;
+  const first=state.results[0];
+  const map=new kakao.maps.Map(container,{center:new kakao.maps.LatLng(first.lat,first.lng),level:4});
+  const bounds=new kakao.maps.LatLngBounds();
+  state.results.forEach((r,i)=>{
+    const pos=new kakao.maps.LatLng(r.lat,r.lng);
+    bounds.extend(pos);
+    const marker=new kakao.maps.Marker({position:pos,map});
+    kakao.maps.event.addListener(marker,'click',()=>confirmApartmentGeoCandidate(complexId,bIdx,i));
+    const overlay=new kakao.maps.CustomOverlay({
+      position:pos,yAnchor:2.2,
+      content:`<div style="background:#378ADD;color:#fff;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700;white-space:nowrap;">${i+1}</div>`,
+    });
+    overlay.setMap(map);
+  });
+  if(state.results.length>1)map.setBounds(bounds);
 }
 function addApartmentBuilding(complexId){
   const c=S.apartmentComplexes.find(c=>c.id===complexId);
@@ -730,6 +880,10 @@ function renderApartmentComplexList(keepOpenId){
             <button class="btn btn-sm btn-out" onclick="goApartmentBuildingPin(${c.id},${bIdx})">🗺 지도에서 찍기</button>
           </div>
           <div class="add-row">
+            <button class="btn btn-sm btn-out" style="flex:1;" onclick="searchApartmentBuildingCoord(${c.id},${bIdx})">🔍 자동으로 찾기</button>
+          </div>
+          ${renderApartmentGeoResultsHtml(c.id,bIdx)}
+          <div class="add-row">
             <input type="number" id="apt-unit-start-${c.id}-${bIdx}" placeholder="시작호">
             <input type="number" id="apt-unit-end-${c.id}-${bIdx}" placeholder="끝호">
           </div>
@@ -777,7 +931,7 @@ const APARTMENT_CARD_REMAINDER_MERGE_MAX=10; // "마지막 자투리" 병합 기
 // 있다 — persistApartmentCards() 자체에서 항상 걸러내 어떤 저장 경로로도 부활하지 않게 한다.
 function loadDeletedApartmentCardIds(){
   try{
-    const ids=JSON.parse(localStorage.getItem('sokcho_deleted_apartment_card_ids')||'[]');
+    const ids=JSON.parse(storageGet('sokcho_deleted_apartment_card_ids')||'[]');
     return Array.isArray(ids)?ids.map(String):[];
   }catch(e){return [];}
 }
@@ -785,13 +939,13 @@ function addDeletedApartmentCardId(id){
   try{
     const ids=new Set(loadDeletedApartmentCardIds());
     ids.add(String(id));
-    localStorage.setItem('sokcho_deleted_apartment_card_ids',JSON.stringify([...ids]));
+    storageSet('sokcho_deleted_apartment_card_ids',JSON.stringify([...ids]));
   }catch(e){}
 }
 function loadApartmentCards(){
   if(S._apartmentCardsLoaded)return;
   try{
-    const saved=JSON.parse(localStorage.getItem('sokcho_apartment_cards_v1')||'null');
+    const saved=JSON.parse(storageGet('sokcho_apartment_cards_v1')||'null');
     if(saved&&Array.isArray(saved.cards)){
       const deletedIds=new Set(loadDeletedApartmentCardIds());
       S.apartmentCards=deletedIds.size?saved.cards.filter(c=>!deletedIds.has(String(c&&c.id))):saved.cards;
@@ -802,10 +956,12 @@ function loadApartmentCards(){
 function persistApartmentCards(){
   const deletedIds=new Set(loadDeletedApartmentCardIds());
   if(deletedIds.size)S.apartmentCards=S.apartmentCards.filter(c=>!deletedIds.has(String(c&&c.id)));
-  localStorage.setItem('sokcho_apartment_cards_v1',JSON.stringify({schemaVersion:1,cards:S.apartmentCards}));
+  storageSet('sokcho_apartment_cards_v1',JSON.stringify({schemaVersion:1,cards:S.apartmentCards}));
 }
 function nextApartmentCardId(){
-  return Math.max(0,...S.apartmentCards.map(c=>Number(c.id)||0))+1;
+  // V2 H43/PARTB: 딘 확정 — 아파트구역카드는 500번대(5001~). 기존 카드가
+  // 하나도 없어(딘 확인) 마이그레이션 불필요, 앞으로 만들 카드부터 적용.
+  return Math.max(5000,...S.apartmentCards.map(c=>Number(c.id)||0))+1;
 }
 function unitNumber(ho){
   const m=String(ho||'').match(/\d+/);
@@ -981,6 +1137,84 @@ function confirmApartmentCardGen(){
   renderApartmentCardList();
   renderHomeApartmentCardList(); // V2 H9: 홈 화면 카드 목록도 새로고침 없이 즉시 반영되도록
   toast(`${createdCount}개 카드 생성됨`);
+}
+
+// ================================================================
+// V2 H63: 과거 실전에서 쓰인 KCC/부영/진덕 등 아파트 카드 데이터
+// (KCC-부영6단지까지_실전.xlsx, 진덕에서주공4차2단지.xlsx) 일괄 등록.
+// 데이터 자체는 apartment_import_h63_data.js(APARTMENT_IMPORT_H63_DATA,
+// zones_seed.js와 동일한 "큰 정적 데이터는 별도 파일" 패턴)에서 가져오고,
+// 여기서는 기존 레지스트리(addApartmentComplex/addApartmentBuilding과
+// 동일한 데이터 구조)와 카드(confirmApartmentCardGen과 동일한 데이터
+// 구조) 형식 그대로 등록만 한다. 기존 단지/카드는 이름이 같으면 재사용
+// (중복 생성 안 함), 좌표는 비워둠(추후 H62 도구로 채움).
+// ================================================================
+function runApartmentImportH63(){
+  if(S.role!=='admin')return;
+  if(typeof APARTMENT_IMPORT_H63_DATA==='undefined'){toast('가져오기 데이터 파일(apartment_import_h63_data.js)이 로드되지 않았습니다.');return;}
+  const data=APARTMENT_IMPORT_H63_DATA;
+  if(storageGet('sokcho_h63_import_done')==='1'){
+    if(!confirm('이미 이 기기에서 KCC/진덕 카드 일괄등록을 실행한 기록이 있습니다. 다시 실행하면 카드가 중복 생성될 수 있습니다. 정말 다시 실행하시겠습니까?'))return;
+  }
+  if(!confirm(`KCC/진덕 실전 카드 데이터를 등록합니다.\n- 단지/동 ${data.complexes.length}개\n- 카드 ${data.cards.length}개\n기존 단지/카드 데이터는 삭제하지 않고 그대로 두고 추가만 합니다(같은 이름 단지는 재사용). 진행할까요?`))return;
+  exportBackup(); // 대규모 데이터 등록 전 자동 백업(구역번호 재정리 때와 동일한 안전 절차)
+
+  // PART2: 단지/동/호수 레지스트리 등록
+  let newComplexCount=0,newBuildingCount=0,newUnitCount=0;
+  const complexIdByName={};
+  data.complexes.forEach(cx=>{
+    let complex=S.apartmentComplexes.find(c=>c.name===cx.name);
+    if(!complex){
+      complex={id:nextApartmentComplexId(),name:cx.name,buildings:[]};
+      S.apartmentComplexes.push(complex);
+      newComplexCount++;
+    }
+    complexIdByName[cx.name]=complex.id;
+    cx.buildings.forEach(b=>{
+      let building=complex.buildings.find(bb=>bb.dong===b.dong);
+      if(!building){
+        building={dong:b.dong,units:[]};
+        complex.buildings.push(building);
+        newBuildingCount++;
+      }
+      const existingUnits=new Set(building.units);
+      b.units.forEach(u=>{if(!existingUnits.has(u)){building.units.push(u);existingUnits.add(u);newUnitCount++;}});
+    });
+    sortApartmentBuildingsInPlace(complex);
+  });
+  persistApartmentRegistry();
+
+  // PART3: 카드 생성 (카드번호는 새로 순번 부여, 이름에 원본 참조 남김)
+  let newCardCount=0;
+  data.cards.forEach(card=>{
+    const points=card.buildings.map(b=>({
+      complexId:complexIdByName[b.complex],
+      complexName:b.complex,
+      dong:b.dong,
+      lat:null,lng:null,
+      units:b.units.map(ho=>({ho,completed:false,forbidden:false})),
+    }));
+    // 진덕(홀수/짝수)은 시트 이름 자체를 카드이름으로(예: "진덕홀수 (구#1)"),
+    // KCC는 기존 카드생성과 같은 방식으로 첫 지점 단지명+"외 N곳"(예: "KCC 외 4곳 (구#350)")
+    let nameCore;
+    if(card.source==='KCC'){
+      const baseName=points[0]?.complexName||'아파트';
+      nameCore=points.length>1?`${baseName} 외 ${points.length-1}곳`:baseName;
+    }else{
+      nameCore=card.source;
+    }
+    const name=`${nameCore} (${card.ref})`;
+    const id=nextApartmentCardId();
+    S.apartmentCards.push({id,number:id,name,points,status:'미시작',createdAt:new Date().toISOString()});
+    newCardCount++;
+  });
+  persistApartmentCards();
+  storageSet('sokcho_h63_import_done','1');
+
+  renderApartmentComplexList();
+  renderApartmentCardList();
+  renderHomeApartmentCardList();
+  toast(`가져오기 완료: 단지 ${newComplexCount}개 추가(총 ${S.apartmentComplexes.length}개), 동 ${newBuildingCount}개, 호수 ${newUnitCount}개, 카드 ${newCardCount}개 생성됨`);
 }
 
 // ================================================================
@@ -1350,6 +1584,8 @@ function addApartmentCardPoint(cardId){
 function renderApartmentCardList(keepOpenId){
   loadApartmentCards();
   if(keepOpenId!=null)apartmentCardOpenId=keepOpenId;
+  const countEl=document.getElementById('adm-aptcards-count');
+  if(countEl)countEl.textContent=S.apartmentCards.length;
   const wrap=document.getElementById('apt-card-list');
   if(!wrap)return;
   wrap.innerHTML=S.apartmentCards.length?S.apartmentCards.map(card=>{
@@ -1359,7 +1595,10 @@ function renderApartmentCardList(keepOpenId){
       <div class="apt-complex-head" onclick="toggleApartmentCardOpen(${card.id})">
         <div style="min-width:0;">
           <div style="font-size:13px;font-weight:700;">#${card.number} ${esc(card.name)}</div>
-          <div style="font-size:12px;color:var(--txm);">${card.points.length}개 지점 · 총 ${totalUnits}호 · ${esc(card.status)}</div>
+          <div style="font-size:12px;color:var(--txm);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span>${card.points.length}개 지점 · 총 ${totalUnits}호</span>
+            <span class="zc-status ${card.status==='완료'?'done':card.status==='미완료'||card.status==='진행중'?'progress':'reset'}">${esc(card.status)}</span>
+          </div>
         </div>
         <div style="display:flex;gap:6px;">
           <button class="btn btn-sm btn-out" onclick="event.stopPropagation();showApartmentCardLine(${card.id})">라인 연결 보기</button>
@@ -1409,19 +1648,60 @@ function renderApartmentCardList(keepOpenId){
 function apartmentCardTotalUnits(card){return card.points.reduce((s,p)=>s+p.units.length,0);}
 function apartmentCardCompletedUnits(card){return card.points.reduce((s,p)=>s+p.units.filter(u=>u.completed).length,0);}
 function apartmentCardCheckableUnits(card){return card.points.reduce((s,p)=>s+p.units.filter(u=>!u.forbidden).length,0);}
-function apartmentCardFirstPointCoord(card){
-  const pt=card&&card.points[0];
+// H86: 기존 apartmentCardFirstPointCoord(card)를 임의 지점 index를
+// 받는 형태로 일반화(호출부가 1곳뿐이라 별도 wrapper 없이 이름 자체를
+// 변경). 좌표 조회 로직(포인트 자체 → H84가 추가한 동 레지스트리 →
+// 단지)은 그대로, "어느 지점을 볼지"만 인자로 분리했다.
+function apartmentCardPointCoord(card,idx){
+  const pt=card&&card.points[idx];
   if(!pt)return null;
   // V2 H4: 동(building) 좌표 우선 사용. 동 좌표가 없는 구버전 카드는 단지 좌표로 하위호환.
-  if(Number.isFinite(pt.lat)&&Number.isFinite(pt.lng))return[pt.lat,pt.lng];
-  const complex=S.apartmentComplexes.find(c=>c.id===pt.complexId);
-  return hasApartmentComplexCoord(complex)?[complex.lat,complex.lng]:null;
+  if(Number.isFinite(pt.lat)&&Number.isFinite(pt.lng)){
+    return[pt.lat,pt.lng];
+  }
+  // H92: 값은 같아 보여도 타입이 다르면(문자열 "2" vs 숫자 2) ===는
+  // 항상 false다. 저장 이력이 서로 다른 시점의 코드로 만들어진
+  // 기기에서는 complex.id/point.complexId 중 어느 한쪽만 문자열로
+  // 남아있을 수 있어, 여기서는 항상 String()으로 변환해 비교한다
+  // (데이터 자체의 타입을 강제로 통일하지 않음 — 다른 20여 곳의
+  // 관리자 화면 조회 코드는 지금까지 문제 보고가 없어 그대로 둠,
+  // 이 함수만 타입에 안전하게).
+  let complex=S.apartmentComplexes.find(c=>String(c.id)===String(pt.complexId));
+  // H91: point.complexId가 (구버전 데이터 등의 이유로) 실제 레지스트리
+  // id와 어긋나 있을 경우를 대비한 방어적 fallback — id로 못 찾으면
+  // 카드가 이미 들고 있는 complexName으로 한 번 더 시도한다. 정상
+  // 데이터에서는 이 fallback이 아예 실행되지 않는다(id로 바로 찾음).
+  // 근본 수정(카드의 잘못된 complexId 자체를 고치는 것)은
+  // repairApartmentCardComplexId()가 담당(runDeviceSyncAll에 연결).
+  if(!complex&&pt.complexName){
+    complex=S.apartmentComplexes.find(c=>c.name===pt.complexName);
+  }
+  // H84: H63으로 생성된 카드는 point.lat/lng가 항상 null이라 위 조건을
+  // 절대 못 만족한다. H62/H80~82로 등록한 동(building) 좌표는
+  // S.apartmentComplexes[].buildings[]에 저장되는데, 이 함수가 그
+  // 레지스트리를 조회하는 단계 자체가 빠져있어서 등록된 좌표가 카드에
+  // 전혀 연결되지 않았던 것이 원인(이름/키 불일치 문제 아님 —
+  // complexId+dong 매칭은 정상 동작함, 조회 코드가 없었을 뿐).
+  const building=complex&&complex.buildings.find(b=>b.dong===pt.dong);
+  if(hasApartmentBuildingCoord(building)){
+    return[building.lat,building.lng];
+  }
+  const complexCoordOk=hasApartmentComplexCoord(complex);
+  return complexCoordOk?[complex.lat,complex.lng]:null;
 }
 function openApartmentCardKakaoStart(cardId){
   const card=S.apartmentCards.find(c=>c.id===cardId);
   if(!card){toast('카드를 먼저 선택하세요.');return;}
-  const pt=apartmentCardFirstPointCoord(card);
-  if(!pt){toast('이 카드의 첫 지점에 좌표가 없습니다. 관리자 화면에서 동(또는 단지) 좌표를 먼저 등록하세요.');return;}
+  // H86: 진행 중인 세션이 이 카드와 같으면(=진행화면에서 누른 경우)
+  // 지금 보고 있는 지점(S.aptSession.currentPointIdx) 좌표로 안내한다.
+  // 아직 시작 전 목록에서 누른 경우(DO_NOT_TOUCH 대상)는 기존과 동일하게
+  // 항상 첫 지점(0)을 사용 — S.aptSession이 이 카드로 활성화되어 있지
+  // 않으므로 아래 조건이 자연히 false가 되어 그대로 유지된다.
+  const idx=(S.aptSession.active&&S.aptSession.cardId===cardId)?(S.aptSession.currentPointIdx||0):0;
+  const pt=apartmentCardPointCoord(card,idx);
+  if(!pt){
+    toast('이 지점에 좌표가 없습니다. 관리자 화면에서 동(또는 단지) 좌표를 먼저 등록하세요.');return;
+  }
   const appUrl=`kakaomap://route?sp=&ep=${pt[0]},${pt[1]}&by=FOOT`; // V2 H24: 공식 딥링크 형식(sp= 명시)
   const webUrl=`https://map.kakao.com/link/map/${pt[0]},${pt[1]}`;
   openExternalApp(appUrl,webUrl,'카카오맵');
@@ -1489,7 +1769,8 @@ function renderHomeApartmentCardList(){
   if(!wrap)return;
   const countEl=document.getElementById('home-apt-count');
   if(countEl)countEl.textContent=S.apartmentCards.length;
-  let cards=[...S.apartmentCards].sort((a,b)=>(Number(a.number)||0)-(Number(b.number)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
+  // V2 H67: 미완료(진행중/미완료 포함) 우선, 완료는 뒤로(구역/상가와 동일 규칙)
+  let cards=[...S.apartmentCards].sort((a,b)=>(a.status==='완료'?1:0)-(b.status==='완료'?1:0)||(Number(a.number)||0)-(Number(b.number)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
   cards=cards.filter(c=>homeAptFilter==='all'||(homeAptFilter==='undone'&&c.status!=='완료')||(homeAptFilter==='done'&&c.status==='완료'));
   if(!cards.length){
     wrap.innerHTML='<p style="font-size:13px;color:var(--txm);text-align:center;padding:14px 0;">아파트 카드가 없습니다.</p>';
@@ -1497,7 +1778,7 @@ function renderHomeApartmentCardList(){
   }
   wrap.innerHTML=cards.map(card=>{
     const done=card.status==='완료';
-    const inProg=card.status==='진행중'||card.status==='이어하기';
+    const inProg=card.status==='진행중'||card.status==='미완료';
     const total=apartmentCardCheckableUnits(card);
     const doneCnt=apartmentCardCompletedUnits(card);
     const selected=S.homeSelectedAptCard===card.id;
@@ -1561,6 +1842,10 @@ function scrollToAptSvcLastChecked(){
 // 다시 방문 가능), 층별 그룹핑은 PART1의 groupApartmentUnitsByFloor를
 // 그대로 재사용한다.
 function initAptSvcCurrentPointIdx(card){
+  // V2 H65: "오늘봉사 여기까지" 마커가 있으면 그 지점을 최우선으로 연다
+  // (스크롤 대상 층이 화면에 렌더링되어 있어야 자동이동이 가능하므로).
+  // 마커가 없으면 기존 lastCheckedPoint 로직 그대로.
+  if(card.lastWorkedPoint!=null&&card.points[card.lastWorkedPoint])return card.lastWorkedPoint;
   if(card.lastCheckedPoint!=null&&card.points[card.lastCheckedPoint])return card.lastCheckedPoint;
   const firstIncomplete=card.points.findIndex(p=>{
     const checkable=p.units.filter(u=>!u.forbidden);
@@ -1580,7 +1865,7 @@ function openAptSvcFullscreen(cardId){
   S.aptSession.currentPointIdx=initAptSvcCurrentPointIdx(card);
   renderAptSvcChecklist();
   startAptSvcTimer();
-  scrollToAptSvcLastChecked();
+  scrollToAptSvcWorkMarker();
 }
 function closeAptSvcFullscreen(){
   const fs=document.getElementById('apt-svc-fullscreen');
@@ -1642,19 +1927,33 @@ function renderAptSvcChecklist(){
 
   const checklistHtml=`<div class="apt-svc-point-card">
     <div class="apt-svc-point-head">${pIdx+1}/${card.points.length}. ${esc(p.complexName)} ${esc(p.dong)} <span style="font-weight:400;color:var(--txm);">${doneCnt}/${checkableUnits.length}</span></div>
-    ${floorGroups.map(g=>`<div class="apt-svc-floor-group">
-      <div class="apt-svc-floor-head">${g.floor==null?'기타 호수':g.floor+'층'}</div>
+    ${floorGroups.map(g=>{
+      const isWorkMarker=card.lastWorkedPoint===pIdx&&card.lastWorkedFloor===g.floor;
+      // V2 H67: 개별 호수마다 있던 체크박스를 층별 체크박스 하나로 통합.
+      // 체크하면 그 층의 체크가능(금지 아닌) 호수 전부가 한번에 완료/미완료로
+      // 토글된다(개별 호수 완료 여부 자체는 여전히 unit.completed로 저장 —
+      // 완료 집계 로직인 apartmentCardCheckableUnits/CompletedUnits는 무수정).
+      const floorEntries=g.units.map(ho=>unitByHo[ho]).filter(e=>e&&!e.u.forbidden);
+      const floorAllDone=floorEntries.length>0&&floorEntries.every(e=>e.u.completed);
+      return `<div class="apt-svc-floor-group" id="apt-svc-floor-${pIdx}-${g.floor}"${isWorkMarker?' style="background:#EAF7EE;border:1px solid #16A34A;border-radius:8px;padding:6px 8px;margin:-6px -8px 10px;"':''}>
+      <div class="apt-svc-floor-head" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:${floorEntries.length?'pointer':'default'};">
+          <input type="checkbox" ${floorAllDone?'checked':''} ${floorEntries.length?'':'disabled'} onchange="toggleAptSvcFloorAll(${pIdx},${g.floor})">
+          <span>${g.floor==null?'기타 호수':g.floor+'층'}</span>
+        </label>
+        <button type="button" onclick="toggleAptSvcFloorMarker(${pIdx},${g.floor})" style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;border:1px solid ${isWorkMarker?'#16A34A':'var(--bd)'};background:${isWorkMarker?'#16A34A':'var(--bg2)'};color:${isWorkMarker?'#fff':'var(--txm)'};white-space:nowrap;">${isWorkMarker?'📍 오늘 여기까지':'오늘봉사 여기까지'}</button>
+      </div>
       <div class="apt-svc-unit-list">
         ${g.units.map(ho=>{
           const{u,uIdx}=unitByHo[ho];
           const isLast=card.lastCheckedPoint===pIdx&&card.lastCheckedUnit===uIdx;
-          return `<label class="apt-svc-unit-row${u.forbidden?' forbidden':''}${isLast?' last-checked':''}" id="apt-svc-unit-${pIdx}-${uIdx}">
-            <input type="checkbox" ${u.completed?'checked':''} ${u.forbidden?'disabled':''} onchange="toggleAptSvcUnit(${pIdx},${uIdx})">
-            <span>${esc(u.ho)}${u.forbidden?' (금지)':''}</span>
-          </label>`;
+          return `<span class="apt-svc-unit-row${u.forbidden?' forbidden':''}${isLast?' last-checked':''}" id="apt-svc-unit-${pIdx}-${uIdx}" style="${u.completed?'background:var(--okbg);border-color:#B7D990;':''}cursor:default;">
+            <span>${u.completed?'✅ ':''}${esc(u.ho)}${u.forbidden?' (금지)':''}</span>
+          </span>`;
         }).join('')}
       </div>
-    </div>`).join('')}
+    </div>`;
+    }).join('')}
   </div>`;
 
   const advanceHtml=allDone?`<div class="apt-svc-advance-banner">
@@ -1666,6 +1965,64 @@ function renderAptSvcChecklist(){
   </div>`:'';
 
   wrap.innerHTML=pointNav+checklistHtml+advanceHtml;
+}
+// V2 H65: "오늘봉사 여기까지" 층 마커. 주택구역의 이어하기 핀과 같은
+// 역할이지만 아파트는 지도 핀 대신 층 단위 참고표시로 둔다. 개별 호수
+// 체크/완료 판정(toggleAptSvcUnit, card.status)과는 완전히 별개의
+// 필드(lastWorkedPoint/lastWorkedFloor)이며, 이 마커 자체는 완료를
+// 의미하지 않는다(그대로 안 누르고 넘어가도 됨 — 참고용).
+function toggleAptSvcFloorMarker(pIdx,floor){
+  const card=S.apartmentCards.find(c=>c.id===S.aptSession.cardId);
+  if(!card||!card.points[pIdx])return;
+  const already=card.lastWorkedPoint===pIdx&&card.lastWorkedFloor===floor;
+  if(already){
+    card.lastWorkedPoint=null;
+    card.lastWorkedFloor=null;
+  }else{
+    card.lastWorkedPoint=pIdx;
+    card.lastWorkedFloor=floor;
+  }
+  persistApartmentCards();
+  renderAptSvcChecklist();
+  toast(already?'표시를 지웠습니다.':`"${floor==null?'기타 호수':floor+'층'}"을 오늘 작업 위치로 표시했습니다.`);
+}
+// 이어하기 재진입 시 스크롤 우선순위: 오늘봉사 마커(사람이 직접 찍은 표시)가
+// 있으면 그쪽으로, 없으면 기존 scrollToAptSvcLastChecked()(마지막 체크된
+// 호수) 그대로 사용 — 기존 함수는 손대지 않고 이 함수에서만 우선순위를 정함.
+function scrollToAptSvcWorkMarker(){
+  const card=S.apartmentCards.find(c=>c.id===S.aptSession.cardId);
+  if(card&&card.lastWorkedPoint!=null){
+    const el=document.getElementById(`apt-svc-floor-${card.lastWorkedPoint}-${card.lastWorkedFloor}`);
+    if(el){el.scrollIntoView({behavior:'smooth',block:'center'});return;}
+  }
+  scrollToAptSvcLastChecked();
+}
+// V2 H67: 층별 체크박스 하나로 그 층의 체크가능 호수 전부를 한번에
+// 완료/미완료 처리. toggleAptSvcUnit과 동일한 저장 방식(unit.completed,
+// persistApartmentCards, 전체완료시 자동 completeAptSvcSession)을 그대로
+// 재사용하고, 대상만 호수 1개 대신 층 전체로 확장한 것뿐이다.
+function toggleAptSvcFloorAll(pIdx,floor){
+  const card=S.apartmentCards.find(c=>c.id===S.aptSession.cardId);
+  const pt=card&&card.points[pIdx];
+  if(!pt)return;
+  const group=groupApartmentUnitsByFloor(pt.units.map(u=>u.ho)).find(g=>g.floor===floor);
+  if(!group)return;
+  const unitByHo={};
+  pt.units.forEach((u,uIdx)=>{unitByHo[u.ho]={u,uIdx};});
+  const entries=group.units.map(ho=>unitByHo[ho]).filter(e=>e&&!e.u.forbidden);
+  if(!entries.length)return;
+  const newVal=!entries.every(e=>e.u.completed);
+  entries.forEach(e=>{e.u.completed=newVal;});
+  if(newVal){
+    const last=entries[entries.length-1];
+    card.lastCheckedPoint=pIdx;
+    card.lastCheckedUnit=last.uIdx;
+  }
+  persistApartmentCards();
+  renderAptSvcChecklist();
+  if(newVal&&apartmentCardCheckableUnits(card)>0&&apartmentCardCompletedUnits(card)>=apartmentCardCheckableUnits(card)){
+    completeAptSvcSession();
+  }
 }
 function toggleAptSvcUnit(pIdx,uIdx){
   const card=S.apartmentCards.find(c=>c.id===S.aptSession.cardId);
@@ -1684,7 +2041,11 @@ function toggleAptSvcUnit(pIdx,uIdx){
 function pauseAptSvcSession(){
   if(!S.aptSession.active)return;
   const card=S.apartmentCards.find(c=>c.id===S.aptSession.cardId);
-  if(card&&card.status!=='완료')card.status='이어하기';
+  // V2 H66: 주택구역의 "미완료" 버튼/상태와 같은 이름·같은 로직으로 통일
+  // (예전엔 '이어하기'라는 상태값만 있어서 관리자/인도자 목록에 "미완료"로
+  // 안 보였음). 완료 여부와 무관하게 진행 상태를 그대로 저장하는 동작
+  // 자체는 그대로 두고 상태값 이름만 구역과 맞춤.
+  if(card&&card.status!=='완료')card.status='미완료';
   persistApartmentCards();
   S.aptSession.active=false;
   S.aptSession.cardId=null;
@@ -1692,6 +2053,7 @@ function pauseAptSvcSession(){
   closeAptSvcFullscreen();
   goTab('home');
   renderHomeApartmentCardList();
+  toast('📍 미완료로 저장했습니다. "이어하기"로 계속할 수 있습니다.');
 }
 function aptSvcChangeCard(){
   showAppConfirm('카드를 변경할까요?','현재 체크 상태를 저장하고 카드 목록으로 돌아갑니다. 나중에 같은 카드를 다시 열면 이어할 수 있습니다.','변경하기',()=>pauseAptSvcSession());
@@ -1728,19 +2090,19 @@ function cleanupBuiltInSamples(){
     const name=String(l.name||'');
     return !sampleRouteIds.has(l.id)&&!sampleRouteNames.has(name)&&!name.includes('예시')&&!sampleZoneIds.has(l.zoneId);
   });
-  if(localStorage.getItem('sokcho_builtin_samples_removed')!=='1'){
+  if(storageGet('sokcho_builtin_samples_removed')!=='1'){
     S.zones=S.zones.filter(z=>!sampleZoneNames.has(z.name));
   }
   if(S.zones.length!==zoneBefore)persistZones();
   if(S.rteLines.length!==routeBefore)persistRteLines();
-  localStorage.setItem('sokcho_builtin_samples_removed','1');
+  storageSet('sokcho_builtin_samples_removed','1');
 }
 
 // V2 H7: 관리자가 명시적으로 삭제한 구역 id는 여기 영구 기록되어,
 // zones_seed.js 재시딩이나 icevening_import.html 재가져오기로도 다시 살아나지 않는다.
 function loadDeletedZoneIds(){
   try{
-    const ids=JSON.parse(localStorage.getItem('sokcho_deleted_zone_ids')||'[]');
+    const ids=JSON.parse(storageGet('sokcho_deleted_zone_ids')||'[]');
     return Array.isArray(ids)?ids.map(String):[];
   }catch(e){return [];}
 }
@@ -1748,12 +2110,12 @@ function addDeletedZoneId(id){
   try{
     const ids=new Set(loadDeletedZoneIds());
     ids.add(String(id));
-    localStorage.setItem('sokcho_deleted_zone_ids',JSON.stringify([...ids]));
+    storageSet('sokcho_deleted_zone_ids',JSON.stringify([...ids]));
   }catch(e){}
 }
 function loadCoreData(){
   try{
-    const zones=JSON.parse(localStorage.getItem('sokcho_zones')||'[]');
+    const zones=JSON.parse(storageGet('sokcho_zones')||'[]');
     S.zones=Array.isArray(zones)?zones:[];
   }catch(e){S.zones=[];}
   if(Array.isArray(window.SOKCHO_ZONES_SEED)&&window.SOKCHO_ZONES_SEED.length){
@@ -1773,17 +2135,17 @@ function loadCoreData(){
     if(seedZones.length){
       S.zones=S.zones.concat(seedZones);
       try{
-        localStorage.setItem('sokcho_zones',JSON.stringify(S.zones));
-        localStorage.setItem('sokcho_builtin_samples_removed','1');
+        storageSet('sokcho_zones',JSON.stringify(S.zones));
+        storageSet('sokcho_builtin_samples_removed','1');
       }catch(e){}
     }
   }
   try{
-    const records=JSON.parse(localStorage.getItem('sokcho_records')||'[]');
+    const records=JSON.parse(storageGet('sokcho_records')||'[]');
     S.records=Array.isArray(records)?records:[];
   }catch(e){S.records=[];}
   try{
-    const progress=JSON.parse(localStorage.getItem('sokcho_progress')||'{}');
+    const progress=JSON.parse(storageGet('sokcho_progress')||'{}');
     S.zones.forEach(z=>{
       if(progress&&progress[z.id])z.progress=progress[z.id];
     });
@@ -1795,8 +2157,8 @@ function loadCoreData(){
   if(changed)persistZones();
   S.nextId=Math.max(0,...S.zones.map(z=>Number(z.id)||0));
 }
-function persistZones(){localStorage.setItem('sokcho_zones',JSON.stringify(S.zones));}
-function persistRecords(){localStorage.setItem('sokcho_records',JSON.stringify(S.records));}
+function persistZones(){storageSet('sokcho_zones',JSON.stringify(S.zones));}
+function persistRecords(){storageSet('sokcho_records',JSON.stringify(S.records));}
 function persistAllData(){persistZones();persistRecords();persistRteLines();persistLeaders();persistVolunteers();persistContacts();persistApartmentRegistry();persistApartmentCards();} // V2 H16: 아파트 레지스트리/카드도 백업 복원 후 저장되게 포함
 function refreshAllViews(){
   drawAllZones(null);renderSideList();renderRouteGrid();renderRecords();
@@ -1811,12 +2173,19 @@ function zoneAutoColor(index){
   ];
   return palette[Math.abs(index)%palette.length];
 }
-function zoneStrokeColor(z){
+// V2 H77: 구역 경계색 통일. 기본(미선택) 상태는 전부 진한 청색
+// 하나(#185FA5 — 이 파일에서 이미 기본색으로 쓰이던 값과 동일해서
+// 새 색을 만들지 않고 그대로 재사용)로 통일하고, 선택된 구역만
+// 원래 배정된 고유색(zoneAutoColor, z.color — 데이터/할당 로직은
+// 그대로 둠)으로 강조한다. Polygon geometry나 선택 로직(H23/H53) 자체는
+// 손대지 않고, "어떤 색을 쓸지" 계산만 isActive 인자로 갈라지게 함.
+const ZONE_DEFAULT_COLOR='#185FA5';
+function zoneStrokeColor(z,isActive){
   if(!z.color)z.color=zoneAutoColor(S.zones.findIndex(x=>x===z));
-  return z.color;
+  return isActive?z.color:ZONE_DEFAULT_COLOR;
 }
-function zoneFillColor(z){
-  const c=zoneStrokeColor(z);
+function zoneFillColor(z,isActive){
+  const c=zoneStrokeColor(z,isActive);
   return c+'16';
 }
 function zoneMapLabel(z){
@@ -1841,7 +2210,7 @@ function resetAdminPinByEmail(){
 // 직접 그린 봉사 경로 저장/복원
 function loadRteLines(){
   try{
-    const raw=JSON.parse(localStorage.getItem('sokcho_routes')||'[]');
+    const raw=JSON.parse(storageGet('sokcho_routes')||'[]');
     S.rteLines=Array.isArray(raw)?raw.filter(l=>l&&l.zoneId&&Array.isArray(l.pts)&&l.pts.length>=2).map(l=>({
       id:l.id||Date.now()+Math.random(),
       zoneId:l.zoneId,
@@ -1856,7 +2225,7 @@ function loadRteLines(){
 }
 function persistRteLines(){
   const data=S.rteLines.map(({id,zoneId,mode,name,color,pts,visible,createdAt})=>({id,zoneId,mode,name,color,pts,visible,createdAt}));
-  localStorage.setItem('sokcho_routes',JSON.stringify(data));
+  storageSet('sokcho_routes',JSON.stringify(data));
 }
 function currentRteLines(){
   return S.rteLines.filter(l=>l.zoneId===S.curZone&&(l.mode||'2')===S.routeMode);
@@ -2303,13 +2672,14 @@ function selectLeaderMode(mode){
 
 function selectRole(role){
   currentRole=role;
-  // 버튼 활성화
+  // V2 H76: 선택 표시를 인라인 opacity 대신 .on 클래스 토글로 바꿈
+  // (카드형 디자인 — 선택된 카드는 accent 테두리+배경, 나머지는
+  // 중립 스타일. 역할 분기 로직 자체는 아래 그대로 무수정).
+  const rkey=role==='volunteer'?'vol':role;
   ['vol','leader','admin'].forEach(r=>{
     const btn=document.getElementById('role-btn-'+r);
-    if(btn) btn.style.opacity=r===role.replace('volunteer','vol')?'1':'0.45';
+    if(btn) btn.classList.toggle('on',r===rkey);
   });
-  const rkey=role==='volunteer'?'vol':role;
-  document.getElementById('role-btn-'+rkey).style.opacity='1';
   // 패널 표시
   ['volunteer','leader','admin'].forEach(r=>{
     const p=document.getElementById('panel-'+r);
@@ -2318,15 +2688,22 @@ function selectRole(role){
   fillSelForRole(role);
 }
 
+// V2 H75: 봉사자/인도자 이름 선택을 스크롤 드롭다운에서 검색형
+// 입력으로 교체. select였던 자리를 같은 id의 text input으로 바꾸고
+// (doLogin()이 그대로 .value를 읽으므로 doLogin/finishLogin/
+// requestLoginGps는 전혀 안 건드림), 입력값으로 S.volunteers/
+// S.leaders를 실시간으로 부분일치(포함) 검색해서 후보를 보여준다.
 function fillSelForRole(role){
   loadVolunteers();loadContacts();
   loadLeaders();
   if(role==='volunteer'){
-    const sel=document.getElementById('l-vol-name');
-    sel.innerHTML='<option value="">-- 이름을 선택하세요 --</option>'+S.volunteers.map(v=>`<option value="${v}">${v}</option>`).join('');
+    const inp=document.getElementById('l-vol-name');
+    if(inp)inp.value='';
+    renderNameSearchResults('vol','');
   } else if(role==='leader'){
-    const sel=document.getElementById('l-leader-name');
-    sel.innerHTML='<option value="">-- 이름을 선택하세요 --</option>'+S.leaders.map(l=>`<option value="${l.name}">${l.name}</option>`).join('');
+    const inp=document.getElementById('l-leader-name');
+    if(inp)inp.value='';
+    renderNameSearchResults('leader','');
   }
 }
 
@@ -2335,9 +2712,53 @@ function fillSel(){
   fillSelForRole('leader');
 }
 
+function nameSearchList(role){
+  return role==='vol'?S.volunteers:S.leaders.map(l=>l.name);
+}
+function filterNameSearch(role,keyword){
+  renderNameSearchResults(role,keyword);
+}
+function renderNameSearchResults(role,keyword){
+  const isVol=role==='vol';
+  const wrap=document.getElementById(isVol?'l-vol-name-results':'l-leader-name-results');
+  if(!wrap)return;
+  const kw=(keyword||'').trim();
+  if(!kw){wrap.innerHTML='';wrap.classList.remove('on');return;}
+  const matches=nameSearchList(role).filter(n=>n.includes(kw));
+  wrap.classList.add('on');
+  if(!matches.length){
+    wrap.innerHTML='<div class="name-search-empty">일치하는 이름이 없습니다.</div>';
+    return;
+  }
+  const single=matches.length===1;
+  wrap.innerHTML=matches.map(n=>`<button type="button" class="name-search-item${single?' single':''}" onclick="selectNameSearchResult('${role}','${jsq(n)}')">${esc(n)}</button>`).join('');
+}
+function selectNameSearchResult(role,name){
+  const isVol=role==='vol';
+  const inp=document.getElementById(isVol?'l-vol-name':'l-leader-name');
+  if(inp)inp.value=name;
+  const wrap=document.getElementById(isVol?'l-vol-name-results':'l-leader-name-results');
+  if(wrap){wrap.innerHTML='';wrap.classList.remove('on');}
+  if(isVol){
+    doLogin(); // 요청사항: 봉사자는 추가입력(PIN 등)이 없으므로 탭하는 순간 바로 확정 로그인
+  }else{
+    const pinInp=document.getElementById('l-leader-pin');
+    if(pinInp)pinInp.focus(); // 인도자는 PIN/모드 선택이 더 필요하므로 자동로그인하지 않고 다음 입력으로 포커스만 이동
+  }
+}
+function confirmNameSearchOnEnter(e,role){
+  if(e.key!=='Enter')return;
+  const isVol=role==='vol';
+  const inp=document.getElementById(isVol?'l-vol-name':'l-leader-name');
+  const kw=(inp&&inp.value||'').trim();
+  if(!kw)return;
+  const matches=nameSearchList(role).filter(n=>n.includes(kw));
+  if(matches.length===1)selectNameSearchResult(role,matches[0]);
+}
+
 function saveAutoLogin(){
   if(!S.role||!S.user)return;
-  localStorage.setItem('sokcho_auto_login',JSON.stringify({
+  storageSet('sokcho_auto_login',JSON.stringify({
     role:S.role,
     user:S.user,
     leaderMode:S.leaderMode||'guide',
@@ -2347,13 +2768,13 @@ function saveAutoLogin(){
 
 function readAutoLogin(){
   try{
-    const saved=JSON.parse(localStorage.getItem('sokcho_auto_login')||'null');
+    const saved=JSON.parse(storageGet('sokcho_auto_login')||'null');
     return saved&&saved.role&&saved.user?saved:null;
   }catch(e){return null;}
 }
 
 function clearAutoLogin(){
-  localStorage.removeItem('sokcho_auto_login');
+  storageRemove('sokcho_auto_login');
 }
 
 function isAutoLoginValid(saved){
@@ -2454,7 +2875,7 @@ function requestLoginGps(){
       acc:Math.round(pos.coords.accuracy||0),
       ts:Date.now()
     };
-    localStorage.setItem('sokcho_last_login_gps',JSON.stringify(loc));
+    storageSet('sokcho_last_login_gps',JSON.stringify(loc));
     toast(`📍 GPS 연결됨${loc.acc?` · 정확도 ${loc.acc}m`:''}`);
     if(S.role==='volunteer'||(S.role==='leader'&&S.leaderMode==='both'))startLocShare();
   },err=>{
@@ -2630,6 +3051,7 @@ function returnToAdminZoneList(){
 // 초기화
 // ================================================================
 function initApp(){
+  initFirebaseIfConfigured(); // V2 H69-B: config 없으면 즉시 false 반환, 나머지 흐름 그대로
   loadCoreData();
   loadRteLines();
   cleanupBuiltInSamples();
@@ -2670,7 +3092,10 @@ function drawAllZones(activeId){
   if(kakaoMap&&window.kakao?.maps?.Polygon){
     const zoneIds=new Set(S.zones.map(z=>String(z.id)));
     mainKakaoPolygons.forEach((item,id)=>{
-      if(!zoneIds.has(id))item.polygon.setMap(null);
+      // V2 H53: setMap(null)만으로는 캐시(Map)에 옛 id 항목이 계속
+      // 쌓여서(구역번호 재정리 등으로 id가 바뀔 때마다) 무한정 늘어남 —
+      // 실제로 지금 쓰는 id가 아니면 캐시에서도 완전히 지운다.
+      if(!zoneIds.has(id)){item.polygon.setMap(null);mainKakaoPolygons.delete(id);}
     });
     S.zones.forEach(z=>{
       let item=mainKakaoPolygons.get(String(z.id));
@@ -2684,8 +3109,8 @@ function drawAllZones(activeId){
       const show=S.mapFilter==='all'||(S.mapFilter==='residential'&&z.type==='residential')||(S.mapFilter==='commercial'&&z.type==='commercial')||(S.mapFilter==='undone'&&isInProgress(z.id))||(S.mapFilter==='standby'&&getZoneState(z.id)==='standby');
       const isActive=activeId===z.id;
       const dimmed=activeId!==null&&!isActive;
-      const sc=zoneStrokeColor(z);
-      const fillC=zoneFillColor(z);
+      const sc=zoneStrokeColor(z,isActive);
+      const fillC=zoneFillColor(z,isActive);
       item.polygon.setOptions({strokeWeight:isActive?5:3.5,strokeColor:sc,strokeOpacity:dimmed?.35:1,fillColor:fillC,fillOpacity:dimmed?.01:.05});
       item.polygon.setMap(show?kakaoMap:null);
     });
@@ -2700,7 +3125,7 @@ function drawAllZones(activeId){
     const isRes=z.type==='residential';
     const isActive=activeId===z.id;
     const dimmed=activeId!==null&&!isActive;
-    const sc=zoneStrokeColor(z);
+    const sc=zoneStrokeColor(z,isActive);
     if(isActive)addStartPinMarker(S.mainMap,z,S.mainLayers,{label:'시작점'});
     // V2 H23: home-map과 동일한 이유(Kakao 폴리곤은 pointer-events:none
     // 배경 렌더러라 클릭이 안 닿음) — 투명 Leaflet 폴리곤으로 클릭만 받음.
@@ -2757,7 +3182,7 @@ function openSheet(id){
     return;
   }
   if(window.innerWidth<768){
-    document.getElementById('sh-name').textContent=z.name;
+    document.getElementById('sh-name').textContent=`${zoneDisplayLabel(z.id)} ${displayZoneNameCleaned(z.name)}`;
     document.getElementById('sh-badges').innerHTML=bh;
     document.getElementById('sh-info').innerHTML=ih;
     const sh=document.getElementById('zsheet');
@@ -2766,7 +3191,7 @@ function openSheet(id){
   } else {
     document.getElementById('side-zone-list').style.display='none';
     document.getElementById('side-zone-detail').style.display='block';
-    document.getElementById('side-detail-name').textContent=z.name;
+    document.getElementById('side-detail-name').textContent=`${zoneDisplayLabel(z.id)} ${displayZoneNameCleaned(z.name)}`;
     document.getElementById('side-detail-badges').innerHTML=bh;
     document.getElementById('side-detail-info').innerHTML=ih;
   }
@@ -2794,11 +3219,27 @@ function renderSideList(keyword){
   }
   const wrap=document.getElementById('side-zone-list');
   if(!wrap)return;
-  if(zones.length===0){
+
+  // V2 H85: 구역지도(#p-map) PC 사이드패널(우측, zone-search+새구역그리기)에
+  // 아파트 카드가 아예 없던 것을 H68(renderRouteGrid, #rte-grid — 하단
+  // "목록" 탭, 완전히 다른 화면)과 동일한 원칙으로 추가. "주택"/"상가"
+  // 필터는 아파트와 무관한 카테고리라 그때만 제외하고, 전체/미완료/
+  // 봉사대기에서는 같이 보이게 한다. 클릭은 openSheet(zone 폴리곤 전용,
+  // 손대지 않음) 대신 기존 startApartmentCardAndGo를 그대로 재사용해서
+  // H68과 동일하게 진행화면으로 바로 연결한다.
+  let aptCards=(S.mapFilter==='residential'||S.mapFilter==='commercial')?[]:[...S.apartmentCards];
+  if(S.mapFilter==='undone')aptCards=aptCards.filter(c=>c.status==='진행중'||c.status==='미완료');
+  else if(S.mapFilter==='standby')aptCards=aptCards.filter(c=>c.status==='미시작');
+  if(keyword&&keyword.trim()){
+    const kw=keyword.trim().toLowerCase();
+    aptCards=aptCards.filter(c=>c.name.toLowerCase().includes(kw)||String(c.number).includes(kw));
+  }
+
+  if(zones.length===0&&aptCards.length===0){
     wrap.innerHTML='<p style="font-size:12px;color:var(--txm);padding:12px 0;text-align:center;">검색 결과가 없습니다.</p>';
     return;
   }
-  wrap.innerHTML=zones.map(z=>{
+  const zoneHtml=zones.map(z=>{
     const done=isDone(z.id);
     const meta=getZoneStatusMeta(z.id);
     const isRes=z.type==='residential';
@@ -2806,12 +3247,26 @@ function renderSideList(keyword){
     const selected=String(activeZoneId())===String(z.id);
     return `<div id="side-zone-item-${z.id}" class="side-zone-item ${isRes?'res':'com'} ${selected?'selected':''}" onclick="openSheet(${z.id})">
       <div>
-        <div style="font-size:13px;font-weight:600;"><span style="color:var(--txm);font-size:11px;">#${z.id} </span>${z.name}</div>
+        <div style="font-size:13px;font-weight:600;"><span style="color:var(--txm);font-size:11px;">${zoneDisplayLabel(z.id)} </span>${esc(displayZoneNameCleaned(z.name))}</div>
         <div style="font-size:11px;color:var(--txm);">${z.streets.join(', ').slice(0,30)} · ${cnt}회</div>
       </div>
       <div style="width:9px;height:9px;border-radius:50%;background:${meta.color};flex-shrink:0;margin-left:8px;"></div>
     </div>`;
   }).join('');
+  const aptHtml=aptCards.map(card=>{
+    const done=card.status==='완료';
+    const inProg=card.status==='진행중'||card.status==='미완료';
+    const meta={color:done?'#3B6D11':inProg?'#D85A30':'#d1d5db'};
+    const click=done?`toast('완료된 카드입니다. 관리자가 초기화해야 다시 시작할 수 있습니다.')`:`startApartmentCardAndGo(${card.id},${inProg})`;
+    return `<div id="side-apt-item-${card.id}" class="side-zone-item" style="border-left:3px solid #7F3FBF;" onclick="${click}">
+      <div>
+        <div style="font-size:13px;font-weight:600;"><span style="color:#7F3FBF;font-size:11px;">아파트 #${card.number} </span>${esc(card.name)}</div>
+        <div style="font-size:11px;color:var(--txm);">${card.points.length}개 지점 · ${apartmentCardCompletedUnits(card)}/${apartmentCardCheckableUnits(card)}호</div>
+      </div>
+      <div style="width:9px;height:9px;border-radius:50%;background:${meta.color};flex-shrink:0;margin-left:8px;"></div>
+    </div>`;
+  }).join('');
+  wrap.innerHTML=zoneHtml+aptHtml;
 }
 
 // PC 사이드 검색
@@ -2863,7 +3318,7 @@ function searchZonesMobile(kw){
     const isRes=z.type==='residential';
     return `<div onclick="selectSearchResult(${z.id})" style="padding:11px 14px;border-bottom:1px solid var(--bd);cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
       <div>
-        <div style="font-size:13px;font-weight:600;"><span style="color:var(--txm);font-size:11px;">#${z.id} </span>${z.name}</div>
+        <div style="font-size:13px;font-weight:600;"><span style="color:var(--txm);font-size:11px;">${zoneDisplayLabel(z.id)} </span>${esc(displayZoneNameCleaned(z.name))}</div>
         <div style="font-size:11px;color:var(--txm);margin-top:2px;">${isRes?'주택구역':'상가구역'} · ${z.streets.join(', ').slice(0,25)}</div>
       </div>
       <div style="width:9px;height:9px;border-radius:50%;background:${done?'#3B6D11':'#d1d5db'};flex-shrink:0;margin-left:8px;"></div>
@@ -3127,11 +3582,28 @@ function renderRouteGrid(keyword){
       z.streets.some(s=>s.toLowerCase().includes(kw))
     );
   }
-  zones.sort((a,b)=>(Number(a.id)||0)-(Number(b.id)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
+  // V2 H68: H67과 동일한 규칙 — 미완료(진행중/미완료 포함) 우선, 완료는 뒤로
+  zones.sort((a,b)=>(isDone(a.id)?1:0)-(isDone(b.id)?1:0)||(Number(a.id)||0)-(Number(b.id)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
   const grid=document.getElementById('rte-grid');
   if(!grid)return;
-  if(zones.length===0){grid.innerHTML='<p style="font-size:12px;color:var(--txm);padding:20px 0;text-align:center;grid-column:1/-1;">검색 결과가 없습니다.</p>';return;}
-  grid.innerHTML=zones.map(z=>{
+
+  // V2 H68: "목록" 탭(rte-grid)에 아파트 카드가 아예 없던 것을 추가.
+  // 상가(주택과 같은 배열, id가 항상 4074 이하라 항상 먼저 옴) 다음에
+  // 이어지는 별도 블록으로 붙인다(구역과 한 배열로 합쳐서 정렬하지 않음
+  // — "상가 다음에 아파트 섹션" 요청을 그대로 반영). 카드 클릭은 기존
+  // startApartmentCardAndGo()를 그대로 재사용(진행화면 흐름 그대로).
+  let aptCards=[...S.apartmentCards];
+  if(routeListFilter==='done')aptCards=aptCards.filter(c=>c.status==='완료');
+  if(routeListFilter==='undone')aptCards=aptCards.filter(c=>c.status==='진행중'||c.status==='미완료');
+  if(routeListFilter==='standby')aptCards=aptCards.filter(c=>c.status==='미시작');
+  if(keyword&&keyword.trim()){
+    const kw=keyword.trim().toLowerCase();
+    aptCards=aptCards.filter(c=>c.name.toLowerCase().includes(kw)||String(c.number).includes(kw));
+  }
+  aptCards.sort((a,b)=>(a.status==='완료'?1:0)-(b.status==='완료'?1:0)||(Number(a.number)||0)-(Number(b.number)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
+
+  if(zones.length===0&&aptCards.length===0){grid.innerHTML='<p style="font-size:12px;color:var(--txm);padding:20px 0;text-align:center;grid-column:1/-1;">검색 결과가 없습니다.</p>';return;}
+  const zoneHtml=zones.map(z=>{
     const done=isDone(z.id);const inProg=isInProgress(z.id);const meta=getZoneStatusMeta(z.id);const isRes=z.type==='residential';const cnt=S.records.filter(r=>r.zoneId===z.id).length;
     const routeCnt=S.rteLines.filter(l=>l.zoneId===z.id).length;
     const statusClass=meta.cls;
@@ -3142,7 +3614,7 @@ function renderRouteGrid(keyword){
     return `<div id="rte-zone-item-${z.id}" class="zc ${isRes?'res':'com'} ${selected?'selected':''}" onclick="${click}">
       <div class="zc-dot" style="background:${done?'#3B6D11':inProg?'#D85A30':'#d1d5db'};"></div>
       <div class="zc-badge"><span class="badge ${isRes?'badge-res':'badge-com'}">${isRes?'주택':'상가'}</span></div>
-      <div class="zc-name"><span style="color:var(--txm);font-size:10px;">#${z.id} </span>${z.name}</div>
+      <div class="zc-name"><span style="color:var(--txm);font-size:10px;">${zoneDisplayLabel(z.id)} </span>${esc(displayZoneNameCleaned(z.name))}</div>
       <div class="zc-meta">${z.streets.length}개 거리 · ${cnt}회${routeCnt?` · 경로 ${routeCnt}개`:''}</div>
       <div class="zc-status-row">
         <span class="zc-status ${statusClass}">${statusIcon} ${statusText}</span>
@@ -3150,6 +3622,27 @@ function renderRouteGrid(keyword){
       ${S.role==='admin'?`<div class="zc-admin-row"><button class="zc-edit-id" onclick="event.stopPropagation();editZoneNumber(${z.id})">번호 수정</button></div>`:''}
     </div>`;
   }).join('');
+
+  const aptHtml=aptCards.map(card=>{
+    const done=card.status==='완료';
+    const inProg=card.status==='진행중'||card.status==='미완료';
+    const statusClass=done?'done':inProg?'progress':'reset';
+    const statusIcon=done?'✓':inProg?'!':'○';
+    const total=apartmentCardCheckableUnits(card);
+    const doneCnt=apartmentCardCompletedUnits(card);
+    const click=done?`toast('완료된 카드입니다. 관리자가 초기화해야 다시 시작할 수 있습니다.')`:`startApartmentCardAndGo(${card.id},${inProg})`;
+    return `<div id="rte-apt-item-${card.id}" class="zc" style="border-left:3px solid #7F3FBF;" onclick="${click}">
+      <div class="zc-dot" style="background:${done?'#3B6D11':inProg?'#D85A30':'#d1d5db'};"></div>
+      <div class="zc-badge"><span class="badge" style="background:#F1E9FA;color:#7F3FBF;">아파트</span></div>
+      <div class="zc-name"><span style="color:var(--txm);font-size:10px;">#${card.number} </span>${esc(card.name)}</div>
+      <div class="zc-meta">${card.points.length}개 지점 · ${doneCnt}/${total}호</div>
+      <div class="zc-status-row">
+        <span class="zc-status ${statusClass}">${statusIcon} ${esc(card.status)}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  grid.innerHTML=zoneHtml+aptHtml;
 }
 function searchRteZones(kw){
   const clr=document.getElementById('rte-search-clear');
@@ -3359,7 +3852,7 @@ function drawRdZonePolygon(z){
   if(!kakaoMap||!window.kakao?.maps?.Polygon)return;
   if(rdKakaoPoly)rdKakaoPoly.setMap(null);
   const path=(z.polygon||[]).map(pt=>new kakao.maps.LatLng(Number(pt[0]),Number(pt[1])));
-  rdKakaoPoly=new kakao.maps.Polygon({path,strokeWeight:3.8,strokeColor:zoneStrokeColor(z),strokeOpacity:1,fillColor:zoneFillColor(z),fillOpacity:.05});
+  rdKakaoPoly=new kakao.maps.Polygon({path,strokeWeight:3.8,strokeColor:zoneStrokeColor(z,true),strokeOpacity:1,fillColor:zoneFillColor(z,true),fillOpacity:.05}); // V2 H77: 이 지도는 항상 구역 1개만 보여주는 상세화면이라 고유색(선택색) 유지
   rdKakaoPoly.setMap(kakaoMap);
 }
 function drawRdZone(z){
@@ -3671,7 +4164,8 @@ function drawHomeZones(activeId){
   if(kakaoMap&&window.kakao?.maps?.Polygon){
     const zoneIds=new Set(S.zones.map(z=>String(z.id)));
     homeKakaoPolygons.forEach((item,id)=>{
-      if(!zoneIds.has(id))item.polygon.setMap(null);
+      // V2 H53: mainKakaoPolygons와 동일 — 캐시에서도 완전히 제거
+      if(!zoneIds.has(id)){item.polygon.setMap(null);homeKakaoPolygons.delete(id);}
     });
     S.zones.forEach(z=>{
       let item=homeKakaoPolygons.get(String(z.id));
@@ -3689,8 +4183,8 @@ function drawHomeZones(activeId){
         (homeMapFilter==='standby'&&getZoneState(z.id)==='standby');
       const isActive=activeId===z.id;
       const dimmed=activeId!==null&&!isActive;
-      const sc=zoneStrokeColor(z);
-      const fillColor=zoneFillColor(z);
+      const sc=zoneStrokeColor(z,isActive);
+      const fillColor=zoneFillColor(z,isActive);
       item.polygon.setOptions({strokeWeight:isActive?5:3.5,strokeColor:sc,strokeOpacity:dimmed?.35:1,fillColor,fillOpacity:dimmed?.01:.05});
       item.polygon.setMap(show?kakaoMap:null);
     });
@@ -3708,7 +4202,7 @@ function drawHomeZones(activeId){
     const isActive=activeId===z.id;
     const dimmed=activeId!==null&&!isActive;
     const inProg=isInProgress(z.id);
-    const sc=zoneStrokeColor(z);
+    const sc=zoneStrokeColor(z,isActive);
     if(isActive)addStartPinMarker(homeMapInst,z,homeMapLayers,{label:'시작점'});
     // V2 H23: Kakao 폴리곤은 배경 전용 렌더러라 pointer-events:none이 걸려
     // 있어(styles.css .kakao-bg) 실제 클릭이 전혀 닿지 않는다(1탭 무반응의
@@ -3771,7 +4265,11 @@ function selectHomeZone(id){
 
 function renderHomeZoneList(kw){
   renderHomeCommercialList(); // V2 H21: 상가는 별도 섹션에서 렌더 — 이 함수가 호출되는 모든 지점에서 함께 새로고침
-  let zones=S.zones.filter(z=>z.type==='residential').sort((a,b)=>(Number(a.id)||0)-(Number(b.id)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
+  renderHomeApartmentCardList(); // V2 H67: 아파트도 함께 새로고침(주택 목록이 갱신되는 모든 지점에서 아파트도 같이 최신 상태 유지)
+  const resCountEl=document.getElementById('home-res-count');
+  // V2 H67: 미완료(진행중/미완료 포함) 우선, 완료는 뒤로 — 구역/상가/아파트 전부 통일
+  let zones=S.zones.filter(z=>z.type==='residential').sort((a,b)=>(isDone(a.id)?1:0)-(isDone(b.id)?1:0)||(Number(a.id)||0)-(Number(b.id)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
+  if(resCountEl)resCountEl.textContent=zones.length;
   zones=zones.filter(z=>homeMapFilter==='all'||
     (homeMapFilter==='residential'&&z.type==='residential')||
     (homeMapFilter==='commercial'&&z.type==='commercial')||
@@ -3802,7 +4300,7 @@ function renderHomeZoneList(kw){
         :`<button onclick="event.stopPropagation();startSessionAndRoute(${z.id},false)" class="btn btn-sm btn-p home-zone-action">봉사 시작</button>`;
     return `<div id="home-zone-item-${z.id}" class="home-zone-row home-zone-row-kakao ${isRes?'res':'com'} ${selected?'selected':''}" onclick="selectHomeZone(${z.id})">
       <div style="min-width:0;">
-        <div class="home-zone-title"><span>#${z.id} </span>${z.name}</div>
+        <div class="home-zone-title"><span>${zoneDisplayLabel(z.id)} </span>${esc(displayZoneNameCleaned(z.name))}</div>
         <div class="home-zone-meta">${isRes?'주택':'상가'} · ${z.streets.length}개 거리</div>
       </div>
       <span class="zc-status ${statusClass}">${status}</span>
@@ -3827,6 +4325,16 @@ function toggleHomeListPanel(){
 }
 
 // V2 H21: 홈 화면 상가 섹션(아파트 카드 섹션과 동일 스타일, 지도 필터칩과 무관한 독립 필터)
+// V2 H67: 상가/아파트와 똑같은 접기 섹션 패턴을 주택 목록에도 적용
+function toggleHomeResSection(){
+  const body=document.getElementById('home-res-body');
+  const icon=document.getElementById('home-res-toggle-icon');
+  if(!body)return;
+  const willShow=body.classList.contains('hide');
+  body.classList.toggle('hide',!willShow);
+  if(icon)icon.textContent=willShow?'▾':'▸';
+  if(willShow)renderHomeZoneList(document.getElementById('home-zone-search')?.value||'');
+}
 function toggleHomeCommercialSection(){
   const body=document.getElementById('home-com-body');
   const icon=document.getElementById('home-com-toggle-icon');
@@ -3846,7 +4354,8 @@ function renderHomeCommercialList(){
   const all=S.zones.filter(z=>z.type==='commercial');
   const countEl=document.getElementById('home-com-count');
   if(countEl)countEl.textContent=all.length;
-  let zones=[...all].sort((a,b)=>(Number(a.id)||0)-(Number(b.id)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
+  // V2 H67: 미완료 우선, 완료는 뒤로(구역/아파트와 동일 규칙)
+  let zones=[...all].sort((a,b)=>(isDone(a.id)?1:0)-(isDone(b.id)?1:0)||(Number(a.id)||0)-(Number(b.id)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
   zones=zones.filter(z=>homeComFilter==='all'||(homeComFilter==='undone'&&!isDone(z.id))||(homeComFilter==='done'&&isDone(z.id)));
   const wrap=document.getElementById('home-com-list');
   if(!wrap)return;
@@ -3868,7 +4377,7 @@ function renderHomeCommercialList(){
         :`<button onclick="event.stopPropagation();startSessionAndRoute(${z.id},false)" class="btn btn-sm btn-p home-zone-action">봉사 시작</button>`;
     return `<div id="home-zone-item-${z.id}" class="home-zone-row home-zone-row-kakao com ${selected?'selected':''}" onclick="selectHomeZone(${z.id})">
       <div style="min-width:0;">
-        <div class="home-zone-title"><span>#${z.id} </span>${z.name}</div>
+        <div class="home-zone-title"><span>${zoneDisplayLabel(z.id)} </span>${esc(displayZoneNameCleaned(z.name))}</div>
         <div class="home-zone-meta">상가 · ${z.streets.length}개 거리</div>
       </div>
       <span class="zc-status ${statusClass}">${status}</span>
@@ -3958,13 +4467,13 @@ function s13TerritoryIdForZone(zoneId){return 'zone-'+zoneId;}
 function s13TerritoryIdForAptCard(cardId){return 'apt-'+cardId;}
 function loadS13Records(){
   try{
-    const data=JSON.parse(localStorage.getItem('sokcho_s13_v1')||'null');
+    const data=JSON.parse(storageGet('sokcho_s13_v1')||'null');
     if(data&&Array.isArray(data.records))return data.records;
   }catch(e){}
   return [];
 }
 function persistS13Records(records){
-  localStorage.setItem('sokcho_s13_v1',JSON.stringify({schemaVersion:1,records}));
+  storageSet('sokcho_s13_v1',JSON.stringify({schemaVersion:1,records}));
 }
 function findOrCreateS13Record(records,territoryId,territoryType,zoneNumber,serviceYear){
   let record=records.find(r=>r.territoryId===territoryId&&r.serviceYear===serviceYear);
@@ -4017,12 +4526,12 @@ function recordS13Completion(territoryId,atMs){
 // correction/PDF 출력/과거사진 import는 이번 범위 밖(명세 20~30).
 // ================================================================
 function getS13CongregationName(){
-  return localStorage.getItem('sokcho_s13_congregation')||'';
+  return storageGet('sokcho_s13_congregation')||'';
 }
 function setS13CongregationName(name){
   const trimmed=(name||'').trim();
   const display=trimmed?(trimmed.endsWith('회중')?trimmed:trimmed+'회중'):'';
-  localStorage.setItem('sokcho_s13_congregation',display);
+  storageSet('sokcho_s13_congregation',display);
   return display;
 }
 function saveS13CongregationNameFromInput(){
@@ -4293,19 +4802,19 @@ function saveProgressToStorage(zoneId){
   };
   // localStorage에도 저장
   try{
-    const data=JSON.parse(localStorage.getItem('sokcho_progress')||'{}');
+    const data=JSON.parse(storageGet('sokcho_progress')||'{}');
     data[zoneId]=z.progress;
-    localStorage.setItem('sokcho_progress',JSON.stringify(data));
+    storageSet('sokcho_progress',JSON.stringify(data));
   }catch(e){}
 }
 
 function updateSessionStorage(){
   try{
-    const data=JSON.parse(localStorage.getItem('sokcho_live')||'{}');
+    const data=JSON.parse(storageGet('sokcho_live')||'{}');
     if(data[S.user]){
       data[S.user].sessionZone=S.session.zoneId;
       data[S.user].sessionStart=S.session.startTime;
-      localStorage.setItem('sokcho_live',JSON.stringify(data));
+      storageSet('sokcho_live',JSON.stringify(data));
     }
   }catch(e){}
 }
@@ -4426,9 +4935,9 @@ function savePauseNote(){
   z.progress.note=(document.getElementById('pause-note-text')?.value||'').trim();
   z.progress.savedAt=new Date().toISOString();
   try{
-    const data=JSON.parse(localStorage.getItem('sokcho_progress')||'{}');
+    const data=JSON.parse(storageGet('sokcho_progress')||'{}');
     data[zoneId]=z.progress;
-    localStorage.setItem('sokcho_progress',JSON.stringify(data));
+    storageSet('sokcho_progress',JSON.stringify(data));
   }catch(e){}
   renderHomeZoneList(document.getElementById('home-zone-search')?.value||'');
   closePauseNote();
@@ -4441,9 +4950,9 @@ function deletePauseNote(){
   if(z?.progress){
     z.progress.note='';
     try{
-      const data=JSON.parse(localStorage.getItem('sokcho_progress')||'{}');
+      const data=JSON.parse(storageGet('sokcho_progress')||'{}');
       if(data[zoneId])data[zoneId].note='';
-      localStorage.setItem('sokcho_progress',JSON.stringify(data));
+      storageSet('sokcho_progress',JSON.stringify(data));
     }catch(e){}
   }
   const txt=document.getElementById('pause-note-text');if(txt)txt.value='';
@@ -4486,9 +4995,9 @@ function endSession(completed){
     if(z)z.progress=null;
     clearZoneReset(zoneId);
     try{
-      const data=JSON.parse(localStorage.getItem('sokcho_progress')||'{}');
+      const data=JSON.parse(storageGet('sokcho_progress')||'{}');
       delete data[zoneId];
-      localStorage.setItem('sokcho_progress',JSON.stringify(data));
+      storageSet('sokcho_progress',JSON.stringify(data));
     }catch(e){}
     if(S.session.progressLayer&&S.rdMap){S.rdMap.removeLayer(S.session.progressLayer);S.session.progressLayer=null;}
     persistZones();
@@ -4594,7 +5103,7 @@ function drawSvcZonePolygon(z){
   if(!kakaoMap||!window.kakao?.maps?.Polygon)return;
   if(svcKakaoPoly)svcKakaoPoly.setMap(null);
   const path=(z.polygon||[]).map(pt=>new kakao.maps.LatLng(Number(pt[0]),Number(pt[1])));
-  svcKakaoPoly=new kakao.maps.Polygon({path,strokeWeight:3.5,strokeColor:zoneStrokeColor(z),strokeOpacity:1,fillColor:zoneFillColor(z),fillOpacity:.05});
+  svcKakaoPoly=new kakao.maps.Polygon({path,strokeWeight:3.5,strokeColor:zoneStrokeColor(z,true),strokeOpacity:1,fillColor:zoneFillColor(z,true),fillOpacity:.05}); // V2 H77: 구역 1개만 보여주는 봉사 진행화면 — 고유색 유지
   svcKakaoPoly.setMap(kakaoMap);
 }
 function openSvcFullscreen(zoneId){
@@ -4860,22 +5369,28 @@ function renderAdmin(){
   if(recEmail)recEmail.value=getAdminRecoveryEmail();
   document.getElementById('a-tot').textContent=S.records.length;
   document.getElementById('a-vol').textContent=S.volunteers.length;
-  renderMonChart();renderZoneChart();renderVolList();renderAdmGrid();renderLeaderList();renderApartmentComplexList();renderApartmentCardGenPanel();renderCardBuilder();renderApartmentCardList();
+  renderMonChart();renderZoneChart();renderVolList();renderAdmGrid();renderLeaderList();renderApartmentComplexList();renderApartmentCardGenPanel();renderCardBuilder();renderApartmentCardList();renderResearchList();
 }
 function renderMonChart(){
   const c=new Array(12).fill(0);S.records.forEach(r=>{c[parseInt(r.date.split('-')[1])-1]++;});
   document.getElementById('mon-chart').innerHTML='<div class="compact-counts">'+Array.from({length:12},(_,i)=>`<span class="count-chip">${i+1}월 <b>${c[i]}</b></span>`).join('')+'</div>';
 }
 function renderZoneChart(){
-  const d=S.zones.map(z=>({n:z.name,c:S.records.filter(r=>r.zoneId===z.id).length})).sort((a,b)=>b.c-a.c||a.n.localeCompare(b.n,'ko'));
-  document.getElementById('zone-chart').innerHTML='<div class="compact-counts">'+d.map(x=>`<span class="count-chip">${esc(x.n).slice(0,8)} <b>${x.c}</b></span>`).join('')+'</div>';
+  // V2: 다른 화면들(H48)과 동일하게 재정리된 번호(#대표-순번/#id)와
+  // 접두번호 제거된 이름을 보여준다 — 예전엔 원본 이름만(번호 없이)
+  // 표시해서 재정리된 새 번호가 여기만 반영 안 된 것처럼 보였음.
+  const d=S.zones.map(z=>({lbl:zoneDisplayLabel(z.id),n:displayZoneNameCleaned(z.name),c:S.records.filter(r=>r.zoneId===z.id).length})).sort((a,b)=>b.c-a.c||a.n.localeCompare(b.n,'ko'));
+  document.getElementById('zone-chart').innerHTML='<div class="compact-counts">'+d.map(x=>`<span class="count-chip">${esc(x.lbl)} ${esc(x.n).slice(0,8)} <b>${x.c}</b></span>`).join('')+'</div>';
 }
 function renderVolList(){
+  const countEl=document.getElementById('adm-vol-count');
+  if(countEl)countEl.textContent=S.volunteers.length;
   document.getElementById('vol-list').innerHTML=S.volunteers.map(v=>{
     const c=S.records.filter(r=>r.volunteer===v).length;
     return `<div class="vol-row">
       <div><div style="font-size:13px;font-weight:700;">${esc(v)}</div><div style="font-size:12px;color:var(--txm);">총 ${c}회</div></div>
       <div style="display:flex;gap:6px;">
+        <button class="btn btn-sm btn-out" onclick="editVol('${jsq(v)}')">수정</button>
         <button class="btn btn-sm btn-dk" onclick="rmVol('${jsq(v)}')">삭제</button>
       </div>
     </div>`;
@@ -4907,7 +5422,37 @@ function clearAdminZoneSearch(){
 // 구역이 재생성되는 것을 피하기 위함). "숫자-숫자-숫자 " 같은 다른 형식은
 // 건드리지 않는다(조사 결과 별개 패턴으로 확인됨, 추측 처리 금지).
 function displayZoneNameCleaned(name){
-  return String(name||'').replace(/^\d+-\d+ /,'');
+  // V2 H48: zoneMapLabel()과 동일한 정규식으로 통일 — 기존 버전은
+  // "8-01 " 같은 2단계 접두만 지웠고 "100-01-1 " 같은 3단계 접두는
+  // 못 지웠던 버그를 함께 고침(딘이 예로 든 두 형태 모두 검증됨).
+  return String(name||'').replace(/^\s*\d{1,3}-\d{1,3}(?:-\d+)?\s+/,'').trim() || String(name||'');
+}
+// V2 H48: 실제 내부 id(1001~/3001~/4001~ 재정리 완료된 고유 숫자)는
+// 절대 바꾸지 않는다 — S-13/삭제목록/봉사기록/route 등 여러 곳이 이
+// id를 그대로 참조하기 때문. 화면에 보여줄 라벨만 렌더링 시점에
+// 계산한다: 순수이름(접두번호 제거)이 같은 구역이 2개 이상이면
+// "#그룹대표id-순번"(대표id=그룹 내 최소 id, 순번=id 오름차순 1,2,3...),
+// 혼자면 "#원래id" 그대로.
+function zoneGroupLabelMap(){
+  const groups={};
+  S.zones.forEach(z=>{
+    const key=displayZoneNameCleaned(z.name);
+    (groups[key]=groups[key]||[]).push(z);
+  });
+  const labelById={};
+  Object.values(groups).forEach(list=>{
+    list.sort((a,b)=>(Number(a.id)||0)-(Number(b.id)||0));
+    if(list.length>=2){
+      const rep=list[0].id;
+      list.forEach((z,i)=>{labelById[z.id]=`#${rep}-${i+1}`;});
+    }else{
+      labelById[list[0].id]=`#${list[0].id}`;
+    }
+  });
+  return labelById;
+}
+function zoneDisplayLabel(zoneId){
+  return zoneGroupLabelMap()[zoneId]||`#${zoneId}`;
 }
 function renameZoneName(zoneId){
   const z=S.zones.find(z=>z.id===zoneId);
@@ -4956,9 +5501,9 @@ function renderAdminZoneRowHtml(z){
   const routeCnt=S.rteLines.filter(r=>r.zoneId===z.id).length;
   const selected=String(activeZoneId())===String(z.id);
   return `<div id="admin-zone-item-${z.id}" class="admin-zone-row ${isRes?'res':'com'} ${selected?'selected':''}">
-    <div class="admin-zone-no">#${z.id}</div>
+    <div class="admin-zone-no">${zoneDisplayLabel(z.id)}</div>
     <div style="min-width:0;">
-      <div class="admin-zone-name">${esc(displayZoneNameCleaned(z.name))} <button class="btn btn-sm btn-out" style="padding:2px 6px;font-size:11px;" onclick="event.stopPropagation();renameZoneName(${z.id})">✏ 명칭수정</button></div>
+      <div class="admin-zone-name"><span class="admin-zone-name-text">${esc(displayZoneNameCleaned(z.name))}</span></div>
       <div class="admin-zone-meta">${isRes?'주택':'상가'} · ${c}회 · 경로 ${routeCnt}개</div>
     </div>
     <div class="admin-zone-status-box">
@@ -4970,8 +5515,9 @@ function renderAdminZoneRowHtml(z){
       <span class="admin-zone-box-label">관리</span>
       <button class="btn btn-sm ${meta.state==='standby'?'btn-p':'btn-out'}" onclick="setZoneStatus(${z.id},'standby')">초기화</button>
       <button class="btn btn-sm btn-out" onclick="editZoneNumber(${z.id})">번호수정</button>
+      <button class="btn btn-sm btn-out" onclick="renameZoneName(${z.id})">✏ 명칭수정</button>
       <button class="btn btn-sm btn-out" onclick="toggleZoneType(${z.id})">${isRes?'유형변경(→상가)':'유형변경(→주택)'}</button>
-      <button class="btn btn-sm btn-out" onclick="goAdminZoneDraw(${z.id})">그리기</button>
+      <button class="btn btn-sm btn-out" onclick="goAdminZoneDraw(${z.id})">구역경계그리기</button>
       <button class="btn btn-sm btn-out" onclick="goAdminZoneMapView(${z.id})">🗺 지도보기</button>
       <button class="btn btn-sm btn-dk" onclick="delZone(${z.id})">삭제</button>
     </div>
@@ -5008,6 +5554,41 @@ function toggleAdminComSection(){
   if(icon)icon.textContent=adminComSectionOpen?'▾':'▸';
   if(adminComSectionOpen)renderAdmCommercialGrid();
 }
+// V2: 아파트 카드 목록만 상가 바로 아래로 옮겨 접기/펼치기(단지등록/
+// 카드생성 도구는 딘 요청대로 별도의 항상 펼쳐진 블록으로 분리했고,
+// renderAdmin()이 이미 그 블록들의 render 함수를 매번 직접 호출하므로
+// 여기서 따로 호출할 필요 없음 — 카드 목록만 펼칠 때 갱신).
+let adminAptCardsSectionOpen=false;
+function toggleAdminAptCardsSection(){
+  const body=document.getElementById('adm-aptcards-body');
+  const icon=document.getElementById('adm-aptcards-toggle-icon');
+  if(!body)return;
+  adminAptCardsSectionOpen=body.classList.contains('hide');
+  body.classList.toggle('hide',!adminAptCardsSectionOpen);
+  if(icon)icon.textContent=adminAptCardsSectionOpen?'▾':'▸';
+  if(adminAptCardsSectionOpen)renderApartmentCardList();
+}
+// V2: 인도자/봉사자 명단도 상가/아파트와 동일한 접기/펼치기 패턴.
+let adminLeaderSectionOpen=false;
+function toggleAdminLeaderSection(){
+  const body=document.getElementById('adm-leader-body');
+  const icon=document.getElementById('adm-leader-toggle-icon');
+  if(!body)return;
+  adminLeaderSectionOpen=body.classList.contains('hide');
+  body.classList.toggle('hide',!adminLeaderSectionOpen);
+  if(icon)icon.textContent=adminLeaderSectionOpen?'▾':'▸';
+  if(adminLeaderSectionOpen)renderLeaderList();
+}
+let adminVolSectionOpen=false;
+function toggleAdminVolSection(){
+  const body=document.getElementById('adm-vol-body');
+  const icon=document.getElementById('adm-vol-toggle-icon');
+  if(!body)return;
+  adminVolSectionOpen=body.classList.contains('hide');
+  body.classList.toggle('hide',!adminVolSectionOpen);
+  if(icon)icon.textContent=adminVolSectionOpen?'▾':'▸';
+  if(adminVolSectionOpen)renderVolList();
+}
 function renderAdmCommercialGrid(){
   const all=S.zones.filter(z=>z.type==='commercial');
   const countEl=document.getElementById('adm-com-count');
@@ -5019,6 +5600,20 @@ function renderAdmCommercialGrid(){
 }
 function addVol(){const nm=document.getElementById('nv-inp').value.trim();if(!nm){toast('이름 입력');return;}if(S.volunteers.includes(nm)){toast('이미 있음');return;}S.volunteers.push(nm);persistVolunteers();document.getElementById('nv-inp').value='';renderVolList();fillSel();toast(`${nm} 추가`);}
 function rmVol(nm){S.volunteers=S.volunteers.filter(v=>v!==nm);persistVolunteers();renderVolList();fillSel();toast(`${nm} 삭제`);}
+function editVol(oldName){
+  const next=prompt('봉사자 이름을 입력하세요.',oldName);
+  if(next==null)return; // 취소
+  const trimmed=next.trim();
+  if(!trimmed){toast('이름을 입력하세요.');return;}
+  if(trimmed===oldName)return;
+  if(S.volunteers.includes(trimmed)){toast('이미 있는 이름입니다.');return;}
+  S.volunteers=S.volunteers.map(v=>v===oldName?trimmed:v);
+  if(S.contacts[oldName]){S.contacts[trimmed]=S.contacts[oldName];delete S.contacts[oldName];persistContacts();}
+  S.records.forEach(r=>{if(r.volunteer===oldName)r.volunteer=trimmed;});
+  persistVolunteers();persistRecords();
+  renderVolList();fillSel();
+  toast(`${oldName} → ${trimmed}로 수정되었습니다.`);
+}
 function delZone(id){
   if(!confirm('삭제하시겠습니까?'))return;
   S.zones=S.zones.filter(z=>z.id!==id);
@@ -5055,9 +5650,9 @@ function clearZoneServiceState(id){
   const z=getZoneById(id);
   if(z)z.progress=null;
   try{
-    const data=JSON.parse(localStorage.getItem('sokcho_progress')||'{}');
+    const data=JSON.parse(storageGet('sokcho_progress')||'{}');
     delete data[id];
-    localStorage.setItem('sokcho_progress',JSON.stringify(data));
+    storageSet('sokcho_progress',JSON.stringify(data));
   }catch(e){}
 }
 function setZoneStatus(id,status){
@@ -5113,7 +5708,7 @@ function toggleTbl(){S.showTbl=!S.showTbl;document.getElementById('all-tbl').sty
 function exportCSV(){const bom='\uFEFF';const h='날짜,구역,봉사자,방식\n';const rows=S.records.map(r=>`${r.date},${r.zoneName},${r.volunteer},${r.mode}`).join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(bom+h+rows);a.download='속초봉사기록.csv';a.click();toast('CSV 다운로드');}
 function makeBackupData(){
   let progress={};
-  try{progress=JSON.parse(localStorage.getItem('sokcho_progress')||'{}')||{};}catch(e){}
+  try{progress=JSON.parse(storageGet('sokcho_progress')||'{}')||{};}catch(e){}
   // V2 H16: 아파트 레지스트리/카드/S-13/영구삭제 목록도 백업에 포함. 아직 메모리에
   // 로드 안 됐을 수 있으니(관리자 화면을 한 번도 안 열었다면) 먼저 로드부터 확실히 함.
   loadApartmentRegistry();
@@ -5167,15 +5762,15 @@ function importBackup(input){
       S.leaders=Array.isArray(data.leaders)?data.leaders:S.leaders;
       if(data.contacts&&typeof data.contacts==='object')S.contacts=data.contacts;
       S.nextId=Math.max(0,...S.zones.map(z=>Number(z.id)||0));
-      if(data.progress&&typeof data.progress==='object')localStorage.setItem('sokcho_progress',JSON.stringify(data.progress));
+      if(data.progress&&typeof data.progress==='object')storageSet('sokcho_progress',JSON.stringify(data.progress));
       // V2 H16: 구버전(version 2 이하) 백업 파일에는 아래 필드가 없을 수 있으니
       // Array.isArray/타입 체크로 있을 때만 복원한다(하위호환, 없으면 현재 값 유지).
       if(Array.isArray(data.apartmentComplexes)){S.apartmentComplexes=data.apartmentComplexes;S._apartmentRegistryLoaded=true;}
       if(Array.isArray(data.apartmentCards)){S.apartmentCards=data.apartmentCards;S._apartmentCardsLoaded=true;}
-      if(Array.isArray(data.s13Records))localStorage.setItem('sokcho_s13_v1',JSON.stringify({schemaVersion:1,records:data.s13Records}));
-      if(typeof data.s13Congregation==='string')localStorage.setItem('sokcho_s13_congregation',data.s13Congregation);
-      if(Array.isArray(data.deletedZoneIds))localStorage.setItem('sokcho_deleted_zone_ids',JSON.stringify(data.deletedZoneIds));
-      if(Array.isArray(data.deletedApartmentCardIds))localStorage.setItem('sokcho_deleted_apartment_card_ids',JSON.stringify(data.deletedApartmentCardIds));
+      if(Array.isArray(data.s13Records))storageSet('sokcho_s13_v1',JSON.stringify({schemaVersion:1,records:data.s13Records}));
+      if(typeof data.s13Congregation==='string')storageSet('sokcho_s13_congregation',data.s13Congregation);
+      if(Array.isArray(data.deletedZoneIds))storageSet('sokcho_deleted_zone_ids',JSON.stringify(data.deletedZoneIds));
+      if(Array.isArray(data.deletedApartmentCardIds))storageSet('sokcho_deleted_apartment_card_ids',JSON.stringify(data.deletedApartmentCardIds));
       if(data.settings){
         if(onlyDigits(data.settings.adminPin,6))setAdminPin(data.settings.adminPin);
         if(onlyDigits(data.settings.leaderPin,4))setLeaderPin(data.settings.leaderPin);
@@ -5189,6 +5784,340 @@ function importBackup(input){
     input.value='';
   };
   reader.readAsText(file,'utf-8');
+}
+
+// ================================================================
+// V2 H43/PARTB: 구역번호 재정리(1회성 마이그레이션). 시내=1001~/
+// 시외=3001~/상가=4001~ (딘 확정, PARTB-MAPPING 보고서 기준).
+// zones_seed.js만 고치면 이미 저장된 실제 데이터(옛 id)는 그대로
+// 남고 새 id가 중복으로 추가되므로, 이 함수가 "이미 저장된 데이터를
+// 옛id→새id로 직접 rename"한다. zoneId를 참조하는 다른 데이터
+// (route/기록/진행상황/S-13/삭제목록)도 함께 갱신. 관리자가 실행
+// 버튼을 눌렀을 때만 동작, 실행 전 자동 백업 다운로드.
+// ================================================================
+const ZONE_ID_RENUMBER_MAP_H43={31601:1001,31701:1002,31801:1003,31901:1004,32001:1005,32101:1006,32201:1007,32301:1008,32401:1009,32501:1010,32801:1011,32901:1012,33001:1013,33101:1014,33201:1015,33301:1016,33401:1017,33501:1018,33601:1019,33701:1020,33801:1021,33901:1022,34001:1023,17001:1024,16901:1025,18301:1026,18401:1027,12901:1028,13001:1029,8401:1030,8501:1031,17101:1032,17201:1033,9001:1034,9101:1035,9201:1036,9301:1037,9401:1038,9501:1039,13801:1040,13901:1041,14001:1042,14101:1043,14201:1044,18801:1045,18901:1046,19001:1047,2101:1048,2201:1049,2301:1050,21401:1051,21501:1052,21601:1053,21701:1054,14901:1055,15001:1056,15101:1057,18501:1058,18601:1059,18701:1060,10001:1061,9901:1062,10201:1063,10101:1064,10401:1065,10301:1066,10601:1067,10501:1068,9701:1069,9801:1070,22401:1071,22402:1072,22601:1073,22602:1074,22701:1075,22702:1076,22703:1077,22801:1078,22802:1079,22901:1080,22902:1081,23001:1082,23002:1083,23101:1084,23102:1085,25701:1086,25702:1087,25703:1088,25801:1089,25901:1090,25902:1091,25903:1092,26001:1093,26002:1094,26003:1095,26101:1096,26102:1097,26103:1098,28601:1099,28602:1100,28701:1101,28702:1102,28801:1103,28802:1104,28803:1105,28901:1106,28902:1107,28903:1108,29001:1109,29002:1110,29003:1111,29101:1112,29102:1113,29103:1114,26301:1115,26501:1116,26502:1117,26503:1118,26601:1119,26602:1120,26603:1121,23601:1122,23602:1123,23603:1124,23701:1125,23702:1126,23703:1127,24501:1128,24502:1129,24503:1130,24504:1131,24601:1132,24602:1133,24603:1134,24701:1135,24702:1136,24703:1137,24801:1138,24802:1139,24803:1140,24901:1141,24902:1142,24903:1143,25001:1144,25002:1145,26701:1146,26702:1147,26801:1148,26802:1149,26901:1150,27001:1151,27101:1152,29401:1153,29402:1154,29501:1155,29502:1156,29503:1157,29701:1158,29702:1159,29703:1160,29801:1161,29802:1162,29901:1163,29902:1164,30001:1165,30002:1166,3601:1167,3602:1168,3603:1169,4901:1170,4902:1171,4903:1172,5001:1173,5002:1174,5003:1175,5101:1176,5102:1177,30101:1178,30102:1179,30201:1180,30202:1181,30203:1182,30204:1183,30301:1184,30302:1185,30303:1186,30501:1187,30502:1188,30601:1189,30602:1190,30701:1191,30702:1192,30801:1193,30802:1194,30803:1195,30901:1196,30902:1197,30903:1198,30904:1199,30905:1200,5301:1201,5302:1202,5303:1203,5304:1204,5305:1205,5401:1206,5402:1207,5403:1208,5501:1209,5502:1210,5503:1211,5504:1212,5601:1213,5602:1214,5701:1215,5702:1216,5703:1217,5704:1218,5705:1219,5801:1220,5802:1221,5803:1222,5804:1223,5805:1224,5901:1225,5902:1226,5903:1227,5904:1228,5905:1229,6001:1230,6002:1231,6003:1232,6101:1233,6102:1234,27201:1235,27202:1236,27203:1237,27204:1238,27205:1239,27301:1240,27302:1241,27303:1242,27304:1243,35301:3001,27401:3002,27402:3003,27403:3004,28501:3005,28502:3006,28503:3007,25101:3008,25102:3009,25103:3010,25104:3011,25201:3012,25202:3013,25203:3014,25301:3015,25302:3016,25303:3017,25304:3018,25401:3019,25402:3020,25403:3021,25601:3022,25602:3023,25603:3024,25604:3025,67701:3026,6201:3027,67702:3028,6202:3029,6301:3030,6302:3031,6303:3032,6401:3033,6402:3034,6403:3035,6501:3036,6502:3037,6601:3038,6701:3039,31001:3040,31002:3041,31003:3042,31004:3043,31101:3044,31102:3045,31103:3046,31104:3047,27501:3048,27502:3049,27503:3050,27601:3051,27602:3052,27603:3053,27701:3054,27702:3055,27703:3056,27801:3057,27802:3058,27803:3059,27804:3060,6801:3061,6802:3062,6803:3063,6901:3064,6902:3065,7001:3066,7002:3067,7101:3068,7102:3069,7103:3070,7201:3071,27901:3072,27902:3073,27903:3074,27904:3075,28001:3076,28002:3077,28101:3078,28102:3079,28103:3080,28104:3081,28201:3082,28202:3083,28301:3084,28302:3085,28401:3086,28402:3087,7301:3088,7302:3089,7303:3090,7401:3091,7402:3092,7403:3093,7501:3094,7502:3095,31201:3096,31202:3097,31203:3098,31301:3099,31302:3100,31303:3101,58201:4001,58301:4002,59601:4003,26201:4004,26202:4005,29201:4006,29202:4007,29301:4008,29302:4009,10701:4010,10702:4011,10801:4012,10802:4013,10803:4014,23201:4015,23202:4016,23203:4017,23204:4018,23205:4019,601:4020,602:4021,603:4022,4601:4023,4602:4024,4603:4025,4301:4026,4302:4027,23301:4028,23302:4029,23401:4030,12001:4031,23801:4032,23802:4033,23803:4034,23804:4035,23901:4036,23902:4037,23903:4038,24001:4039,24002:4040,24003:4041,24004:4042,24101:4043,24102:4044,24103:4045,24104:4046,24105:4047,24201:4048,24202:4049,24203:4050,24204:4051,24301:4052,24302:4053,24303:4054,24401:4055,24402:4056,24403:4057,24404:4058,12101:4059,12102:4060,12103:4061,5201:4062,5202:4063,5203:4064,5204:4065,5205:4066,5206:4067,5207:4068,5208:4069,5209:4070,30401:4071,30402:4072,30403:4073,30404:4074};
+const ZONE_ID_DELETE_LIST_H43=[14301]; // 10-10 썬라이즈빌 101동(양양 소재, 딘 확인 삭제 대상)
+function runZoneRenumberMigration(){
+  if(S.role!=='admin'){toast('관리자만 실행할 수 있습니다.');return;}
+  const targetExists=S.zones.some(z=>ZONE_ID_RENUMBER_MAP_H43[z.id]!=null||ZONE_ID_DELETE_LIST_H43.includes(z.id));
+  if(!targetExists){toast('재정리 대상 구역(옛 번호)을 찾을 수 없습니다 — 이미 실행되었거나 대상이 없습니다.');return;}
+  if(!confirm('구역번호를 새 체계(시내 1001~ / 시외 3001~ / 상가 4001~)로 지금 이 기기에서 한 번에 재정리합니다.\n실행 전 안전을 위해 백업 파일이 자동으로 다운로드됩니다.\n계속하시겠습니까?'))return;
+  exportBackup(); // 안전망: 실행 전 현재 상태 그대로 자동 백업
+
+  const map=ZONE_ID_RENUMBER_MAP_H43;
+  const deleteIds=new Set(ZONE_ID_DELETE_LIST_H43.map(String));
+  let deletedCount=0,renumberedCount=0;
+
+  // V2 H53: id가 바뀌거나(재정리) 구역이 없어지면(삭제), Kakao 폴리곤
+  // 캐시(mainKakaoPolygons/homeKakaoPolygons)에 옛 id로 걸린 항목을
+  // 그 자리에서 즉시 지운다. 기존 invalidateZonePolygonCache()와 같은
+  // 삭제 로직이지만, 그 함수는 호출마다 지도를 다시 그려서(무거움)
+  // 344개 반복에는 안 맞아 캐시 삭제 부분만 직접 처리 — 실제 화면
+  // 다시 그리기는 이 함수 끝의 refreshAllViews()가 한 번에 담당한다.
+  function clearStalePolygonCache(oldId){
+    const key=String(oldId);
+    const main=mainKakaoPolygons.get(key);
+    if(main){main.polygon.setMap(null);mainKakaoPolygons.delete(key);}
+    const home=homeKakaoPolygons.get(key);
+    if(home){home.polygon.setMap(null);homeKakaoPolygons.delete(key);}
+  }
+
+  S.zones=S.zones.filter(z=>{
+    if(deleteIds.has(String(z.id))){addDeletedZoneId(z.id);clearStalePolygonCache(z.id);deletedCount++;return false;}
+    return true;
+  });
+
+  const oldToNew={};
+  S.zones.forEach(z=>{
+    const newId=map[z.id];
+    if(newId!=null&&newId!==z.id){oldToNew[String(z.id)]=newId;clearStalePolygonCache(z.id);z.id=newId;renumberedCount++;}
+  });
+
+  S.rteLines.forEach(l=>{if(oldToNew[String(l.zoneId)]!=null)l.zoneId=oldToNew[String(l.zoneId)];});
+  S.records.forEach(r=>{if(oldToNew[String(r.zoneId)]!=null)r.zoneId=oldToNew[String(r.zoneId)];});
+
+  try{
+    const progress=JSON.parse(storageGet('sokcho_progress')||'{}')||{};
+    const newProgress={};
+    Object.keys(progress).forEach(k=>{
+      const nk=oldToNew[k]!=null?String(oldToNew[k]):k;
+      newProgress[nk]=progress[k];
+    });
+    storageSet('sokcho_progress',JSON.stringify(newProgress));
+  }catch(e){}
+
+  try{
+    const delIds=loadDeletedZoneIds();
+    const newDelIds=delIds.map(id=>oldToNew[String(id)]!=null?String(oldToNew[String(id)]):id);
+    storageSet('sokcho_deleted_zone_ids',JSON.stringify([...new Set(newDelIds)]));
+  }catch(e){}
+
+  try{
+    const s13records=loadS13Records();
+    s13records.forEach(rec=>{
+      const m=/^zone-(.+)$/.exec(rec.territoryId||'');
+      if(m&&oldToNew[m[1]]!=null){
+        const newId=oldToNew[m[1]];
+        rec.territoryId='zone-'+newId;
+        rec.zoneNumber=newId;
+        rec.id=rec.territoryId+'-'+rec.serviceYear;
+      }
+    });
+    persistS13Records(s13records);
+  }catch(e){}
+
+  S.nextId=Math.max(0,...S.zones.map(z=>Number(z.id)||0));
+  persistAllData();
+  refreshAllViews();
+  if(S.role==='admin')renderAdmin();
+  toast(`구역번호 재정리 완료 — ${renumberedCount}개 변경, ${deletedCount}개 삭제`);
+}
+
+// ================================================================
+// V2 H78: 기기 동기화 통합 버튼. 지금까지 따로따로 눌러야 했던
+// 1회성 마이그레이션(구역번호 재정리 H43, KCC/진덕 카드 가져오기
+// H63)을 순서대로 실행한다. 각 마이그레이션의 실제 로직/멱등성
+// 판단은 원래 함수(runZoneRenumberMigration/runApartmentImportH63)
+// 그대로 재사용하고 손대지 않는다 — 이 함수는 "무엇을 언제 부를지"
+// 와 "결과를 하나로 요약해서 보여주는 것"만 담당한다.
+//
+// 아파트 카드 가져오기만 별도 처리가 필요했던 이유: 원래 함수는
+// 이미 실행된 기기에서 다시 실행하면 "정말 다시 실행하시겠습니까?"
+// 확인창을 띄우고, 거기서 실수로 확인을 누르면 카드가 중복
+// 생성된다(원래 함수 자체의 동작, 손대지 않음). 통합 버튼은 반드시
+// 완전히 안전(멱등)해야 하므로, 이미 실행된 기기에서는 그 확인창이
+// 아예 뜨지 않게 호출 자체를 건너뛴다. 구역번호 재정리는 원래
+// 함수가 "대상 없음"일 때 확인창 없이 조용히 끝나므로 그대로 매번
+// 호출해도 안전하다(수정 불필요).
+function zoneRenumberStillNeeded(){
+  return S.zones.some(z=>ZONE_ID_RENUMBER_MAP_H43[z.id]!=null||ZONE_ID_DELETE_LIST_H43.includes(z.id));
+}
+// ================================================================
+// H80: H79 자동검색에서 "확실"(단일 후보 + 이름에 동번호 정확히
+// 포함)로 분류된 32건의 동 좌표를 확정값으로 반영. 좌표 저장 자체는
+// 기존 saveApartmentBuildingPin/setApartmentBuildingCoord와 동일하게
+// b.lat/b.lng 설정 + persistApartmentRegistry() 재사용 — 새 저장
+// 경로를 만들지 않음. 이미 좌표가 있는 동은 건드리지 않아(멱등)
+// runDeviceSyncAll에서 매번 다시 호출해도 안전함.
+// ================================================================
+const APARTMENT_BUILDING_COORDS_H80=[
+  {complex:'KCC',dong:'101동',lat:38.18428590753883,lng:128.59523656595624},
+  {complex:'KCC',dong:'102동',lat:38.18420656352619,lng:128.59603715992924},
+  {complex:'KCC',dong:'103동',lat:38.18467676121987,lng:128.59617182223167},
+  {complex:'KCC',dong:'104동',lat:38.18485446534868,lng:128.59522614163964},
+  {complex:'KCC',dong:'105동',lat:38.18540538548667,lng:128.59525413698293},
+  {complex:'KCC',dong:'106동',lat:38.1852384720854,lng:128.59620120140676},
+  {complex:'KCC',dong:'107동',lat:38.1856844593864,lng:128.595996369422},
+  {complex:'KCC',dong:'108동',lat:38.1858639066855,lng:128.595320063262},
+  {complex:'LH천년나무3단지',dong:'301동',lat:38.186563431021,lng:128.591634009875},
+  {complex:'LH천년나무3단지',dong:'302동',lat:38.18598402411911,lng:128.59084987044477},
+  {complex:'LH천년나무3단지',dong:'303동',lat:38.185833157028526,lng:128.59154621332698},
+  {complex:'LH천년나무3단지',dong:'304동',lat:38.18595992197959,lng:128.5922953919055},
+  {complex:'동명',dong:'가동',lat:38.186080575582885,lng:128.59912537165815},
+  {complex:'동명',dong:'나동',lat:38.18583406030057,lng:128.59989607317706},
+  {complex:'동명',dong:'다동',lat:38.185792524193104,lng:128.5991099424727},
+  {complex:'동명',dong:'라동',lat:38.18558142591531,lng:128.59985973100092},
+  {complex:'부영1단지',dong:'101동',lat:38.18863437762138,lng:128.5859791493793},
+  {complex:'부영1단지',dong:'102동',lat:38.18822541537364,lng:128.5861118070458},
+  {complex:'부영2단지',dong:'201동',lat:38.1876406147503,lng:128.58579096042806},
+  {complex:'성호2차',dong:'201동',lat:38.18404843362865,lng:128.59772851609102},
+  {complex:'성호2차',dong:'202동',lat:38.18478351547185,lng:128.59746267499136},
+  {complex:'성호2차',dong:'203동',lat:38.1853606280761,lng:128.59775033542235},
+  {complex:'성호2차',dong:'204동',lat:38.18539332714063,lng:128.59720094075058},
+  {complex:'아뜨리움',dong:'101동',lat:38.18757748682281,lng:128.59755566532178},
+  {complex:'아뜨리움',dong:'103동',lat:38.18738242324718,lng:128.5968631781678},
+  {complex:'조양주공',dong:'201동',lat:38.186578622948865,lng:128.59323675981094},
+  {complex:'조양주공',dong:'202동',lat:38.18654258993339,lng:128.5938340283285},
+  {complex:'조양주공',dong:'203동',lat:38.186509408769425,lng:128.59435374843494},
+  {complex:'조양주공',dong:'204동',lat:38.18602078488697,lng:128.59444809670077},
+  {complex:'조양주공',dong:'205동',lat:38.1860572722294,lng:128.59388394084826},
+  {complex:'조양주공',dong:'206동',lat:38.18628483558546,lng:128.59351112385687},
+  {complex:'조양주공',dong:'207동',lat:38.18610711855559,lng:128.59313175817863},
+];
+function applyConfidentBuildingCoordsH80(){
+  if(S.role!=='admin')return null;
+  let applied=0,skipped=0,notFound=0;
+  APARTMENT_BUILDING_COORDS_H80.forEach(item=>{
+    const c=S.apartmentComplexes.find(c=>c.name===item.complex);
+    const b=c&&c.buildings.find(bb=>bb.dong===item.dong);
+    if(!b){notFound++;return;}
+    if(hasApartmentBuildingCoord(b)){skipped++;return;}
+    b.lat=item.lat;b.lng=item.lng;
+    applied++;
+  });
+  if(applied>0)persistApartmentRegistry();
+  renderApartmentComplexList();
+  return {applied,skipped,notFound};
+}
+// ================================================================
+// H81: H79 애매/결과없음 중 딘이 알려준 정확한 명칭/방식으로
+// 재검색해서 새로 확실해진 7건. 좌표 저장 방식은 H80과 동일하게
+// b.lat/b.lng 설정 + persistApartmentRegistry() 재사용, 이미 좌표
+// 있으면 건드리지 않음(멱등).
+// - 부영9단지 901~904동: "부영9단지"="부영9차"(딘 제공 정보)로
+//   재검색해서 4건 모두 단일후보+동번호 정확히 일치로 확인
+// - 부영6단지 601동: "부영6단지"="부영6차"로 재검색(부영9단지와
+//   같은 명명 패턴 적용) → 단일후보+동번호 일치로 확인. TARGET에
+//   명시된 "수동 확정 저장" 대상 — 지도를 직접 보고 찍는 대신
+//   이름 교정 재검색으로 정확한 후보를 찾아 저장(둘 다 관리자가
+//   최종 확인 없이 이 함수 안에서 바로 저장한다는 점은 동일)
+// - 아뜨리움 102동: H79 원본 재검색 결과(후보 2개) 중 1번
+//   "속초조양동ES아뜨리움아파트 102동"(동번호 정확히 일치)을 채택,
+//   2번 "사월의눈"은 이름이 전혀 달라 무관한 업체로 판단해 제외
+// - 진덕 1동: H79 원본 재검색 결과(후보 1개 "진덕설악맨션")를
+//   그대로 채택 — 별도 검증 검색("진덕설악맨션"만 검색)에서도 동일
+//   단지가 이 지역에 하나뿐임을 확인, "1동" 표기가 이름에 없는 것은
+//   이 단지가 여러 동을 세부 명칭 없이 하나로 관리해서로 판단
+// ================================================================
+const APARTMENT_BUILDING_COORDS_H81=[
+  {complex:'부영9단지',dong:'901동',lat:38.18887022827498,lng:128.58405650593548},
+  {complex:'부영9단지',dong:'902동',lat:38.18848733855022,lng:128.58392608656536},
+  {complex:'부영9단지',dong:'903동',lat:38.18886207225085,lng:128.58486098875346},
+  {complex:'부영9단지',dong:'904동',lat:38.18849079712361,lng:128.5848712035871},
+  {complex:'부영6단지',dong:'601동',lat:38.18767759466214,lng:128.5811795968316},
+  {complex:'아뜨리움',dong:'102동',lat:38.187781072868866,lng:128.597158360444},
+  {complex:'진덕',dong:'1동',lat:38.18669564311844,lng:128.59960219940692},
+];
+function applyConfidentBuildingCoordsH81(){
+  if(S.role!=='admin')return null;
+  let applied=0,skipped=0,notFound=0;
+  APARTMENT_BUILDING_COORDS_H81.forEach(item=>{
+    const c=S.apartmentComplexes.find(c=>c.name===item.complex);
+    const b=c&&c.buildings.find(bb=>bb.dong===item.dong);
+    if(!b){notFound++;return;}
+    if(hasApartmentBuildingCoord(b)){skipped++;return;}
+    b.lat=item.lat;b.lng=item.lng;
+    applied++;
+  });
+  if(applied>0)persistApartmentRegistry();
+  renderApartmentComplexList();
+  return {applied,skipped,notFound};
+}
+// ================================================================
+// H82: 좌표 등록 마무리 — 남은 20건 전부 확정. 저장 방식은 H80/H81과
+// 동일(b.lat/b.lng + persistApartmentRegistry(), 이미 좌표 있으면
+// 건드리지 않아 멱등).
+// - 부영6단지 602~604동: 601동과 같은 "부영6차 {동}" 재검색으로
+//   3건 모두 단일후보+동번호 정확히 일치 확인
+// - 4차(주공4차) 12건: 딘이 지시한 "주공4차 입구"/"주공4차 아파트
+//   입구" 검색은 실제로는 결과 0건(그런 이름의 장소가 카카오에
+//   없음, "속초" 뺀 검색은 수원/부천 등 엉뚱한 도시 결과만 나옴).
+//   대신 H81 조사에서 이미 확인해둔 "주공4차 중앙상가"(온정로 18,
+//   이 단지의 실존 대표시설)를 12개 동 공통좌표로 사용 — 딘이
+//   승인한 "공통좌표 사용" 의도에 맞는 대체
+// - 성호1차 5건: 마찬가지로 "성호1단지 입구" 계열 검색은 0건.
+//   "속초 성호1차아파트" 검색으로 확인된 "성호아파트"(청대로 8,
+//   성호2차와는 다른 주소)를 5개 동 공통좌표로 사용
+// ================================================================
+const APARTMENT_BUILDING_COORDS_H82=[
+  {complex:'부영6단지',dong:'602동',lat:38.187187656465014,lng:128.58170657219105},
+  {complex:'부영6단지',dong:'603동',lat:38.187589563851965,lng:128.58203027548748},
+  {complex:'부영6단지',dong:'604동',lat:38.187111689920485,lng:128.58246391617882},
+  {complex:'4차',dong:'101동',lat:38.18577522796179,lng:128.59296132051855},
+  {complex:'4차',dong:'102동',lat:38.18577522796179,lng:128.59296132051855},
+  {complex:'4차',dong:'103동',lat:38.18577522796179,lng:128.59296132051855},
+  {complex:'4차',dong:'104동',lat:38.18577522796179,lng:128.59296132051855},
+  {complex:'4차',dong:'105동',lat:38.18577522796179,lng:128.59296132051855},
+  {complex:'4차',dong:'106동',lat:38.18577522796179,lng:128.59296132051855},
+  {complex:'4차',dong:'107동',lat:38.18577522796179,lng:128.59296132051855},
+  {complex:'4차',dong:'108동',lat:38.18577522796179,lng:128.59296132051855},
+  {complex:'4차',dong:'109동',lat:38.18577522796179,lng:128.59296132051855},
+  {complex:'4차',dong:'110동',lat:38.18577522796179,lng:128.59296132051855},
+  {complex:'4차',dong:'111동',lat:38.18577522796179,lng:128.59296132051855},
+  {complex:'4차',dong:'112동',lat:38.18577522796179,lng:128.59296132051855},
+  {complex:'성호1차',dong:'101동',lat:38.18455140908841,lng:128.5992928024047},
+  {complex:'성호1차',dong:'102동',lat:38.18455140908841,lng:128.5992928024047},
+  {complex:'성호1차',dong:'103동',lat:38.18455140908841,lng:128.5992928024047},
+  {complex:'성호1차',dong:'104동',lat:38.18455140908841,lng:128.5992928024047},
+  {complex:'성호1차',dong:'105동',lat:38.18455140908841,lng:128.5992928024047},
+];
+function applyConfidentBuildingCoordsH82(){
+  if(S.role!=='admin')return null;
+  let applied=0,skipped=0,notFound=0;
+  APARTMENT_BUILDING_COORDS_H82.forEach(item=>{
+    const c=S.apartmentComplexes.find(c=>c.name===item.complex);
+    const b=c&&c.buildings.find(bb=>bb.dong===item.dong);
+    if(!b){notFound++;return;}
+    if(hasApartmentBuildingCoord(b)){skipped++;return;}
+    b.lat=item.lat;b.lng=item.lng;
+    applied++;
+  });
+  if(applied>0)persistApartmentRegistry();
+  renderApartmentComplexList();
+  return {applied,skipped,notFound};
+}
+// ================================================================
+// H91: 아파트 카드 point.complexId가 실제 S.apartmentComplexes id와
+// 어긋나는 데이터 정합성 문제 근본 수정. 원인: runApartmentImportH63()
+// 자체는 항상 내부적으로 일관된 id를 부여하지만(complex 생성 시
+// 그 자리에서 만든 id를 그대로 카드에 씀, 코드 재확인 완료), 과거
+// 이 기능이 여러 차례 반복 개발/시험되는 동안 어느 한 기기에서
+// 지금과 다른 버전의 코드/데이터로 먼저 실행되어 sokcho_h63_import_done
+// 플래그가 이미 '1'로 저장돼 있으면, 이후 아무리 코드를 고쳐도
+// runApartmentImportH63() 자체가 재실행되지 않아(중복 방지 설계,
+// H78/H91에서 의도적으로 유지) 그 기기엔 옛 id 체계의 카드가
+// 영구히 남는다 — 이것이 "이름은 맞는데 id가 어긋남" 현상의
+// 근본 원인으로 판단. 코드 재작성이 아니라 데이터 정정(옵션 a)으로
+// 해결한다: 카드가 들고 있는 complexName은 항상 정확하므로, 그
+// 이름으로 지금 레지스트리에 있는 진짜 id를 찾아 point.complexId를
+// 덮어쓴다. 이미 올바른 point는 그대로 두어(멱등) 몇 번을 다시
+// 실행해도 안전하다.
+function repairApartmentCardComplexId(){
+  // H92: id 비교도 String()으로 타입 무관하게 맞춘다(문자열 "2" vs
+  // 숫자 2 같은 경우). 값은 같은데 타입만 다른 경우는 "이미 정상"
+  // 취급하지 않고 실제 레지스트리 쪽 타입 그대로 맞춰서 저장까지
+  // 해준다 — 그래야 이 카드가 다음부터는 어떤 비교 방식을 쓰든
+  // 항상 안전하게 일치한다.
+  let repaired=0,alreadyOk=0,unresolved=0;
+  S.apartmentCards.forEach(card=>{
+    card.points.forEach(pt=>{
+      const byId=S.apartmentComplexes.find(c=>String(c.id)===String(pt.complexId));
+      if(byId){
+        if(byId.id!==pt.complexId){pt.complexId=byId.id;repaired++;}
+        else{alreadyOk++;}
+        return;
+      }
+      const byName=pt.complexName&&S.apartmentComplexes.find(c=>c.name===pt.complexName);
+      if(byName){pt.complexId=byName.id;repaired++;}
+      else{unresolved++;}
+    });
+  });
+  if(repaired>0)persistApartmentCards();
+  return {repaired,alreadyOk,unresolved};
+}
+function runDeviceSyncAll(){
+  if(S.role!=='admin'){toast('관리자만 실행할 수 있습니다.');return;}
+
+  // 1) 구역번호 재정리(H43) — 원본 함수 그대로 호출(대상 없으면 확인창 없이 조용히 반환)
+  const zoneNeededBefore=zoneRenumberStillNeeded();
+  runZoneRenumberMigration();
+  const zoneNeededAfter=zoneRenumberStillNeeded();
+  const zoneApplied=zoneNeededBefore&&!zoneNeededAfter;
+
+  // 2) KCC/진덕 아파트 카드 가져오기(H63) — 이미 실행됐으면 원본 함수 자체를 호출하지 않음(중복 방지)
+  const aptAlreadyDone=storageGet('sokcho_h63_import_done')==='1';
+  let aptApplied=false;
+  if(!aptAlreadyDone&&typeof runApartmentImportH63==='function'){
+    const cardsBefore=S.apartmentCards.length;
+    runApartmentImportH63();
+    aptApplied=S.apartmentCards.length>cardsBefore;
+  }
+
+  // 3) H80/H81/H82: 확실 매칭 동 좌표 일괄확정(32건+7건+20건=59건 전체) — 이미 좌표 있는 동은 건드리지 않아(멱등) 매번 호출해도 안전
+  const coordResult80=applyConfidentBuildingCoordsH80()||{applied:0,skipped:0,notFound:0};
+  const coordResult81=applyConfidentBuildingCoordsH81()||{applied:0,skipped:0,notFound:0};
+  const coordResult82=applyConfidentBuildingCoordsH82()||{applied:0,skipped:0,notFound:0};
+  const coordAppliedTotal=coordResult80.applied+coordResult81.applied+coordResult82.applied;
+
+  // 4) H91: 카드 point.complexId가 옛 id 체계로 어긋나 있으면 이름 기준으로 정정 — 이미 올바르면 아무 것도 안 함(멱등)
+  const complexIdFix=repairApartmentCardComplexId();
+
+  const zoneMsg=zoneApplied?'구역번호 재정리 적용됨':'구역번호 이미 최신';
+  const aptMsg=aptAlreadyDone?'아파트 카드 이미 최신':(aptApplied?'아파트 카드 가져오기 적용됨':'아파트 카드 가져오기 안 함(취소 또는 실패)');
+  const coordMsg=coordAppliedTotal>0?`동 좌표 ${coordAppliedTotal}건 새로 확정`:'동 좌표 이미 최신';
+  const fixMsg=complexIdFix.repaired>0?`카드 단지연결 ${complexIdFix.repaired}건 정정됨`:'카드 단지연결 이미 정상';
+  const allUpToDate=!zoneApplied&&aptAlreadyDone&&coordAppliedTotal===0&&complexIdFix.repaired===0;
+  toast(`${allUpToDate?'✅ 이미 최신 상태입니다':'✅ 최신 상태로 맞췄습니다'} — 구역 ${S.zones.length}개, 아파트 단지 ${S.apartmentComplexes.length}개, 카드 ${S.apartmentCards.length}개 (${zoneMsg} / ${aptMsg} / ${coordMsg} / ${fixMsg})`);
 }
 
 // ================================================================
@@ -5207,24 +6136,44 @@ function addLeader(){
   toast(`${name} 인도자 추가`);
 }
 function renderLeaderList(){
+  const countEl=document.getElementById('adm-leader-count');
+  if(countEl)countEl.textContent=S.leaders.length;
   const wrap=document.getElementById('leader-list');if(!wrap)return;
   wrap.innerHTML=S.leaders.map((l,i)=>`<div class="leader-card">
     <div style="width:12px;height:12px;border-radius:50%;background:${l.color};flex-shrink:0;"></div>
     <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;">${esc(l.name)}</div>
     </div>
     <div style="display:flex;gap:6px;">
+      <button class="btn btn-sm btn-out" onclick="editLeader(${i})">수정</button>
       <button class="btn btn-sm btn-dk" onclick="delLeader(${i})">삭제</button>
     </div>
   </div>`).join('');
 }
 function delLeader(i){S.leaders.splice(i,1);persistLeaders();renderLeaderList();fillSelForRole('leader');toast('인도자 삭제됨');}
+function editLeader(i){
+  const l=S.leaders[i];
+  if(!l)return;
+  const next=prompt('인도자 이름을 입력하세요.',l.name);
+  if(next==null)return; // 취소
+  const trimmed=next.trim();
+  if(!trimmed){toast('이름을 입력하세요.');return;}
+  if(trimmed===l.name)return;
+  if(S.leaders.some((x,xi)=>xi!==i&&x.name===trimmed)){toast('이미 등록된 인도자입니다.');return;}
+  l.name=trimmed;
+  persistLeaders();
+  renderLeaderList();
+  fillSelForRole('leader');
+  toast('인도자 이름이 수정되었습니다.');
+}
 
 // ================================================================
-// V2 H41: 연구자료(JW.ORG 링크) — 검색 + 관리자 CRUD
-// "봉사모임사회 Pro"(cksomj/bongsa-pro)의 연구자료 메뉴에 있던 seed
-// 링크 4개만 재사용. Pro의 카드체계/전용인증/개인연구작성기는 가져오지
-// 않음. 전 역할(봉사자/인도자/관리자) 열람+검색 가능, 추가/수정/삭제는
-// 관리자만(.admin-pin-action 클래스로 기존 syncRoleUi() 토글 재사용).
+// V2 H41/H44: 연구자료(JW.ORG 링크) — 인도자 열람+jw.org 검색,
+// 관리자 탭에서 CRUD. "봉사모임사회 Pro"(cksomj/bongsa-pro)의
+// seed 링크 4개만 재사용, 그 외 Pro 기능은 가져오지 않음.
+// H44: 봉사자 탭 노출 제거(인도자 전용), 로컬 제목검색 대신 검색
+// 버튼으로 jw.org 통합검색을 새 탭에서 열도록 변경, 관리자 CRUD는
+// 관리자 탭 안의 "연구자료 관리" 섹션으로 이동(인도자가 보는 목록과
+// 같은 렌더 함수를 공유해서 두 화면이 항상 같은 데이터를 보여줌).
 // ================================================================
 const RESEARCH_LINKS_SEED=[
   {id:1,title:'사람들을 사랑하고 제자로 삼으십시오',url:'https://www.jw.org/ko/%EB%9D%BC%EC%9D%B4%EB%B8%8C%EB%9F%AC%EB%A6%AC/%ED%8C%9C%ED%94%8C%EB%A0%9B/%EC%82%AC%EB%9E%8C%EB%93%A4%EC%9D%84-%EC%82%AC%EB%9E%91%ED%95%98%EA%B3%A0-%EC%A0%9C%EC%9E%90%EB%A1%9C-%EC%82%BC%EC%9C%BC%EC%8B%AD%EC%8B%9C%EC%98%A4/'},
@@ -5235,45 +6184,54 @@ const RESEARCH_LINKS_SEED=[
 function loadResearchLinks(){
   if(S._researchLinksLoaded)return;
   try{
-    const saved=JSON.parse(localStorage.getItem('sokcho_research_links')||'null');
+    const saved=JSON.parse(storageGet('sokcho_research_links')||'null');
     S.researchLinks=Array.isArray(saved)&&saved.length?saved:RESEARCH_LINKS_SEED.map(l=>({...l}));
   }catch(e){S.researchLinks=RESEARCH_LINKS_SEED.map(l=>({...l}));}
   S._researchLinksLoaded=true;
 }
-function persistResearchLinks(){localStorage.setItem('sokcho_research_links',JSON.stringify(S.researchLinks));}
+function persistResearchLinks(){storageSet('sokcho_research_links',JSON.stringify(S.researchLinks));}
 function nextResearchLinkId(){return Math.max(0,...S.researchLinks.map(l=>Number(l.id)||0))+1;}
-let researchLinkKeyword='';
-function searchResearchLinks(kw){researchLinkKeyword=kw||'';renderResearchList();}
-function renderResearchList(){
-  loadResearchLinks();
-  const wrap=document.getElementById('research-link-list');
-  if(!wrap)return;
-  const kw=researchLinkKeyword.trim().toLowerCase();
-  let links=S.researchLinks;
-  if(kw)links=links.filter(l=>l.title.toLowerCase().includes(kw));
-  if(!links.length){
-    wrap.innerHTML='<p style="font-size:13px;color:var(--txm);text-align:center;padding:20px 0;">검색 결과가 없습니다.</p>';
-    return;
-  }
-  wrap.innerHTML=links.map(l=>`<div class="leader-card" id="research-link-item-${l.id}">
+// V2 H44: jw.org 공식 검색 URL(?q=검색어, ko/검색/ 한글 경로) — 실제
+// Playwright로 열어 "웹사이트 검색 | JW.ORG" 결과 페이지가 정확히
+// 뜨는 것까지 확인한 형식(추측 아님, H44 보고서에 검증 근거 기록).
+const JW_ORG_SEARCH_BASE='https://www.jw.org/ko/%EA%B2%80%EC%83%89/?q=';
+function openJwOrgSearch(){
+  const q=(document.getElementById('research-search')?.value||'').trim();
+  if(!q){toast('검색어를 입력하세요.');return;}
+  window.open(JW_ORG_SEARCH_BASE+encodeURIComponent(q),'_blank','noopener,noreferrer');
+}
+// idPrefix로 인도자 화면(#research-link-item-N)과 관리자 화면
+// (#adm-research-link-item-N)의 DOM id 중복을 피한다. CRUD 버튼은
+// .admin-pin-action(기존 syncRoleUi() 토글)이라 관리자 화면에서만
+// 자동으로 보인다 — 인도자 화면에는 같은 마크업이 있어도 항상 숨김.
+function researchLinkRowHtml(l,idPrefix){
+  return `<div class="leader-card" id="${idPrefix}-${l.id}">
     <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" style="flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--tx);text-decoration:none;">🔗 ${esc(l.title)}</a>
     <div class="admin-pin-action hide" style="display:flex;gap:6px;flex-shrink:0;">
       <button class="btn btn-sm btn-out" onclick="editResearchLink(${l.id})">수정</button>
       <button class="btn btn-sm btn-dk" onclick="deleteResearchLink(${l.id})">삭제</button>
     </div>
-  </div>`).join('');
+  </div>`;
+}
+function renderResearchList(){
+  loadResearchLinks();
+  const empty='<p style="font-size:13px;color:var(--txm);text-align:center;padding:20px 0;">등록된 링크가 없습니다.</p>';
+  const wrap=document.getElementById('research-link-list');
+  if(wrap)wrap.innerHTML=S.researchLinks.length?S.researchLinks.map(l=>researchLinkRowHtml(l,'research-link-item')).join(''):empty;
+  const admWrap=document.getElementById('adm-research-link-list');
+  if(admWrap)admWrap.innerHTML=S.researchLinks.length?S.researchLinks.map(l=>researchLinkRowHtml(l,'adm-research-link-item')).join(''):empty;
   syncRoleUi(); // 방금 새로 그린 admin-pin-action 요소에도 현재 역할 기준 표시 적용
 }
 function addResearchLink(){
   if(S.role!=='admin'){toast('관리자만 추가할 수 있습니다.');return;}
-  const title=document.getElementById('nrl-title').value.trim();
-  const url=document.getElementById('nrl-url').value.trim();
+  const title=document.getElementById('adm-nrl-title').value.trim();
+  const url=document.getElementById('adm-nrl-url').value.trim();
   if(!title){toast('링크 제목을 입력하세요.');return;}
   if(!url){toast('URL을 입력하세요.');return;}
   S.researchLinks.push({id:nextResearchLinkId(),title,url});
   persistResearchLinks();
-  document.getElementById('nrl-title').value='';
-  document.getElementById('nrl-url').value='';
+  document.getElementById('adm-nrl-title').value='';
+  document.getElementById('adm-nrl-url').value='';
   renderResearchList();
   toast('연구자료 링크가 추가되었습니다.');
 }
@@ -5330,7 +6288,7 @@ function writeMonitorSimData(){
   const bases=[
     [38.20172,128.59310],[38.20158,128.59358],[38.20120,128.59338],[38.20102,128.59376]
   ];
-  const data=JSON.parse(localStorage.getItem('sokcho_live')||'{}');
+  const data=JSON.parse(storageGet('sokcho_live')||'{}');
   names.forEach((name,i)=>{
     const t=now/2400+i*1.7;
     const b=bases[i%bases.length];
@@ -5346,12 +6304,12 @@ function writeMonitorSimData(){
       _sim:true
     };
   });
-  localStorage.setItem('sokcho_live',JSON.stringify(data));
+  storageSet('sokcho_live',JSON.stringify(data));
 }
 function clearMonitorSimData(){
-  const data=JSON.parse(localStorage.getItem('sokcho_live')||'{}');
+  const data=JSON.parse(storageGet('sokcho_live')||'{}');
   Object.keys(data).forEach(k=>{if(data[k]?._sim)delete data[k];});
-  localStorage.setItem('sokcho_live',JSON.stringify(data));
+  storageSet('sokcho_live',JSON.stringify(data));
 }
 function toggleMonitorSim(){
   S.monSimOn=!S.monSimOn;
@@ -5377,7 +6335,7 @@ function drawMonitorZones(){
   S.monMap._zonesDrawn=true;
   S.zones.forEach(z=>{
     const path=(z.polygon||[]).map(pt=>new kakao.maps.LatLng(Number(pt[0]),Number(pt[1])));
-    const polygon=new kakao.maps.Polygon({path,strokeWeight:3.2,strokeColor:zoneStrokeColor(z),strokeOpacity:.98,fillColor:zoneFillColor(z),fillOpacity:.05});
+    const polygon=new kakao.maps.Polygon({path,strokeWeight:3.2,strokeColor:zoneStrokeColor(z,false),strokeOpacity:.98,fillColor:zoneFillColor(z,false),fillOpacity:.05}); // V2 H77: 실시간현황 전체보기 — 선택 개념이 없어 항상 통일색
     polygon.setMap(kakaoMap);
   });
 }
@@ -5394,7 +6352,7 @@ function initMonitor(){
   S.monInterval=setInterval(refreshMonitor,5000);
 }
 function refreshMonitor(){
-  const data=JSON.parse(localStorage.getItem('sokcho_live')||'{}');
+  const data=JSON.parse(storageGet('sokcho_live')||'{}');
   const now=Date.now();
   const active={};Object.entries(data).forEach(([n,l])=>{if(now-l.ts<300000)active[n]=l;});
   S.monLastActive=active;
@@ -5507,7 +6465,7 @@ function toggleMonitorSheet(force){
   setTimeout(()=>{if(S.monMap)S.monMap.invalidateSize();},260);
 }
 function focusVol(name){
-  const data=JSON.parse(localStorage.getItem('sokcho_live')||'{}');
+  const data=JSON.parse(storageGet('sokcho_live')||'{}');
   const loc=data[name];
   if(!loc){toast('현재 온라인 위치가 없습니다.');return;}
   if(S.monFocus===name){showAllVols();return;}
@@ -5538,9 +6496,9 @@ function startLocShare(){
       time:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
       ts:Date.now()
     };
-    const data=JSON.parse(localStorage.getItem('sokcho_live')||'{}');
+    const data=JSON.parse(storageGet('sokcho_live')||'{}');
     data[S.user]=loc;
-    localStorage.setItem('sokcho_live',JSON.stringify(data));
+    storageSet('sokcho_live',JSON.stringify(data));
   },
   err=>{
     if(err.code===1){toast('위치 권한을 허용해야 관리자가 위치를 확인할 수 있습니다.');}
@@ -5553,9 +6511,9 @@ function startLocShare(){
 function stopLocShare(){
   if(S.gpsWatch){navigator.geolocation.clearWatch(S.gpsWatch);S.gpsWatch=null;}
   // 위치공유 중지 (백그라운드)
-  const data=JSON.parse(localStorage.getItem('sokcho_live')||'{}');
+  const data=JSON.parse(storageGet('sokcho_live')||'{}');
   delete data[S.user];
-  localStorage.setItem('sokcho_live',JSON.stringify(data));
+  storageSet('sokcho_live',JSON.stringify(data));
 }
 
 function toggleLocShare(){
