@@ -415,10 +415,19 @@ function persistContacts(){storageSet('sokcho_contacts',JSON.stringify(S.contact
 // ================================================================
 function loadApartmentRegistry(){
   if(S._apartmentRegistryLoaded)return;
+  const raw=storageGet('sokcho_apartment_registry_v1');
   try{
-    const saved=JSON.parse(storageGet('sokcho_apartment_registry_v1')||'null');
+    const saved=JSON.parse(raw||'null');
     if(saved&&Array.isArray(saved.complexes))S.apartmentComplexes=saved.complexes;
   }catch(e){}
+  // H97: 이 저장키 자체가 한 번도 쓰인 적 없는 기기(완전히 새 브라우저)만
+  // 정적 최종 데이터(apartment_import_h63_data.js, H63 등록+H80/81/82 좌표
+  // 확정까지 반영된 완성본)로 즉시 채운다. raw가 null이 아니라 "빈 배열이
+  // 저장된 상태"(관리자가 실제로 전부 삭제한 기기)는 건드리지 않는다.
+  if(raw==null&&Array.isArray(window.SOKCHO_APARTMENT_COMPLEXES_SEED)&&window.SOKCHO_APARTMENT_COMPLEXES_SEED.length){
+    S.apartmentComplexes=JSON.parse(JSON.stringify(window.SOKCHO_APARTMENT_COMPLEXES_SEED));
+    persistApartmentRegistry();
+  }
   S._apartmentRegistryLoaded=true;
 }
 function persistApartmentRegistry(){
@@ -944,13 +953,28 @@ function addDeletedApartmentCardId(id){
 }
 function loadApartmentCards(){
   if(S._apartmentCardsLoaded)return;
+  const raw=storageGet('sokcho_apartment_cards_v1');
   try{
-    const saved=JSON.parse(storageGet('sokcho_apartment_cards_v1')||'null');
+    const saved=JSON.parse(raw||'null');
     if(saved&&Array.isArray(saved.cards)){
       const deletedIds=new Set(loadDeletedApartmentCardIds());
       S.apartmentCards=deletedIds.size?saved.cards.filter(c=>!deletedIds.has(String(c&&c.id))):saved.cards;
     }
   }catch(e){}
+  // H97: loadApartmentRegistry()와 동일한 조건(저장키 자체가 없는 완전히
+  // 새 브라우저)에서만 최종 카드 데이터를 즉시 채운다. sokcho_h63_import_done
+  // 플래그도 함께 세워서, 기존 "가져오기" 버튼을 실수로 다시 누르더라도
+  // (관리자 전용) 원래부터 있던 "이미 실행됨, 다시 등록하시겠습니까?"
+  // 확인창이 그대로 뜨게 한다(카드 중복 생성 방지, 기존 안전장치 그대로 재사용).
+  if(raw==null&&Array.isArray(window.SOKCHO_APARTMENT_CARDS_SEED)&&window.SOKCHO_APARTMENT_CARDS_SEED.length){
+    const deletedIds=new Set(loadDeletedApartmentCardIds());
+    const seedCards=window.SOKCHO_APARTMENT_CARDS_SEED.filter(c=>!deletedIds.has(String(c&&c.id)));
+    if(seedCards.length){
+      S.apartmentCards=JSON.parse(JSON.stringify(seedCards));
+      persistApartmentCards();
+      storageSet('sokcho_h63_import_done','1');
+    }
+  }
   S._apartmentCardsLoaded=true;
 }
 function persistApartmentCards(){
