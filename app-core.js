@@ -3627,7 +3627,7 @@ function renderRouteGrid(keyword){
   aptCards.sort((a,b)=>(a.status==='완료'?1:0)-(b.status==='완료'?1:0)||(Number(a.number)||0)-(Number(b.number)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
 
   if(zones.length===0&&aptCards.length===0){grid.innerHTML='<p style="font-size:12px;color:var(--txm);padding:20px 0;text-align:center;grid-column:1/-1;">검색 결과가 없습니다.</p>';return;}
-  const zoneHtml=zones.map(z=>{
+  const renderZoneItem=z=>{
     const done=isDone(z.id);const inProg=isInProgress(z.id);const meta=getZoneStatusMeta(z.id);const isRes=z.type==='residential';const cnt=S.records.filter(r=>r.zoneId===z.id).length;
     const routeCnt=S.rteLines.filter(l=>l.zoneId===z.id).length;
     const statusClass=meta.cls;
@@ -3645,9 +3645,24 @@ function renderRouteGrid(keyword){
       </div>
       ${S.role==='admin'?`<div class="zc-admin-row"><button class="zc-edit-id" onclick="event.stopPropagation();editZoneNumber(${z.id})">번호 수정</button></div>`:''}
     </div>`;
-  }).join('');
+  };
+  // V2 H104: 인도자의 기본 화면인 "목록" 탭(#rte-grid)에는 홈 화면(renderHomeZoneList)/
+  // 관리자 구역관리(renderAdmGrid)와 달리 주택/상가/아파트를 구분하는 섹션 헤더가 아예
+  // 없어서, id 오름차순 정렬 특성상 화면 맨 위가 특정 단지(예: 부영xxx동) 이름의 구역들로
+  // 채워지면 "아파트 항목이 주택 목록에 섞여 있다"는 인상을 준다(실제로는 데이터가 섞이거나
+  // 옛 캐시를 쓰는 것이 아니라, 이 화면에만 구분 헤더가 없었을 뿐 — 조사 결과는 H104
+  // 보고서 참고). 데이터/필터링 로직은 전혀 안 건드리고, 이미 필터링·정렬된 zones/aptCards를
+  // type별로 다시 나눠 헤더(전체 개수, 필터와 무관 — 홈/관리자 화면과 동일한 관례)만 끼워넣는다.
+  const resZones=zones.filter(z=>z.type==='residential');
+  const comZones=zones.filter(z=>z.type==='commercial');
+  const resTotal=S.zones.filter(z=>z.type==='residential').length;
+  const comTotal=S.zones.filter(z=>z.type==='commercial').length;
+  const sectionHeader=(icon,label,count)=>`<div class="zc-section-header" style="grid-column:1/-1;font-size:13px;font-weight:800;padding:10px 2px 2px;">${icon} ${label} (${count})</div>`;
+  const resHtml=resZones.length?sectionHeader('🏠','주택',resTotal)+resZones.map(renderZoneItem).join(''):'';
+  const comHtml=comZones.length?sectionHeader('🏪','상가',comTotal)+comZones.map(renderZoneItem).join(''):'';
+  const zoneHtml=resHtml+comHtml;
 
-  const aptHtml=aptCards.map(card=>{
+  const aptHtml=(aptCards.length?sectionHeader('🏢','아파트',S.apartmentCards.length):'')+aptCards.map(card=>{
     const done=card.status==='완료';
     const inProg=card.status==='진행중'||card.status==='미완료';
     const statusClass=done?'done':inProg?'progress':'reset';
@@ -5558,11 +5573,32 @@ function adminZoneFilterSort(zones){
   }
   return filtered.sort((a,b)=>(Number(a.id)||0)-(Number(b.id)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
 }
-function renderAdmGrid(){
-  renderAdmCommercialGrid(); // V2 H35: 이 함수가 호출되는 모든 지점에서 상가 섹션도 함께 새로고침
-  const zones=adminZoneFilterSort(S.zones.filter(z=>z.type==='residential'));
+// V2 H102: 주택 목록 렌더링을 renderAdmGrid()에서 분리(renderAdmCommercialGrid()와
+// 동일한 모양 — 개수 표시(adm-res-count) + 목록 렌더 한 벌). renderAdmGrid()는
+// 기존 호출부(setAdminZoneFilter/searchAdminZones/renameZoneName 등) 전부 그대로
+// 동작하도록 이 함수 + renderAdmCommercialGrid()를 순서대로 호출만 함.
+function renderAdmResidentialGrid(){
+  const all=S.zones.filter(z=>z.type==='residential');
+  const countEl=document.getElementById('adm-res-count');
+  if(countEl)countEl.textContent=all.length;
+  const zones=adminZoneFilterSort(all);
   const grid=document.getElementById('adm-grid');
   grid.innerHTML=zones.length?zones.map(renderAdminZoneRowHtml).join(''):'<p style="font-size:12px;color:var(--txm);padding:12px;text-align:center;">표시할 구역이 없습니다.</p>';
+}
+function renderAdmGrid(){
+  renderAdmResidentialGrid();
+  renderAdmCommercialGrid(); // V2 H35: 이 함수가 호출되는 모든 지점에서 상가 섹션도 함께 새로고침
+}
+// V2 H102: 상가(toggleAdminComSection)와 동일한 접기/펼치기 패턴을 주택에도 적용.
+let adminResSectionOpen=false;
+function toggleAdminResSection(){
+  const body=document.getElementById('adm-res-body');
+  const icon=document.getElementById('adm-res-toggle-icon');
+  if(!body)return;
+  adminResSectionOpen=body.classList.contains('hide');
+  body.classList.toggle('hide',!adminResSectionOpen);
+  if(icon)icon.textContent=adminResSectionOpen?'▾':'▸';
+  if(adminResSectionOpen)renderAdmResidentialGrid();
 }
 // V2 H35: 관리자 구역관리 화면의 상가 섹션(H21 홈 화면 패턴과 동일한
 // 헤더+개수, 접이식 UI 재사용 — CSS는 home-apt-section 계열 그대로,

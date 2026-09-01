@@ -561,7 +561,17 @@
                 <button class="btn btn-sm btn-out" onclick="goTab('map');setTimeout(()=>startDraw(),200)">그리기</button>
               </div>
             </div>
-            <div class="admin-zone-list" id="adm-grid"></div>
+            <!-- V2 H102: 주택 목록도 상가/아파트와 동일한 접기/펼치기 패턴(H35 재사용). 검색/필터/전체초기화/그리기 툴바는
+                 상가 섹션과 공유되므로(adminZoneFilter/adminZoneKeyword 전역) 그대로 위에 두고, 목록(adm-grid)만 감쌌다. -->
+            <div class="home-apt-section" id="adm-res-section">
+              <div class="home-apt-header" onclick="toggleAdminResSection()">
+                <span>🏠 주택 (<span id="adm-res-count">0</span>)</span>
+                <span id="adm-res-toggle-icon">▸</span>
+              </div>
+              <div class="home-apt-body hide" id="adm-res-body">
+                <div class="admin-zone-list" id="adm-grid"></div>
+              </div>
+            </div>
           </div>
           <!-- V2 H35: 관리자 구역관리 상가 섹션(H21 홈 화면과 동일 패턴 재사용) -->
           <div class="adm-sec">
