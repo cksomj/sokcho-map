@@ -179,6 +179,34 @@ function _deleteFromFirestoreNowH105(key){
     }
   });
 }
+// ================================================================
+// H119: "☁️ 바로 반영하기" — 자동 백그라운드 동기화(H105/H112, 1.5초
+// 디바운스)를 대체하는 게 아니라, 관리자가 "지금 확실히 서버에
+// 반영됐다"를 그 자리에서 직접 확인하고 싶을 때 쓰는 수동 확인
+// 버튼이다. 자동 동기화 로직(storageSet/_scheduleFirestoreWriteH105)은
+// 전혀 안 건드리고, 이 함수만 별도로 각 key를 디바운스 없이 즉시
+// Firestore에 쓰고 그 결과(성공/실패)를 기다렸다가 토스트로 보여준다.
+// 관리자가 수정 가능한 항목(구역/기록/경로/명단/아파트/연구자료)만
+// 대상으로 한다 — PIN/자동로그인 등 기기별 설정은 대상 아님.
+function manualSyncNowH119(){
+  if(S.role!=='admin'){toast('관리자만 사용할 수 있습니다.');return;}
+  // 메모리 상의 최신 값을 로컬 캐시/localStorage에 먼저 확실히 반영
+  // (기존 persist 함수들 그대로 재사용 — 자동 동기화도 이 호출들
+  // 덕분에 평소처럼 같이 예약됨, 손대지 않음).
+  persistZones();persistRecords();persistRteLines();persistLeaders();
+  persistVolunteers();persistContacts();persistApartmentRegistry();
+  persistApartmentCards();persistResearchLinks();
+  if(typeof db==='undefined'||!db){toast('⚠️ 반영 실패 - 인터넷 확인');return;}
+  const keys=['sokcho_zones','sokcho_records','sokcho_routes','sokcho_progress','sokcho_apartment_registry_v1','sokcho_apartment_cards_v1','sokcho_volunteers','sokcho_leaders','sokcho_contacts','sokcho_research_links'];
+  toast('☁️ 서버에 반영하는 중입니다...');
+  Promise.all(keys.map(key=>{
+    const value=_storageCacheH105[key];
+    if(value==null)return Promise.resolve(true);
+    return db.collection('app_data').doc(key).set({value,updatedAt:Date.now()}).then(()=>true).catch(()=>false);
+  })).then(results=>{
+    toast(results.every(ok=>ok)?'✅ 서버에 반영 완료':'⚠️ 반영 실패 - 인터넷 확인');
+  });
+}
 // 원격 변경 수신 시 "해당 key를 쓰는 기존 S state를 다시 로드 + 관련
 // render 함수 재호출"까지 담당. 새 파싱 로직을 만들지 않고 최대한
 // 기존 함수를 재사용(가드 플래그가 있는 것들은 잠깐 풀었다 다시 로드).
@@ -1384,83 +1412,6 @@ function confirmApartmentCardGen(){
   toast(`${createdCount}개 카드 생성됨`);
 }
 
-// ================================================================
-// V2 H63: 과거 실전에서 쓰인 KCC/부영/진덕 등 아파트 카드 데이터
-// (KCC-부영6단지까지_실전.xlsx, 진덕에서주공4차2단지.xlsx) 일괄 등록.
-// 데이터 자체는 apartment_import_h63_data.js(APARTMENT_IMPORT_H63_DATA,
-// zones_seed.js와 동일한 "큰 정적 데이터는 별도 파일" 패턴)에서 가져오고,
-// 여기서는 기존 레지스트리(addApartmentComplex/addApartmentBuilding과
-// 동일한 데이터 구조)와 카드(confirmApartmentCardGen과 동일한 데이터
-// 구조) 형식 그대로 등록만 한다. 기존 단지/카드는 이름이 같으면 재사용
-// (중복 생성 안 함), 좌표는 비워둠(추후 H62 도구로 채움).
-// ================================================================
-function runApartmentImportH63(){
-  if(S.role!=='admin')return;
-  if(typeof APARTMENT_IMPORT_H63_DATA==='undefined'){toast('가져오기 데이터 파일(apartment_import_h63_data.js)이 로드되지 않았습니다.');return;}
-  const data=APARTMENT_IMPORT_H63_DATA;
-  if(storageGet('sokcho_h63_import_done')==='1'){
-    if(!confirm('이미 이 기기에서 KCC/진덕 카드 일괄등록을 실행한 기록이 있습니다. 다시 실행하면 카드가 중복 생성될 수 있습니다. 정말 다시 실행하시겠습니까?'))return;
-  }
-  if(!confirm(`KCC/진덕 실전 카드 데이터를 등록합니다.\n- 단지/동 ${data.complexes.length}개\n- 카드 ${data.cards.length}개\n기존 단지/카드 데이터는 삭제하지 않고 그대로 두고 추가만 합니다(같은 이름 단지는 재사용). 진행할까요?`))return;
-  exportBackup(); // 대규모 데이터 등록 전 자동 백업(구역번호 재정리 때와 동일한 안전 절차)
-
-  // PART2: 단지/동/호수 레지스트리 등록
-  let newComplexCount=0,newBuildingCount=0,newUnitCount=0;
-  const complexIdByName={};
-  data.complexes.forEach(cx=>{
-    let complex=S.apartmentComplexes.find(c=>c.name===cx.name);
-    if(!complex){
-      complex={id:nextApartmentComplexId(),name:cx.name,buildings:[]};
-      S.apartmentComplexes.push(complex);
-      newComplexCount++;
-    }
-    complexIdByName[cx.name]=complex.id;
-    cx.buildings.forEach(b=>{
-      let building=complex.buildings.find(bb=>bb.dong===b.dong);
-      if(!building){
-        building={dong:b.dong,units:[]};
-        complex.buildings.push(building);
-        newBuildingCount++;
-      }
-      const existingUnits=new Set(building.units);
-      b.units.forEach(u=>{if(!existingUnits.has(u)){building.units.push(u);existingUnits.add(u);newUnitCount++;}});
-    });
-    sortApartmentBuildingsInPlace(complex);
-  });
-  persistApartmentRegistry();
-
-  // PART3: 카드 생성 (카드번호는 새로 순번 부여, 이름에 원본 참조 남김)
-  let newCardCount=0;
-  data.cards.forEach(card=>{
-    const points=card.buildings.map(b=>({
-      complexId:complexIdByName[b.complex],
-      complexName:b.complex,
-      dong:b.dong,
-      lat:null,lng:null,
-      units:b.units.map(ho=>({ho,completed:false,forbidden:false})),
-    }));
-    // 진덕(홀수/짝수)은 시트 이름 자체를 카드이름으로(예: "진덕홀수 (구#1)"),
-    // KCC는 기존 카드생성과 같은 방식으로 첫 지점 단지명+"외 N곳"(예: "KCC 외 4곳 (구#350)")
-    let nameCore;
-    if(card.source==='KCC'){
-      const baseName=points[0]?.complexName||'아파트';
-      nameCore=points.length>1?`${baseName} 외 ${points.length-1}곳`:baseName;
-    }else{
-      nameCore=card.source;
-    }
-    const name=`${nameCore} (${card.ref})`;
-    const id=nextApartmentCardId();
-    S.apartmentCards.push({id,number:id,name,points,status:'미시작',createdAt:new Date().toISOString()});
-    newCardCount++;
-  });
-  persistApartmentCards();
-  storageSet('sokcho_h63_import_done','1');
-
-  renderApartmentComplexList();
-  renderApartmentCardList();
-  renderHomeApartmentCardList();
-  toast(`가져오기 완료: 단지 ${newComplexCount}개 추가(총 ${S.apartmentComplexes.length}개), 동 ${newBuildingCount}개, 호수 ${newUnitCount}개, 카드 ${newCardCount}개 생성됨`);
-}
 
 // ================================================================
 // V2 H10 PART1: 아파트 카드 수동 만들기. H3 PART3의 라운드로빈 자동생성을
@@ -1916,8 +1867,9 @@ function apartmentCardPointCoord(card,idx){
   // id와 어긋나 있을 경우를 대비한 방어적 fallback — id로 못 찾으면
   // 카드가 이미 들고 있는 complexName으로 한 번 더 시도한다. 정상
   // 데이터에서는 이 fallback이 아예 실행되지 않는다(id로 바로 찾음).
-  // 근본 수정(카드의 잘못된 complexId 자체를 고치는 것)은
-  // repairApartmentCardComplexId()가 담당(runDeviceSyncAll에 연결).
+  // (H119: 이 문제를 근본적으로 고치던 repairApartmentCardComplexId()/
+  // runDeviceSyncAll() 1회성 마이그레이션은 Firestore 실시간 동기화로
+  // 대체되어 제거됨 — 이 fallback은 계속 방어적으로 남겨둠.)
   if(!complex&&pt.complexName){
     complex=S.apartmentComplexes.find(c=>c.name===pt.complexName);
   }
@@ -6084,339 +6036,6 @@ function importBackup(input){
   reader.readAsText(file,'utf-8');
 }
 
-// ================================================================
-// V2 H43/PARTB: 구역번호 재정리(1회성 마이그레이션). 시내=1001~/
-// 시외=3001~/상가=4001~ (딘 확정, PARTB-MAPPING 보고서 기준).
-// zones_seed.js만 고치면 이미 저장된 실제 데이터(옛 id)는 그대로
-// 남고 새 id가 중복으로 추가되므로, 이 함수가 "이미 저장된 데이터를
-// 옛id→새id로 직접 rename"한다. zoneId를 참조하는 다른 데이터
-// (route/기록/진행상황/S-13/삭제목록)도 함께 갱신. 관리자가 실행
-// 버튼을 눌렀을 때만 동작, 실행 전 자동 백업 다운로드.
-// ================================================================
-const ZONE_ID_RENUMBER_MAP_H43={31601:1001,31701:1002,31801:1003,31901:1004,32001:1005,32101:1006,32201:1007,32301:1008,32401:1009,32501:1010,32801:1011,32901:1012,33001:1013,33101:1014,33201:1015,33301:1016,33401:1017,33501:1018,33601:1019,33701:1020,33801:1021,33901:1022,34001:1023,17001:1024,16901:1025,18301:1026,18401:1027,12901:1028,13001:1029,8401:1030,8501:1031,17101:1032,17201:1033,9001:1034,9101:1035,9201:1036,9301:1037,9401:1038,9501:1039,13801:1040,13901:1041,14001:1042,14101:1043,14201:1044,18801:1045,18901:1046,19001:1047,2101:1048,2201:1049,2301:1050,21401:1051,21501:1052,21601:1053,21701:1054,14901:1055,15001:1056,15101:1057,18501:1058,18601:1059,18701:1060,10001:1061,9901:1062,10201:1063,10101:1064,10401:1065,10301:1066,10601:1067,10501:1068,9701:1069,9801:1070,22401:1071,22402:1072,22601:1073,22602:1074,22701:1075,22702:1076,22703:1077,22801:1078,22802:1079,22901:1080,22902:1081,23001:1082,23002:1083,23101:1084,23102:1085,25701:1086,25702:1087,25703:1088,25801:1089,25901:1090,25902:1091,25903:1092,26001:1093,26002:1094,26003:1095,26101:1096,26102:1097,26103:1098,28601:1099,28602:1100,28701:1101,28702:1102,28801:1103,28802:1104,28803:1105,28901:1106,28902:1107,28903:1108,29001:1109,29002:1110,29003:1111,29101:1112,29102:1113,29103:1114,26301:1115,26501:1116,26502:1117,26503:1118,26601:1119,26602:1120,26603:1121,23601:1122,23602:1123,23603:1124,23701:1125,23702:1126,23703:1127,24501:1128,24502:1129,24503:1130,24504:1131,24601:1132,24602:1133,24603:1134,24701:1135,24702:1136,24703:1137,24801:1138,24802:1139,24803:1140,24901:1141,24902:1142,24903:1143,25001:1144,25002:1145,26701:1146,26702:1147,26801:1148,26802:1149,26901:1150,27001:1151,27101:1152,29401:1153,29402:1154,29501:1155,29502:1156,29503:1157,29701:1158,29702:1159,29703:1160,29801:1161,29802:1162,29901:1163,29902:1164,30001:1165,30002:1166,3601:1167,3602:1168,3603:1169,4901:1170,4902:1171,4903:1172,5001:1173,5002:1174,5003:1175,5101:1176,5102:1177,30101:1178,30102:1179,30201:1180,30202:1181,30203:1182,30204:1183,30301:1184,30302:1185,30303:1186,30501:1187,30502:1188,30601:1189,30602:1190,30701:1191,30702:1192,30801:1193,30802:1194,30803:1195,30901:1196,30902:1197,30903:1198,30904:1199,30905:1200,5301:1201,5302:1202,5303:1203,5304:1204,5305:1205,5401:1206,5402:1207,5403:1208,5501:1209,5502:1210,5503:1211,5504:1212,5601:1213,5602:1214,5701:1215,5702:1216,5703:1217,5704:1218,5705:1219,5801:1220,5802:1221,5803:1222,5804:1223,5805:1224,5901:1225,5902:1226,5903:1227,5904:1228,5905:1229,6001:1230,6002:1231,6003:1232,6101:1233,6102:1234,27201:1235,27202:1236,27203:1237,27204:1238,27205:1239,27301:1240,27302:1241,27303:1242,27304:1243,35301:3001,27401:3002,27402:3003,27403:3004,28501:3005,28502:3006,28503:3007,25101:3008,25102:3009,25103:3010,25104:3011,25201:3012,25202:3013,25203:3014,25301:3015,25302:3016,25303:3017,25304:3018,25401:3019,25402:3020,25403:3021,25601:3022,25602:3023,25603:3024,25604:3025,67701:3026,6201:3027,67702:3028,6202:3029,6301:3030,6302:3031,6303:3032,6401:3033,6402:3034,6403:3035,6501:3036,6502:3037,6601:3038,6701:3039,31001:3040,31002:3041,31003:3042,31004:3043,31101:3044,31102:3045,31103:3046,31104:3047,27501:3048,27502:3049,27503:3050,27601:3051,27602:3052,27603:3053,27701:3054,27702:3055,27703:3056,27801:3057,27802:3058,27803:3059,27804:3060,6801:3061,6802:3062,6803:3063,6901:3064,6902:3065,7001:3066,7002:3067,7101:3068,7102:3069,7103:3070,7201:3071,27901:3072,27902:3073,27903:3074,27904:3075,28001:3076,28002:3077,28101:3078,28102:3079,28103:3080,28104:3081,28201:3082,28202:3083,28301:3084,28302:3085,28401:3086,28402:3087,7301:3088,7302:3089,7303:3090,7401:3091,7402:3092,7403:3093,7501:3094,7502:3095,31201:3096,31202:3097,31203:3098,31301:3099,31302:3100,31303:3101,58201:4001,58301:4002,59601:4003,26201:4004,26202:4005,29201:4006,29202:4007,29301:4008,29302:4009,10701:4010,10702:4011,10801:4012,10802:4013,10803:4014,23201:4015,23202:4016,23203:4017,23204:4018,23205:4019,601:4020,602:4021,603:4022,4601:4023,4602:4024,4603:4025,4301:4026,4302:4027,23301:4028,23302:4029,23401:4030,12001:4031,23801:4032,23802:4033,23803:4034,23804:4035,23901:4036,23902:4037,23903:4038,24001:4039,24002:4040,24003:4041,24004:4042,24101:4043,24102:4044,24103:4045,24104:4046,24105:4047,24201:4048,24202:4049,24203:4050,24204:4051,24301:4052,24302:4053,24303:4054,24401:4055,24402:4056,24403:4057,24404:4058,12101:4059,12102:4060,12103:4061,5201:4062,5202:4063,5203:4064,5204:4065,5205:4066,5206:4067,5207:4068,5208:4069,5209:4070,30401:4071,30402:4072,30403:4073,30404:4074};
-const ZONE_ID_DELETE_LIST_H43=[14301]; // 10-10 썬라이즈빌 101동(양양 소재, 딘 확인 삭제 대상)
-function runZoneRenumberMigration(){
-  if(S.role!=='admin'){toast('관리자만 실행할 수 있습니다.');return;}
-  const targetExists=S.zones.some(z=>ZONE_ID_RENUMBER_MAP_H43[z.id]!=null||ZONE_ID_DELETE_LIST_H43.includes(z.id));
-  if(!targetExists){toast('재정리 대상 구역(옛 번호)을 찾을 수 없습니다 — 이미 실행되었거나 대상이 없습니다.');return;}
-  if(!confirm('구역번호를 새 체계(시내 1001~ / 시외 3001~ / 상가 4001~)로 지금 이 기기에서 한 번에 재정리합니다.\n실행 전 안전을 위해 백업 파일이 자동으로 다운로드됩니다.\n계속하시겠습니까?'))return;
-  exportBackup(); // 안전망: 실행 전 현재 상태 그대로 자동 백업
-
-  const map=ZONE_ID_RENUMBER_MAP_H43;
-  const deleteIds=new Set(ZONE_ID_DELETE_LIST_H43.map(String));
-  let deletedCount=0,renumberedCount=0;
-
-  // V2 H53: id가 바뀌거나(재정리) 구역이 없어지면(삭제), Kakao 폴리곤
-  // 캐시(mainKakaoPolygons/homeKakaoPolygons)에 옛 id로 걸린 항목을
-  // 그 자리에서 즉시 지운다. 기존 invalidateZonePolygonCache()와 같은
-  // 삭제 로직이지만, 그 함수는 호출마다 지도를 다시 그려서(무거움)
-  // 344개 반복에는 안 맞아 캐시 삭제 부분만 직접 처리 — 실제 화면
-  // 다시 그리기는 이 함수 끝의 refreshAllViews()가 한 번에 담당한다.
-  function clearStalePolygonCache(oldId){
-    const key=String(oldId);
-    const main=mainKakaoPolygons.get(key);
-    if(main){main.polygon.setMap(null);mainKakaoPolygons.delete(key);}
-    const home=homeKakaoPolygons.get(key);
-    if(home){home.polygon.setMap(null);homeKakaoPolygons.delete(key);}
-  }
-
-  S.zones=S.zones.filter(z=>{
-    if(deleteIds.has(String(z.id))){addDeletedZoneId(z.id);clearStalePolygonCache(z.id);deletedCount++;return false;}
-    return true;
-  });
-
-  const oldToNew={};
-  S.zones.forEach(z=>{
-    const newId=map[z.id];
-    if(newId!=null&&newId!==z.id){oldToNew[String(z.id)]=newId;clearStalePolygonCache(z.id);z.id=newId;renumberedCount++;}
-  });
-
-  S.rteLines.forEach(l=>{if(oldToNew[String(l.zoneId)]!=null)l.zoneId=oldToNew[String(l.zoneId)];});
-  S.records.forEach(r=>{if(oldToNew[String(r.zoneId)]!=null)r.zoneId=oldToNew[String(r.zoneId)];});
-
-  try{
-    const progress=JSON.parse(storageGet('sokcho_progress')||'{}')||{};
-    const newProgress={};
-    Object.keys(progress).forEach(k=>{
-      const nk=oldToNew[k]!=null?String(oldToNew[k]):k;
-      newProgress[nk]=progress[k];
-    });
-    storageSet('sokcho_progress',JSON.stringify(newProgress));
-  }catch(e){}
-
-  try{
-    const delIds=loadDeletedZoneIds();
-    const newDelIds=delIds.map(id=>oldToNew[String(id)]!=null?String(oldToNew[String(id)]):id);
-    storageSet('sokcho_deleted_zone_ids',JSON.stringify([...new Set(newDelIds)]));
-  }catch(e){}
-
-  try{
-    const s13records=loadS13Records();
-    s13records.forEach(rec=>{
-      const m=/^zone-(.+)$/.exec(rec.territoryId||'');
-      if(m&&oldToNew[m[1]]!=null){
-        const newId=oldToNew[m[1]];
-        rec.territoryId='zone-'+newId;
-        rec.zoneNumber=newId;
-        rec.id=rec.territoryId+'-'+rec.serviceYear;
-      }
-    });
-    persistS13Records(s13records);
-  }catch(e){}
-
-  S.nextId=Math.max(0,...S.zones.map(z=>Number(z.id)||0));
-  persistAllData();
-  refreshAllViews();
-  if(S.role==='admin')renderAdmin();
-  toast(`구역번호 재정리 완료 — ${renumberedCount}개 변경, ${deletedCount}개 삭제`);
-}
-
-// ================================================================
-// V2 H78: 기기 동기화 통합 버튼. 지금까지 따로따로 눌러야 했던
-// 1회성 마이그레이션(구역번호 재정리 H43, KCC/진덕 카드 가져오기
-// H63)을 순서대로 실행한다. 각 마이그레이션의 실제 로직/멱등성
-// 판단은 원래 함수(runZoneRenumberMigration/runApartmentImportH63)
-// 그대로 재사용하고 손대지 않는다 — 이 함수는 "무엇을 언제 부를지"
-// 와 "결과를 하나로 요약해서 보여주는 것"만 담당한다.
-//
-// 아파트 카드 가져오기만 별도 처리가 필요했던 이유: 원래 함수는
-// 이미 실행된 기기에서 다시 실행하면 "정말 다시 실행하시겠습니까?"
-// 확인창을 띄우고, 거기서 실수로 확인을 누르면 카드가 중복
-// 생성된다(원래 함수 자체의 동작, 손대지 않음). 통합 버튼은 반드시
-// 완전히 안전(멱등)해야 하므로, 이미 실행된 기기에서는 그 확인창이
-// 아예 뜨지 않게 호출 자체를 건너뛴다. 구역번호 재정리는 원래
-// 함수가 "대상 없음"일 때 확인창 없이 조용히 끝나므로 그대로 매번
-// 호출해도 안전하다(수정 불필요).
-function zoneRenumberStillNeeded(){
-  return S.zones.some(z=>ZONE_ID_RENUMBER_MAP_H43[z.id]!=null||ZONE_ID_DELETE_LIST_H43.includes(z.id));
-}
-// ================================================================
-// H80: H79 자동검색에서 "확실"(단일 후보 + 이름에 동번호 정확히
-// 포함)로 분류된 32건의 동 좌표를 확정값으로 반영. 좌표 저장 자체는
-// 기존 saveApartmentBuildingPin/setApartmentBuildingCoord와 동일하게
-// b.lat/b.lng 설정 + persistApartmentRegistry() 재사용 — 새 저장
-// 경로를 만들지 않음. 이미 좌표가 있는 동은 건드리지 않아(멱등)
-// runDeviceSyncAll에서 매번 다시 호출해도 안전함.
-// ================================================================
-const APARTMENT_BUILDING_COORDS_H80=[
-  {complex:'KCC',dong:'101동',lat:38.18428590753883,lng:128.59523656595624},
-  {complex:'KCC',dong:'102동',lat:38.18420656352619,lng:128.59603715992924},
-  {complex:'KCC',dong:'103동',lat:38.18467676121987,lng:128.59617182223167},
-  {complex:'KCC',dong:'104동',lat:38.18485446534868,lng:128.59522614163964},
-  {complex:'KCC',dong:'105동',lat:38.18540538548667,lng:128.59525413698293},
-  {complex:'KCC',dong:'106동',lat:38.1852384720854,lng:128.59620120140676},
-  {complex:'KCC',dong:'107동',lat:38.1856844593864,lng:128.595996369422},
-  {complex:'KCC',dong:'108동',lat:38.1858639066855,lng:128.595320063262},
-  {complex:'LH천년나무3단지',dong:'301동',lat:38.186563431021,lng:128.591634009875},
-  {complex:'LH천년나무3단지',dong:'302동',lat:38.18598402411911,lng:128.59084987044477},
-  {complex:'LH천년나무3단지',dong:'303동',lat:38.185833157028526,lng:128.59154621332698},
-  {complex:'LH천년나무3단지',dong:'304동',lat:38.18595992197959,lng:128.5922953919055},
-  {complex:'동명',dong:'가동',lat:38.186080575582885,lng:128.59912537165815},
-  {complex:'동명',dong:'나동',lat:38.18583406030057,lng:128.59989607317706},
-  {complex:'동명',dong:'다동',lat:38.185792524193104,lng:128.5991099424727},
-  {complex:'동명',dong:'라동',lat:38.18558142591531,lng:128.59985973100092},
-  {complex:'부영1단지',dong:'101동',lat:38.18863437762138,lng:128.5859791493793},
-  {complex:'부영1단지',dong:'102동',lat:38.18822541537364,lng:128.5861118070458},
-  {complex:'부영2단지',dong:'201동',lat:38.1876406147503,lng:128.58579096042806},
-  {complex:'성호2차',dong:'201동',lat:38.18404843362865,lng:128.59772851609102},
-  {complex:'성호2차',dong:'202동',lat:38.18478351547185,lng:128.59746267499136},
-  {complex:'성호2차',dong:'203동',lat:38.1853606280761,lng:128.59775033542235},
-  {complex:'성호2차',dong:'204동',lat:38.18539332714063,lng:128.59720094075058},
-  {complex:'아뜨리움',dong:'101동',lat:38.18757748682281,lng:128.59755566532178},
-  {complex:'아뜨리움',dong:'103동',lat:38.18738242324718,lng:128.5968631781678},
-  {complex:'조양주공',dong:'201동',lat:38.186578622948865,lng:128.59323675981094},
-  {complex:'조양주공',dong:'202동',lat:38.18654258993339,lng:128.5938340283285},
-  {complex:'조양주공',dong:'203동',lat:38.186509408769425,lng:128.59435374843494},
-  {complex:'조양주공',dong:'204동',lat:38.18602078488697,lng:128.59444809670077},
-  {complex:'조양주공',dong:'205동',lat:38.1860572722294,lng:128.59388394084826},
-  {complex:'조양주공',dong:'206동',lat:38.18628483558546,lng:128.59351112385687},
-  {complex:'조양주공',dong:'207동',lat:38.18610711855559,lng:128.59313175817863},
-];
-function applyConfidentBuildingCoordsH80(){
-  if(S.role!=='admin')return null;
-  let applied=0,skipped=0,notFound=0;
-  APARTMENT_BUILDING_COORDS_H80.forEach(item=>{
-    const c=S.apartmentComplexes.find(c=>c.name===item.complex);
-    const b=c&&c.buildings.find(bb=>bb.dong===item.dong);
-    if(!b){notFound++;return;}
-    if(hasApartmentBuildingCoord(b)){skipped++;return;}
-    b.lat=item.lat;b.lng=item.lng;
-    applied++;
-  });
-  if(applied>0)persistApartmentRegistry();
-  renderApartmentComplexList();
-  return {applied,skipped,notFound};
-}
-// ================================================================
-// H81: H79 애매/결과없음 중 딘이 알려준 정확한 명칭/방식으로
-// 재검색해서 새로 확실해진 7건. 좌표 저장 방식은 H80과 동일하게
-// b.lat/b.lng 설정 + persistApartmentRegistry() 재사용, 이미 좌표
-// 있으면 건드리지 않음(멱등).
-// - 부영9단지 901~904동: "부영9단지"="부영9차"(딘 제공 정보)로
-//   재검색해서 4건 모두 단일후보+동번호 정확히 일치로 확인
-// - 부영6단지 601동: "부영6단지"="부영6차"로 재검색(부영9단지와
-//   같은 명명 패턴 적용) → 단일후보+동번호 일치로 확인. TARGET에
-//   명시된 "수동 확정 저장" 대상 — 지도를 직접 보고 찍는 대신
-//   이름 교정 재검색으로 정확한 후보를 찾아 저장(둘 다 관리자가
-//   최종 확인 없이 이 함수 안에서 바로 저장한다는 점은 동일)
-// - 아뜨리움 102동: H79 원본 재검색 결과(후보 2개) 중 1번
-//   "속초조양동ES아뜨리움아파트 102동"(동번호 정확히 일치)을 채택,
-//   2번 "사월의눈"은 이름이 전혀 달라 무관한 업체로 판단해 제외
-// - 진덕 1동: H79 원본 재검색 결과(후보 1개 "진덕설악맨션")를
-//   그대로 채택 — 별도 검증 검색("진덕설악맨션"만 검색)에서도 동일
-//   단지가 이 지역에 하나뿐임을 확인, "1동" 표기가 이름에 없는 것은
-//   이 단지가 여러 동을 세부 명칭 없이 하나로 관리해서로 판단
-// ================================================================
-const APARTMENT_BUILDING_COORDS_H81=[
-  {complex:'부영9단지',dong:'901동',lat:38.18887022827498,lng:128.58405650593548},
-  {complex:'부영9단지',dong:'902동',lat:38.18848733855022,lng:128.58392608656536},
-  {complex:'부영9단지',dong:'903동',lat:38.18886207225085,lng:128.58486098875346},
-  {complex:'부영9단지',dong:'904동',lat:38.18849079712361,lng:128.5848712035871},
-  {complex:'부영6단지',dong:'601동',lat:38.18767759466214,lng:128.5811795968316},
-  {complex:'아뜨리움',dong:'102동',lat:38.187781072868866,lng:128.597158360444},
-  {complex:'진덕',dong:'1동',lat:38.18669564311844,lng:128.59960219940692},
-];
-function applyConfidentBuildingCoordsH81(){
-  if(S.role!=='admin')return null;
-  let applied=0,skipped=0,notFound=0;
-  APARTMENT_BUILDING_COORDS_H81.forEach(item=>{
-    const c=S.apartmentComplexes.find(c=>c.name===item.complex);
-    const b=c&&c.buildings.find(bb=>bb.dong===item.dong);
-    if(!b){notFound++;return;}
-    if(hasApartmentBuildingCoord(b)){skipped++;return;}
-    b.lat=item.lat;b.lng=item.lng;
-    applied++;
-  });
-  if(applied>0)persistApartmentRegistry();
-  renderApartmentComplexList();
-  return {applied,skipped,notFound};
-}
-// ================================================================
-// H82: 좌표 등록 마무리 — 남은 20건 전부 확정. 저장 방식은 H80/H81과
-// 동일(b.lat/b.lng + persistApartmentRegistry(), 이미 좌표 있으면
-// 건드리지 않아 멱등).
-// - 부영6단지 602~604동: 601동과 같은 "부영6차 {동}" 재검색으로
-//   3건 모두 단일후보+동번호 정확히 일치 확인
-// - 4차(주공4차) 12건: 딘이 지시한 "주공4차 입구"/"주공4차 아파트
-//   입구" 검색은 실제로는 결과 0건(그런 이름의 장소가 카카오에
-//   없음, "속초" 뺀 검색은 수원/부천 등 엉뚱한 도시 결과만 나옴).
-//   대신 H81 조사에서 이미 확인해둔 "주공4차 중앙상가"(온정로 18,
-//   이 단지의 실존 대표시설)를 12개 동 공통좌표로 사용 — 딘이
-//   승인한 "공통좌표 사용" 의도에 맞는 대체
-// - 성호1차 5건: 마찬가지로 "성호1단지 입구" 계열 검색은 0건.
-//   "속초 성호1차아파트" 검색으로 확인된 "성호아파트"(청대로 8,
-//   성호2차와는 다른 주소)를 5개 동 공통좌표로 사용
-// ================================================================
-const APARTMENT_BUILDING_COORDS_H82=[
-  {complex:'부영6단지',dong:'602동',lat:38.187187656465014,lng:128.58170657219105},
-  {complex:'부영6단지',dong:'603동',lat:38.187589563851965,lng:128.58203027548748},
-  {complex:'부영6단지',dong:'604동',lat:38.187111689920485,lng:128.58246391617882},
-  {complex:'4차',dong:'101동',lat:38.18577522796179,lng:128.59296132051855},
-  {complex:'4차',dong:'102동',lat:38.18577522796179,lng:128.59296132051855},
-  {complex:'4차',dong:'103동',lat:38.18577522796179,lng:128.59296132051855},
-  {complex:'4차',dong:'104동',lat:38.18577522796179,lng:128.59296132051855},
-  {complex:'4차',dong:'105동',lat:38.18577522796179,lng:128.59296132051855},
-  {complex:'4차',dong:'106동',lat:38.18577522796179,lng:128.59296132051855},
-  {complex:'4차',dong:'107동',lat:38.18577522796179,lng:128.59296132051855},
-  {complex:'4차',dong:'108동',lat:38.18577522796179,lng:128.59296132051855},
-  {complex:'4차',dong:'109동',lat:38.18577522796179,lng:128.59296132051855},
-  {complex:'4차',dong:'110동',lat:38.18577522796179,lng:128.59296132051855},
-  {complex:'4차',dong:'111동',lat:38.18577522796179,lng:128.59296132051855},
-  {complex:'4차',dong:'112동',lat:38.18577522796179,lng:128.59296132051855},
-  {complex:'성호1차',dong:'101동',lat:38.18455140908841,lng:128.5992928024047},
-  {complex:'성호1차',dong:'102동',lat:38.18455140908841,lng:128.5992928024047},
-  {complex:'성호1차',dong:'103동',lat:38.18455140908841,lng:128.5992928024047},
-  {complex:'성호1차',dong:'104동',lat:38.18455140908841,lng:128.5992928024047},
-  {complex:'성호1차',dong:'105동',lat:38.18455140908841,lng:128.5992928024047},
-];
-function applyConfidentBuildingCoordsH82(){
-  if(S.role!=='admin')return null;
-  let applied=0,skipped=0,notFound=0;
-  APARTMENT_BUILDING_COORDS_H82.forEach(item=>{
-    const c=S.apartmentComplexes.find(c=>c.name===item.complex);
-    const b=c&&c.buildings.find(bb=>bb.dong===item.dong);
-    if(!b){notFound++;return;}
-    if(hasApartmentBuildingCoord(b)){skipped++;return;}
-    b.lat=item.lat;b.lng=item.lng;
-    applied++;
-  });
-  if(applied>0)persistApartmentRegistry();
-  renderApartmentComplexList();
-  return {applied,skipped,notFound};
-}
-// ================================================================
-// H91: 아파트 카드 point.complexId가 실제 S.apartmentComplexes id와
-// 어긋나는 데이터 정합성 문제 근본 수정. 원인: runApartmentImportH63()
-// 자체는 항상 내부적으로 일관된 id를 부여하지만(complex 생성 시
-// 그 자리에서 만든 id를 그대로 카드에 씀, 코드 재확인 완료), 과거
-// 이 기능이 여러 차례 반복 개발/시험되는 동안 어느 한 기기에서
-// 지금과 다른 버전의 코드/데이터로 먼저 실행되어 sokcho_h63_import_done
-// 플래그가 이미 '1'로 저장돼 있으면, 이후 아무리 코드를 고쳐도
-// runApartmentImportH63() 자체가 재실행되지 않아(중복 방지 설계,
-// H78/H91에서 의도적으로 유지) 그 기기엔 옛 id 체계의 카드가
-// 영구히 남는다 — 이것이 "이름은 맞는데 id가 어긋남" 현상의
-// 근본 원인으로 판단. 코드 재작성이 아니라 데이터 정정(옵션 a)으로
-// 해결한다: 카드가 들고 있는 complexName은 항상 정확하므로, 그
-// 이름으로 지금 레지스트리에 있는 진짜 id를 찾아 point.complexId를
-// 덮어쓴다. 이미 올바른 point는 그대로 두어(멱등) 몇 번을 다시
-// 실행해도 안전하다.
-function repairApartmentCardComplexId(){
-  // H92: id 비교도 String()으로 타입 무관하게 맞춘다(문자열 "2" vs
-  // 숫자 2 같은 경우). 값은 같은데 타입만 다른 경우는 "이미 정상"
-  // 취급하지 않고 실제 레지스트리 쪽 타입 그대로 맞춰서 저장까지
-  // 해준다 — 그래야 이 카드가 다음부터는 어떤 비교 방식을 쓰든
-  // 항상 안전하게 일치한다.
-  let repaired=0,alreadyOk=0,unresolved=0;
-  S.apartmentCards.forEach(card=>{
-    card.points.forEach(pt=>{
-      const byId=S.apartmentComplexes.find(c=>String(c.id)===String(pt.complexId));
-      if(byId){
-        if(byId.id!==pt.complexId){pt.complexId=byId.id;repaired++;}
-        else{alreadyOk++;}
-        return;
-      }
-      const byName=pt.complexName&&S.apartmentComplexes.find(c=>c.name===pt.complexName);
-      if(byName){pt.complexId=byName.id;repaired++;}
-      else{unresolved++;}
-    });
-  });
-  if(repaired>0)persistApartmentCards();
-  return {repaired,alreadyOk,unresolved};
-}
-function runDeviceSyncAll(){
-  if(S.role!=='admin'){toast('관리자만 실행할 수 있습니다.');return;}
-
-  // 1) 구역번호 재정리(H43) — 원본 함수 그대로 호출(대상 없으면 확인창 없이 조용히 반환)
-  const zoneNeededBefore=zoneRenumberStillNeeded();
-  runZoneRenumberMigration();
-  const zoneNeededAfter=zoneRenumberStillNeeded();
-  const zoneApplied=zoneNeededBefore&&!zoneNeededAfter;
-
-  // 2) KCC/진덕 아파트 카드 가져오기(H63) — 이미 실행됐으면 원본 함수 자체를 호출하지 않음(중복 방지)
-  const aptAlreadyDone=storageGet('sokcho_h63_import_done')==='1';
-  let aptApplied=false;
-  if(!aptAlreadyDone&&typeof runApartmentImportH63==='function'){
-    const cardsBefore=S.apartmentCards.length;
-    runApartmentImportH63();
-    aptApplied=S.apartmentCards.length>cardsBefore;
-  }
-
-  // 3) H80/H81/H82: 확실 매칭 동 좌표 일괄확정(32건+7건+20건=59건 전체) — 이미 좌표 있는 동은 건드리지 않아(멱등) 매번 호출해도 안전
-  const coordResult80=applyConfidentBuildingCoordsH80()||{applied:0,skipped:0,notFound:0};
-  const coordResult81=applyConfidentBuildingCoordsH81()||{applied:0,skipped:0,notFound:0};
-  const coordResult82=applyConfidentBuildingCoordsH82()||{applied:0,skipped:0,notFound:0};
-  const coordAppliedTotal=coordResult80.applied+coordResult81.applied+coordResult82.applied;
-
-  // 4) H91: 카드 point.complexId가 옛 id 체계로 어긋나 있으면 이름 기준으로 정정 — 이미 올바르면 아무 것도 안 함(멱등)
-  const complexIdFix=repairApartmentCardComplexId();
-
-  const zoneMsg=zoneApplied?'구역번호 재정리 적용됨':'구역번호 이미 최신';
-  const aptMsg=aptAlreadyDone?'아파트 카드 이미 최신':(aptApplied?'아파트 카드 가져오기 적용됨':'아파트 카드 가져오기 안 함(취소 또는 실패)');
-  const coordMsg=coordAppliedTotal>0?`동 좌표 ${coordAppliedTotal}건 새로 확정`:'동 좌표 이미 최신';
-  const fixMsg=complexIdFix.repaired>0?`카드 단지연결 ${complexIdFix.repaired}건 정정됨`:'카드 단지연결 이미 정상';
-  const allUpToDate=!zoneApplied&&aptAlreadyDone&&coordAppliedTotal===0&&complexIdFix.repaired===0;
-  toast(`${allUpToDate?'✅ 이미 최신 상태입니다':'✅ 최신 상태로 맞췄습니다'} — 구역 ${S.zones.length}개, 아파트 단지 ${S.apartmentComplexes.length}개, 카드 ${S.apartmentCards.length}개 (${zoneMsg} / ${aptMsg} / ${coordMsg} / ${fixMsg})`);
-}
 
 // ================================================================
 // 인도자

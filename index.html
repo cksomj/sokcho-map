@@ -528,7 +528,7 @@
 
       <!-- 관리자 -->
       <div class="page" id="p-admin">
-        <div class="ph"><h2>관리자</h2><div style="display:flex;gap:8px;"><button class="btn btn-sm btn-out" id="s13-open-btn" onclick="openS13Viewer()">📋 구역 배정 기록</button><button class="btn btn-sm btn-dk" onclick="doLogout()">로그아웃</button></div></div>
+        <div class="ph"><h2>관리자</h2><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-sm btn-p" onclick="manualSyncNowH119()">☁️ 바로 반영하기</button><button class="btn btn-sm btn-out" id="s13-open-btn" onclick="openS13Viewer()">📋 구역 배정 기록</button><button class="btn btn-sm btn-dk" onclick="doLogout()">로그아웃</button></div></div>
         <div class="pb">
           <div class="adm-sec">
             <div class="adm-title">전체 통계</div>
@@ -703,40 +703,6 @@
               <table><thead><tr><th>날짜</th><th>구역</th><th>봉사자</th><th>방식</th></tr></thead>
               <tbody id="all-tbody"></tbody></table>
             </div>
-          </div>
-          <div class="adm-sec" style="border:1.5px solid var(--p);border-radius:var(--rl);padding:14px;background:var(--pbg);">
-            <div class="adm-title" style="color:var(--p);">📱 이 기기를 최신 상태로 맞추기</div>
-            <div style="font-size:11px;color:var(--txm);line-height:1.55;margin-bottom:8px;">
-              아래에 있는 1회성 마이그레이션(구역번호 재정리, KCC/진덕
-              아파트 카드 가져오기 등)을 순서대로 한번에 실행합니다.
-              <b>새 기기(폰 등)에서는 이 버튼 하나만 누르면 됩니다.</b>
-              이미 적용된 항목은 건너뛰고, 실행 결과를 요약해서
-              보여줍니다. 여러 번 눌러도 안전합니다(중복 생성 없음).
-            </div>
-            <button class="btn btn-sm btn-p" onclick="runDeviceSyncAll()">📱 이 기기를 최신 상태로 맞추기</button>
-          </div>
-          <div class="adm-sec">
-            <div class="adm-title">⚠️ 구역번호 재정리(1회성)</div>
-            <div style="font-size:11px;color:var(--txm);line-height:1.55;margin-bottom:8px;">
-              구역번호를 시내(1001~)/시외(3001~)/상가(4001~) 체계로
-              이 기기에서 한 번에 바꿉니다. 실행 전 자동으로 백업
-              파일이 다운로드됩니다. <b>이 기기의 데이터만 바뀝니다
-              — PC/폰이 각각 따로 저장되므로, 다른 기기는 그 기기에서
-              따로 실행해야 합니다.</b> 이미 실행한 뒤 다시 눌러도
-              안전합니다(대상이 없으면 아무 일도 하지 않습니다).
-            </div>
-            <button class="btn btn-sm btn-dk" onclick="runZoneRenumberMigration()">구역번호 재정리 실행</button>
-          </div>
-          <div class="adm-sec">
-            <div class="adm-title">📥 KCC/진덕 실전 카드 가져오기(1회성)</div>
-            <div style="font-size:11px;color:var(--txm);line-height:1.55;margin-bottom:8px;">
-              과거 실전에서 쓰인 KCC/부영/진덕 아파트 카드 데이터(단지/동
-              /카드 110개)를 이 기기에 등록합니다. 실행 전 자동으로
-              백업합니다. 기존 단지/카드는 삭제하지 않고 추가만 합니다.
-              <b>이것도 기기별 저장이라 딘의 다른 기기에서도 따로 실행해야
-              합니다.</b>
-            </div>
-            <button class="btn btn-sm btn-dk" onclick="runApartmentImportH63()">KCC/진덕 카드 가져오기 실행</button>
           </div>
         </div>
       </div>
@@ -922,6 +888,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20260831-h118-nextpoint-coord-fix"></script>
+<script src="app.js?v=20260831-h119-remove-migration-sync-btn"></script>
 </body>
 </html>
