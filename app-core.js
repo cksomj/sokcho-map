@@ -2166,6 +2166,13 @@ function renderAptSvcChecklist(){
   const doneCnt=checkableUnits.filter(u=>u.completed).length;
   const allDone=checkableUnits.length>0&&doneCnt===checkableUnits.length;
   const nextPt=card.points[pIdx+1];
+  // H118: nextPt는 카드 자체가 들고 있는 "원본" point 객체라 pt.lat/pt.lng는
+  // H63으로 만들어진 카드에서 항상 null이다(H86 조사 당시와 동일한 이유 —
+  // 실제 좌표는 동/단지 레지스트리에서 apartmentCardPointCoord()로 조회해야
+  // 나온다). 아래 배너가 nextPt.lat/nextPt.lng를 직접 읽어서 매 지점마다
+  // 예외 없이 "좌표가 없습니다"가 떴던 것이 원인 — nextCoord로 실제 좌표를
+  // 조회해서 그 값을 버튼에 넘긴다.
+  const nextCoord=nextPt?apartmentCardPointCoord(card,pIdx+1):null;
 
   const pointNav=`<div class="apt-svc-point-nav">
     ${card.points.map((pp,i)=>{
@@ -2212,10 +2219,10 @@ function renderAptSvcChecklist(){
 
   const advanceHtml=allDone?`<div class="apt-svc-advance-banner">
     <div style="font-weight:800;margin-bottom:8px;">✅ 이 지점이 끝났습니다. 다음 진행 장소로 이동하세요.</div>
-    ${nextPt?`<div style="display:flex;gap:8px;">
-      <button class="svc-secondary-btn" onclick="openAptCardPointMapView(${nextPt.lat},${nextPt.lng})">카카오지도로 위치 확인</button>
-      <button class="svc-locate-btn" onclick="openAptCardPointNavi(${nextPt.lat},${nextPt.lng})">카카오네비 연결</button>
-    </div>`:'<div style="font-size:12px;color:var(--txm);">마지막 지점입니다. "봉사 완료"를 눌러 마무리하세요.</div>'}
+    ${nextCoord?`<div style="display:flex;gap:8px;">
+      <button class="svc-secondary-btn" onclick="openAptCardPointMapView(${nextCoord[0]},${nextCoord[1]})">카카오지도로 위치 확인</button>
+      <button class="svc-locate-btn" onclick="openAptCardPointNavi(${nextCoord[0]},${nextCoord[1]})">카카오네비 연결</button>
+    </div>`:nextPt?'<div style="font-size:12px;color:var(--txm);">다음 지점의 좌표가 없습니다. 관리자 화면에서 동(또는 단지) 좌표를 먼저 등록하세요.</div>':'<div style="font-size:12px;color:var(--txm);">마지막 지점입니다. "봉사 완료"를 눌러 마무리하세요.</div>'}
   </div>`:'';
 
   wrap.innerHTML=pointNav+checklistHtml+advanceHtml;
