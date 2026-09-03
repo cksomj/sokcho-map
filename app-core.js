@@ -68,15 +68,217 @@ const S={
 // ================================================================
 // V2 H69: 저장소 추상화(읽기/쓰기 래퍼 함수만 도입). localStorage를
 // 직접 호출하던 77곳(getItem 35 / setItem 40 / removeItem 2)을 전부
-// 이 세 함수로 통일했다. 지금은 내부 동작이 기존과 100% 동일하게
-// localStorage를 그대로 쓰지만(동기 방식, 데이터 형태 무변경), 나중에
-// Firebase 등 다른 저장소로 바꿀 때 이 세 함수만 고치면 되도록
-// 호출부(app-core.js 전체)를 미리 이 창구 하나로 모아둔 것뿐이다.
-// 실제 저장소 교체(비동기 전환 등)는 이번 작업 범위가 아니다.
+// 이 세 함수로 통일했다. H105 이전까지는 내부 동작이 localStorage
+// 그대로였다(동기 방식, 데이터 형태 무변경).
+//
+// V2 H105: 이 세 함수의 "내부"만 메모리 캐시 + Firestore 백그라운드
+// 동기화 구조로 교체한다. 77곳 호출부는 함수 이름/인자/반환값(동기,
+// 즉시 반환)이 전부 기존과 100% 동일해서 단 한 줄도 안 바뀐다.
+//
+// 구조:
+//   1) _storageCacheH105 — 메모리 캐시. storageGet은 항상 이 캐시에서
+//      "즉시" 동기로 읽는다(네트워크 대기 없음, 기존 체감 속도 그대로).
+//      부팅 시 localStorage 전체를 그대로 복사해 초기값으로 삼는다.
+//   2) storageSet — 캐시+localStorage를 즉시 갱신(기존과 동일)하고,
+//      Firestore에는 키별로 1.5초 디바운스를 걸어 백그라운드로
+//      저장한다(실패해도 로컬 동작은 절대 안 막힘 — 콘솔 경고만).
+//      디바운스를 둔 이유: sokcho_live(실시간 위치공유)처럼 초 단위로
+//      자주 바뀌는 키가 있어서, 값이 바뀔 때마다 매번 바로 쓰면
+//      Firestore 쓰기 횟수가 과도해질 수 있다(비용/쿼터 문제).
+//   3) storageRemove — 캐시+localStorage에서 즉시 삭제하고, Firestore
+//      문서도 백그라운드로 삭제한다.
+//   4) initFirestoreSyncH105() — db가 연결돼 있으면(Firebase 설정 완료
+//      + 익명 로그인 성공) 알려진 모든 key마다 Firestore 문서에
+//      onSnapshot 리스너를 건다. 다른 기기가 저장한 변경이 들어오면
+//      캐시+localStorage를 갱신하고, 그 key에 해당하는 화면을 다시
+//      그리는 기존 render 함수들을 호출한다(_reloadAfterRemoteChangeH105).
+//
+// Firestore 컬렉션 구조(최종안): 컬렉션 'app_data', 문서 id = localStorage
+// key 그대로(예: app_data/sokcho_zones), 문서 내용 {value:<문자열>,
+// updatedAt:<ms>}. localStorage가 원래 저장하던 문자열(JSON이든 순수
+// 문자열이든)을 그대로 value에 넣어서 값의 형태를 전혀 바꾸지 않는다
+// (변환/파싱 로직을 추가로 만들지 않아 오류 위험을 최소화).
+//
+// 문서 크기 확인(1MB 제한 대비, 2026-08-31 기준 실측):
+//   sokcho_zones ~216KB(구역 418개) / sokcho_apartment_registry_v1
+//   ~48KB / sokcho_apartment_cards_v1 ~356KB(카드 110개, 가장 큰 편—
+//   앞으로 단지가 크게 늘면 이 키가 제일 먼저 한도에 가까워질 수
+//   있어 주시 필요) / 그 외 키는 전부 수 KB 이하. sokcho_records는
+//   봉사 기록이 해마다 누적되는 구조라 장기적으로 계속 커짐(현재는
+//   작지만 수년 뒤 재확인 권장). 지금 시점에는 전부 1MB에 한참
+//   못 미친다.
+//
+// 동기화 제외 키(의도적): sokcho_auto_login, sokcho_last_login_gps —
+// "이 기기 고유의 로그인 세션/마지막 위치" 개념이라 다른 기기로
+// 넘어가면 오히려 보안/혼란 문제가 생긴다(다른 기기의 자동로그인
+// 정보가 내 기기에 나타나는 등). 이 두 키만 순수 localStorage로 남긴다.
 // ================================================================
-function storageGet(key){return localStorage.getItem(key);}
-function storageSet(key,value){localStorage.setItem(key,value);}
-function storageRemove(key){localStorage.removeItem(key);}
+const FIRESTORE_SYNC_EXCLUDED_KEYS_H105=new Set(['sokcho_auto_login','sokcho_last_login_gps']);
+const FIRESTORE_SYNC_KEYS_H105=['sokcho_zones','sokcho_records','sokcho_progress','sokcho_apartment_registry_v1','sokcho_apartment_cards_v1','sokcho_volunteers','sokcho_leaders','sokcho_contacts','sokcho_routes','sokcho_research_links','sokcho_live','sokcho_s13_v1','sokcho_s13_congregation','sokcho_admin_pin','sokcho_leader_pin','sokcho_admin_recovery_email','sokcho_active_leader','sokcho_h63_import_done','sokcho_builtin_samples_removed','sokcho_deleted_zone_ids','sokcho_deleted_apartment_card_ids'];
+const FIRESTORE_WRITE_DEBOUNCE_MS_H105=1500;
+let _storageCacheH105={};
+let _firestoreWriteTimersH105={};
+let _firestoreListenersAttachedH105=false;
+let _firestoreSeenRealValueH105=new Set(); // H112: 서버에서 실제 값(exists:true)을 한 번이라도 받은 적 있는 key만 기록 — "문서 없음"이 최초상태인지 진짜삭제인지 구분용
+(function _storageCacheInitH105(){
+  // 부팅 시 localStorage에 이미 있는 값을 캐시에 그대로 복사(동기,
+  // 네트워크 대기 없음) — Firestore 리스너가 아직 안 붙었거나 응답이
+  // 오기 전에도 storageGet이 기존과 동일하게 즉시 값을 반환하게 한다.
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      _storageCacheH105[k]=localStorage.getItem(k);
+    }
+  }catch(e){}
+})();
+function storageGet(key){
+  return key in _storageCacheH105?_storageCacheH105[key]:localStorage.getItem(key);
+}
+function storageSet(key,value){
+  _storageCacheH105[key]=value;
+  localStorage.setItem(key,value);
+  _scheduleFirestoreWriteH105(key,value);
+}
+function storageRemove(key){
+  delete _storageCacheH105[key];
+  localStorage.removeItem(key);
+  _scheduleFirestoreDeleteH105(key);
+}
+function _scheduleFirestoreWriteH105(key,value){
+  if(typeof db==='undefined'||!db||FIRESTORE_SYNC_EXCLUDED_KEYS_H105.has(key))return;
+  clearTimeout(_firestoreWriteTimersH105[key]);
+  _firestoreWriteTimersH105[key]=setTimeout(()=>{
+    db.collection('app_data').doc(key).set({value,updatedAt:Date.now()}).catch(err=>{
+      console.warn('[Firestore sync] 저장 실패(로컬에는 정상 저장됨, 다음 저장 시 재시도):',key,err);
+    });
+  },FIRESTORE_WRITE_DEBOUNCE_MS_H105);
+}
+function _scheduleFirestoreDeleteH105(key){
+  if(typeof db==='undefined'||!db||FIRESTORE_SYNC_EXCLUDED_KEYS_H105.has(key))return;
+  clearTimeout(_firestoreWriteTimersH105[key]);
+  db.collection('app_data').doc(key).delete().catch(err=>{
+    console.warn('[Firestore sync] 삭제 실패(로컬에는 정상 삭제됨):',key,err);
+  });
+}
+// 원격 변경 수신 시 "해당 key를 쓰는 기존 S state를 다시 로드 + 관련
+// render 함수 재호출"까지 담당. 새 파싱 로직을 만들지 않고 최대한
+// 기존 함수를 재사용(가드 플래그가 있는 것들은 잠깐 풀었다 다시 로드).
+// S 캐시가 없거나(예: sokcho_live, sokcho_s13_v1, PIN류) 매번
+// storageGet()을 직접 호출해 읽는 값들은 캐시만 갱신되면 다음 조회
+// 시 자동으로 최신값이라 여기서 별도 처리가 필요 없다.
+function _reloadAfterRemoteChangeH105(key){
+  try{
+    if(key==='sokcho_zones'){
+      try{const z=JSON.parse(storageGet('sokcho_zones')||'[]');S.zones=Array.isArray(z)?z:[];}catch(e){}
+      if(typeof drawAllZones==='function')drawAllZones(null);
+      if(typeof renderSideList==='function')renderSideList();
+      if(typeof renderRouteGrid==='function')renderRouteGrid();
+      if(typeof renderHomeZoneList==='function')renderHomeZoneList(document.getElementById('home-zone-search')?.value||'');
+      if(typeof renderAdmGrid==='function')renderAdmGrid();
+      if(typeof renderZoneChart==='function')renderZoneChart();
+    }else if(key==='sokcho_records'){
+      try{const r=JSON.parse(storageGet('sokcho_records')||'[]');S.records=Array.isArray(r)?r:[];}catch(e){}
+      if(typeof renderRecords==='function')renderRecords();
+      if(typeof renderMonChart==='function')renderMonChart();
+      if(typeof renderZoneChart==='function')renderZoneChart();
+      if(typeof renderAdmGrid==='function')renderAdmGrid();
+      if(typeof renderRouteGrid==='function')renderRouteGrid();
+      if(typeof renderHomeZoneList==='function')renderHomeZoneList(document.getElementById('home-zone-search')?.value||'');
+      if(typeof drawAllZones==='function')drawAllZones(null);
+    }else if(key==='sokcho_progress'){
+      try{
+        const progress=JSON.parse(storageGet('sokcho_progress')||'{}');
+        S.zones.forEach(z=>{if(progress&&progress[z.id])z.progress=progress[z.id];});
+      }catch(e){}
+      if(typeof drawAllZones==='function')drawAllZones(null);
+      if(typeof renderRouteGrid==='function')renderRouteGrid();
+      if(typeof renderHomeZoneList==='function')renderHomeZoneList(document.getElementById('home-zone-search')?.value||'');
+    }else if(key==='sokcho_apartment_registry_v1'){
+      S._apartmentRegistryLoaded=false;loadApartmentRegistry();
+      if(typeof renderApartmentComplexList==='function')renderApartmentComplexList();
+      if(typeof renderCardBuilder==='function')renderCardBuilder();
+    }else if(key==='sokcho_apartment_cards_v1'){
+      S._apartmentCardsLoaded=false;loadApartmentCards();
+      if(typeof renderApartmentCardList==='function')renderApartmentCardList();
+      if(typeof renderHomeApartmentCardList==='function')renderHomeApartmentCardList();
+      if(typeof renderRouteGrid==='function')renderRouteGrid();
+      if(typeof renderSideList==='function')renderSideList();
+    }else if(key==='sokcho_volunteers'){
+      S._volunteersLoaded=false;loadVolunteers();
+      if(typeof renderVolList==='function')renderVolList();
+      if(typeof fillSel==='function')fillSel();
+    }else if(key==='sokcho_leaders'){
+      S._leadersLoaded=false;loadLeaders();
+      if(typeof renderLeaderList==='function')renderLeaderList();
+    }else if(key==='sokcho_contacts'){
+      S._contactsLoaded=false;loadContacts();
+    }else if(key==='sokcho_routes'){
+      loadRteLines(); // 가드 플래그 없음 — 매번 다시 불러도 안전
+      if(typeof drawSavedRteLines==='function')drawSavedRteLines();
+      if(typeof renderRouteGrid==='function')renderRouteGrid();
+    }else if(key==='sokcho_research_links'){
+      S._researchLinksLoaded=false;
+      if(typeof renderResearchList==='function')renderResearchList();
+    }
+    // sokcho_live/sokcho_s13_v1/sokcho_s13_congregation/PIN류/
+    // sokcho_active_leader/sokcho_h63_import_done/
+    // sokcho_builtin_samples_removed/sokcho_deleted_zone_ids/
+    // sokcho_deleted_apartment_card_ids는 위 캐시 갱신만으로 충분
+    // (전부 매번 storageGet()을 직접 호출해서 읽는 구조라 별도
+    // 재로딩/재렌더 없이도 다음 조회부터 자동으로 최신값을 씀).
+  }catch(e){console.warn('[Firestore sync] 화면 갱신 중 오류(데이터 자체는 정상 반영됨):',key,e);}
+}
+// db가 연결돼 있으면 알려진 모든 key에 onSnapshot 리스너를 건다.
+// 실패해도(권한/네트워크 등) 콘솔 경고만 남기고 로컬 동작은 그대로.
+function initFirestoreSyncH105(){
+  if(typeof db==='undefined'||!db||_firestoreListenersAttachedH105)return;
+  // H105 버그수정: initApp()은 로그인 즉시(익명 로그인이 끝나기 전에도)
+  // 호출되는데, 그 시점에 바로 리스너를 걸면 Firestore 보안규칙이
+  // "인증된 요청만 허용"이라 전부 permission-denied로 죽는다(재시도도
+  // 안 됨 — onSnapshot은 한 번 에러가 나면 스스로 다시 안 붙는다).
+  // 그래서 로그인이 실제로 끝났는지 firebase.auth().currentUser로
+  // 먼저 확인하고, 아직이면 onAuthStateChanged로 로그인 완료 시 한
+  // 번만 다시 이 함수를 호출하게 등록만 해두고 조용히 리턴한다(이때는
+  // _firestoreListenersAttachedH105를 세우지 않아 재시도가 막히지 않음).
+  if(typeof firebase!=='undefined'&&firebase.auth&&!firebase.auth().currentUser){
+    firebase.auth().onAuthStateChanged(user=>{if(user)initFirestoreSyncH105();});
+    return;
+  }
+  _firestoreListenersAttachedH105=true;
+  FIRESTORE_SYNC_KEYS_H105.forEach(key=>{
+    try{
+      db.collection('app_data').doc(key).onSnapshot(snap=>{
+        if(snap.exists){
+          // H112 버그수정: 서버에 실제 값이 있으면 그게 항상 로컬보다
+          // 우선(서버→로컬 방향으로만 덮어씀).
+          _firestoreSeenRealValueH105.add(key);
+          const newValue=snap.data().value;
+          if(_storageCacheH105[key]===newValue)return; // 실제 변경 없음(내가 방금 쓴 게 그대로 돌아온 경우 포함) — 건너뜀
+          _storageCacheH105[key]=newValue;
+          localStorage.setItem(key,newValue);
+          _reloadAfterRemoteChangeH105(key);
+        }else{
+          // H112 버그수정: "문서가 없음"을 예전엔 "서버가 값을 비웠다"로
+          // 잘못 해석해서 로컬 캐시/localStorage를 그 자리에서 지워버렸다
+          // (기기가 처음 열려서 서버에 아직 아무도 쓴 적이 없는 정상적인
+          // 초기 상태에서도 이 경로를 타서, 이미 있던 로컬 데이터가
+          // 리스너가 붙는 순간 사라지는 심각한 버그였음). 이제는 "이 key로
+          // 서버에서 실제 값을 한 번이라도 받아본 적이 있을 때만"(즉
+          // 있다가 나중에 정말로 삭제된 경우만) 로컬도 따라서 비우고,
+          // 애초에 서버에 아직 아무 값도 없던 최초 상태에서는 로컬을
+          // 절대 건드리지 않는다(로컬이 곧 유일한 데이터이므로 그대로 둠).
+          if(!_firestoreSeenRealValueH105.has(key))return;
+          if(_storageCacheH105[key]==null)return; // 이미 로컬도 없음 — 더 할 일 없음
+          delete _storageCacheH105[key];
+          localStorage.removeItem(key);
+          _reloadAfterRemoteChangeH105(key);
+        }
+      },err=>{
+        console.warn('[Firestore sync] 실시간 감지 실패(로컬 데이터로 계속 동작):',key,err);
+      });
+    }catch(e){console.warn('[Firestore sync] 리스너 등록 실패:',key,e);}
+  });
+}
 
 // V2 H69-B: Firebase 연결 준비(스캐폴딩만). firebase_config.js에 값이
 // 채워지고 실제 SDK 스크립트 태그(index.html에 주석으로 미리 자리만
@@ -3076,6 +3278,7 @@ function returnToAdminZoneList(){
 // ================================================================
 function initApp(){
   initFirebaseIfConfigured(); // V2 H69-B: config 없으면 즉시 false 반환, 나머지 흐름 그대로
+  initFirestoreSyncH105(); // V2 H105: db 연결돼 있으면 리스너 등록(최초 1회만, 이미 붙어있으면 즉시 반환)
   loadCoreData();
   loadRteLines();
   cleanupBuiltInSamples();
