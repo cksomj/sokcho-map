@@ -147,17 +147,36 @@ function storageRemove(key){
 function _scheduleFirestoreWriteH105(key,value){
   if(typeof db==='undefined'||!db||FIRESTORE_SYNC_EXCLUDED_KEYS_H105.has(key))return;
   clearTimeout(_firestoreWriteTimersH105[key]);
-  _firestoreWriteTimersH105[key]=setTimeout(()=>{
-    db.collection('app_data').doc(key).set({value,updatedAt:Date.now()}).catch(err=>{
-      console.warn('[Firestore sync] 저장 실패(로컬에는 정상 저장됨, 다음 저장 시 재시도):',key,err);
-    });
-  },FIRESTORE_WRITE_DEBOUNCE_MS_H105);
+  _firestoreWriteTimersH105[key]=setTimeout(()=>{_writeToFirestoreNowH105(key);},FIRESTORE_WRITE_DEBOUNCE_MS_H105);
+}
+// H117: 로그인 직후 익명 인증이 아직 안 끝난 순간에 첫 저장이 시도되면
+// permission-denied로 조용히 실패한다(콘솔 경고는 있었지만 재시도가
+// 실제로 안 됨 — 그 key를 다시 storageSet하기 전까지는 Firestore에
+// 영영 안 올라갈 수 있었음). initFirestoreSyncH105()의 리스너 등록과
+// 동일하게, 인증이 실제로 끝나면 그 값 그대로 한 번 더 자동 재시도한다.
+function _writeToFirestoreNowH105(key){
+  if(typeof db==='undefined'||!db)return;
+  const value=_storageCacheH105[key];
+  if(value==null)return; // 그 사이 삭제됐으면 쓸 값이 없음(삭제는 _scheduleFirestoreDeleteH105가 담당)
+  db.collection('app_data').doc(key).set({value,updatedAt:Date.now()}).catch(err=>{
+    console.warn('[Firestore sync] 저장 실패(로컬에는 정상 저장됨, 다음 저장 시 재시도):',key,err);
+    if(typeof firebase!=='undefined'&&firebase.auth&&!firebase.auth().currentUser){
+      firebase.auth().onAuthStateChanged(user=>{if(user)_writeToFirestoreNowH105(key);});
+    }
+  });
 }
 function _scheduleFirestoreDeleteH105(key){
   if(typeof db==='undefined'||!db||FIRESTORE_SYNC_EXCLUDED_KEYS_H105.has(key))return;
   clearTimeout(_firestoreWriteTimersH105[key]);
+  _deleteFromFirestoreNowH105(key);
+}
+function _deleteFromFirestoreNowH105(key){
+  if(typeof db==='undefined'||!db)return;
   db.collection('app_data').doc(key).delete().catch(err=>{
     console.warn('[Firestore sync] 삭제 실패(로컬에는 정상 삭제됨):',key,err);
+    if(typeof firebase!=='undefined'&&firebase.auth&&!firebase.auth().currentUser){
+      firebase.auth().onAuthStateChanged(user=>{if(user)_deleteFromFirestoreNowH105(key);});
+    }
   });
 }
 // 원격 변경 수신 시 "해당 key를 쓰는 기존 S state를 다시 로드 + 관련
@@ -2117,8 +2136,17 @@ function goToNextAptSvcPoint(){
 }
 function openAptCardPointMapView(lat,lng){
   if(!Number.isFinite(lat)||!Number.isFinite(lng)){toast('다음 지점의 좌표가 없습니다.');return;}
+  // H117: 예전엔 url/fallbackUrl을 똑같은 웹 링크로 넘겨서 openExternalApp()이
+  // 그걸 "앱 딥링크"로 취급해 a.click()+target='_self'로 지금 보고 있는
+  // 속초맵 앱 화면 자체를 카카오맵 웹페이지로 통째로 이동시켜버렸다(안드로이드에서
+  // "카카오맵 연결이 항상 실패한다"고 느껴진 원인 — 실제로는 실패가 아니라
+  // 앱 화면이 사라지고 카카오 웹사이트로 넘어가버린 것). 바로 아래
+  // openAptCardPointNavi()(카카오네비 연결, 정상 동작)와 달리 이 버튼은
+  // 애초에 네이티브 앱을 열려는 의도가 아니라 "새 탭에서 위치만 잠깐
+  // 확인"하는 용도이므로, openExternalApp()을 거치지 않고 새 탭으로만 연다.
   const url=`https://map.kakao.com/link/map/${lat},${lng}`;
-  openExternalApp(url,url,'카카오맵');
+  try{window.open(url,'_blank','noopener');}catch(e){}
+  toast('카카오맵으로 위치를 확인합니다.');
 }
 function openAptCardPointNavi(lat,lng){
   if(!Number.isFinite(lat)||!Number.isFinite(lng)){toast('다음 지점의 좌표가 없습니다.');return;}
