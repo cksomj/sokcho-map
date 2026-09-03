@@ -1643,7 +1643,11 @@ function clearApartmentCardLine(){
 function showApartmentCardLine(cardId){
   const card=S.apartmentCards.find(c=>c.id===cardId);
   if(!card){toast('카드를 먼저 선택하세요.');return;}
-  const pts=card.points.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lng)).map(p=>[p.lat,p.lng]);
+  // H120: card.points[].lat/lng를 직접 읽으면(H63 카드는 항상 null) 좌표가
+  // 하나도 안 잡혀서 "라인 연결 보기"가 매번 "좌표 없음"으로 실패했다
+  // (H117/H118과 같은 원인). apartmentCardPointCoord()로 동/단지
+  // 레지스트리에서 실제 좌표를 조회해야 한다.
+  const pts=card.points.map((p,idx)=>apartmentCardPointCoord(card,idx)).filter(Boolean);
   if(!pts.length){toast('이 카드에는 좌표가 등록된 지점이 없습니다. 관리자 화면에서 동 좌표를 먼저 등록하세요.');return;}
   goTab('map');
   setTimeout(()=>{
@@ -1939,7 +1943,8 @@ function selectHomeApartmentCard(cardId){
   const card=S.apartmentCards.find(c=>c.id===cardId);
   drawHomeZones(HOME_APT_ROUTE_ACTIVE); // 모든 구역 Polygon을 비활성화(흐리게) 처리
   if(card){
-    const pts=card.points.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lng)).map(p=>[p.lat,p.lng]);
+    // H120: showApartmentCardLine()과 완전히 동일한 원인/수정(위 주석 참고).
+    const pts=card.points.map((p,idx)=>apartmentCardPointCoord(card,idx)).filter(Boolean);
     if(!pts.length){
       toast('이 카드에는 좌표가 등록된 지점이 없어 지도에 경로를 표시하지 못했습니다.');
     }else{
