@@ -4524,7 +4524,11 @@ function renderHomeZoneList(kw){
     (homeMapFilter==='standby'&&getZoneState(z.id)==='standby'));
   if(kw&&kw.trim()){
     const k=kw.trim().toLowerCase();
-    zones=zones.filter(z=>z.name.toLowerCase().includes(k)||String(z.id).includes(k)||z.streets.some(s=>s.toLowerCase().includes(k)));
+    // V2 H124: 원본 숫자 id/이름/거리명만 보고 H48의 그룹형 표시번호
+    // ("#1170-1" 같은 화면 라벨)는 검색 대상에서 빠져있던 버그 수정 —
+    // "1170-1", "1170-2", "1170"(그룹 전체) 검색 모두 라벨 기준으로 매칭.
+    const labelMap=zoneGroupLabelMap();
+    zones=zones.filter(z=>z.name.toLowerCase().includes(k)||String(z.id).includes(k)||z.streets.some(s=>s.toLowerCase().includes(k))||(labelMap[z.id]||'').toLowerCase().includes(k));
   }
   const wrap=document.getElementById('home-zone-list');
   if(!wrap)return;
@@ -4570,6 +4574,61 @@ function toggleHomeListPanel(){
   panel.classList.toggle('home-list-collapsed',!willExpand);
   if(icon)icon.textContent=willExpand?'▾':'▸';
 }
+// V2 H124: 목록 패널(#home-list-panel) 전체를 손잡이(#home-list-handle)로
+// 드래그해서 접고 펼 수 있게 함 — 기존 탭 토글(toggleHomeListPanel)은
+// 그대로 유지(움직임이 거의 없으면 탭으로 간주해 기존 함수 호출), 개별
+// 섹션(주택/상가/아파트) 접기/펼치기는 건드리지 않음. 손잡이 바
+// 자체는 CSS상 패널이 완전히 접혀도(#home-list-panel의 max-height만
+// 0이 됨) 항상 보이므로 다시 끌어올릴 손잡이는 항상 남아있다.
+(function initHomeListDragH124(){
+  function setup(){
+    const handle=document.getElementById('home-list-handle');
+    const panel=document.getElementById('home-list-panel');
+    const icon=document.getElementById('home-list-handle-icon');
+    if(!handle||!panel)return;
+    let dragging=false,startY=0,startHeight=0,maxH=0,moved=0;
+    const expandedMaxH=()=>window.innerHeight*0.72; // CSS의 모바일 펼침 max-height(72vh)와 동일하게 유지
+    function onDown(e){
+      if(e.pointerType==='mouse'&&e.button!==0)return;
+      dragging=true;moved=0;
+      startY=e.clientY;
+      maxH=expandedMaxH();
+      startHeight=panel.classList.contains('home-list-collapsed')?0:panel.getBoundingClientRect().height;
+      panel.style.transition='none';
+      try{handle.setPointerCapture(e.pointerId);}catch(err){}
+    }
+    function onMove(e){
+      if(!dragging)return;
+      const dy=e.clientY-startY; // 양수=아래로 드래그
+      moved=Math.max(moved,Math.abs(dy));
+      let h=startHeight-dy;
+      h=Math.max(0,Math.min(maxH,h));
+      panel.classList.remove('home-list-collapsed');
+      panel.style.maxHeight=h+'px';
+    }
+    function onUp(){
+      if(!dragging)return;
+      dragging=false;
+      panel.style.transition='';
+      const cur=parseFloat(panel.style.maxHeight)||0;
+      panel.style.maxHeight='';
+      if(moved<8){ // 거의 안 움직였으면 기존 탭 토글과 동일하게 처리
+        toggleHomeListPanel();
+        return;
+      }
+      const shouldExpand=cur>maxH*0.35;
+      panel.classList.toggle('home-list-collapsed',!shouldExpand);
+      if(icon)icon.textContent=shouldExpand?'▾':'▸';
+    }
+    handle.style.touchAction='none';
+    handle.addEventListener('pointerdown',onDown);
+    handle.addEventListener('pointermove',onMove);
+    handle.addEventListener('pointerup',onUp);
+    handle.addEventListener('pointercancel',onUp);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);
+  else setup();
+})();
 
 // V2 H21: 홈 화면 상가 섹션(아파트 카드 섹션과 동일 스타일, 지도 필터칩과 무관한 독립 필터)
 // V2 H67: 상가/아파트와 똑같은 접기 섹션 패턴을 주택 목록에도 적용
@@ -6312,11 +6371,11 @@ function renderMonList(active){
   wrap.innerHTML=S.volunteers.map(name=>{
     const loc=active[name];const color=getVolColor(name);const isOn=!!loc;
     return `<div class="vol-live-card">
-      <div class="live-dot ${isOn?'pulse':''}" style="background:${isOn?color:'#d1d5db'};"></div>
-      <div class="live-info"><div class="live-name">${esc(name)}</div><div class="live-sub">${isOn?`🟢 ${esc(loc.zone||'이동중')} · ${esc(loc.time||'현재')}`:'⚫ 오프라인'}</div></div>
+      <div class="live-info"><div class="live-name">${esc(name)}</div><div class="live-sub">${isOn?`${esc(loc.zone||'이동중')} · ${esc(loc.time||'현재')}`:'오프라인'}</div></div>
       <div class="live-btns">
         ${isOn?`<button class="live-btn locate ${S.monFocus===name?'on':''}" onclick="focusVol('${name}')">${S.monFocus===name?'전체보기':'위치확인'}</button>`:''}
       </div>
+      <div class="live-dot ${isOn?'pulse':''}" style="background:${isOn?color:'#d1d5db'};" title="${isOn?'온라인':'오프라인'}"></div>
     </div>`;
   }).join('')
 ;
