@@ -641,11 +641,24 @@ function mergePublisherSeedH58(){
 }
 function loadVolunteers(){
   if(S._volunteersLoaded)return;
+  let raw=null;
   try{
-    const saved=JSON.parse(storageGet('sokcho_volunteers')||'[]');
+    raw=storageGet('sokcho_volunteers');
+    const saved=JSON.parse(raw||'[]');
     if(Array.isArray(saved)&&saved.length)S.volunteers=saved;
   }catch(e){}
-  mergePublisherSeedH58();
+  // V2 H123 버그수정: raw==null(이 기기가 아직 실제 값을 한 번도 못 받은
+  // 상태 - Firestore 리스너가 아직 안 붙은 초기 순간의 캐시 미스 포함)일
+  // 때 병합을 실행하면, S.volunteers가 코드 기본값(테스트용 가짜 8명)인
+  // 채로 mergePublisherSeedH58()이 실제 89명을 얹어 97명을 만들고 그걸
+  // 그대로 Firestore에 다시 써버려서, 이미 지워둔 가짜 8명이 새 기기
+  // 접속마다 되살아나 공유 데이터를 오염시켰다(H122/H123에서 실제
+  // 발견). raw가 실제로 있을 때만(=이미 로컬/서버 값을 받은 상태) 병합
+  // 하고, 아직 못 받았으면 이번 호출은 병합을 건너뛴다 — 잠시 후
+  // Firestore 리스너가 실제 값을 받으면 _reloadAfterRemoteChangeH105가
+  // S._volunteersLoaded를 다시 false로 돌려 이 함수가 raw!=null 상태로
+  // 재실행되면서 정상적으로 병합된다.
+  if(raw!=null)mergePublisherSeedH58();
   S._volunteersLoaded=true;
 }
 function persistVolunteers(){storageSet('sokcho_volunteers',JSON.stringify(S.volunteers));}
