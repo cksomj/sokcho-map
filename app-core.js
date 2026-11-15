@@ -6542,6 +6542,186 @@ function stopLocShare(){
 function toggleLocShare(){
   // 사용하지 않음 (자동실행)
 }
+// ================================================================
+// V2 H127: S-12 구역 지도 카드(관리자 전용). 주택/상가 구역은 카카오
+// 정적지도 이미지 + 그 위에 구역 경계(SVG), 아파트 카드는 단지/동/호를
+// 글씨로 채운다. 데이터는 읽기만 한다(저장/서버 쓰기 없음). PDF는
+// 브라우저 인쇄 → "PDF로 저장"(폰 크롬 포함)으로 만든다 — 카카오 지도
+// 이미지는 다른 도메인이라 캔버스 합성(jsPDF 등)이 막히므로 인쇄 방식을 쓴다.
+// 경계 좌표는 같은 크기의 숨김 카카오 지도(setBounds)의 투영으로 계산하고,
+// 정적지도는 그 지도의 중심/레벨 그대로 요청해서 픽셀이 정확히 맞는다.
+// ================================================================
+const S12_MAP_W=960,S12_MAP_H=380; // 카드 지도칸 134×53mm와 같은 비율
+const S12_NOTE='이 카드를 봉투에 보관하라. 이것을 더럽히거나, 표하거나, 꺾지 말라, 매번 구역을 다 돌면, 구역철을 돌보는 형제에게 알리라.';
+let s12Type='all',s12Kw='',s12RenderToken=0,_s12Items=[],_s12ProjMap=null,_s12SearchTimer=null;
+const _s12MapCache=new Map();
+function openS12Viewer(){
+  if(S.role!=='admin'){toast('관리자만 사용할 수 있습니다.');return;}
+  loadApartmentCards();
+  const v=document.getElementById('s12-viewer');
+  if(v)v.classList.add('on');
+  renderS12Cards();
+}
+function closeS12Viewer(){
+  s12RenderToken++;
+  const v=document.getElementById('s12-viewer');
+  if(v)v.classList.remove('on');
+}
+function setS12Type(t){
+  s12Type=t;
+  document.querySelectorAll('#s12-viewer .s12-type').forEach(b=>b.classList.toggle('on',b.dataset.type===t));
+  renderS12Cards();
+}
+function onS12Search(v){
+  clearTimeout(_s12SearchTimer);
+  _s12SearchTimer=setTimeout(()=>{s12Kw=String(v||'').trim();renderS12Cards();},250);
+}
+function _s12Status(t){const el=document.getElementById('s12-status');if(el)el.textContent=t||'';}
+function s12Items(){
+  const labels=zoneGroupLabelMap();
+  const items=[];
+  if(s12Type!=='apartment'){
+    S.zones.forEach(z=>{
+      if(!Array.isArray(z.polygon)||z.polygon.length<3)return;
+      const kind=z.type==='commercial'?'commercial':'residential';
+      if(s12Type!=='all'&&s12Type!==kind)return;
+      items.push({kind,zone:z,no:String(labels[z.id]||('#'+z.id)).replace(/^#/,''),loc:displayZoneNameCleaned(z.name)});
+    });
+  }
+  if(s12Type==='all'||s12Type==='apartment'){
+    (S.apartmentCards||[]).forEach(c=>items.push({kind:'apartment',card:c,no:String(c.number!=null?c.number:c.id),loc:String(c.name||'')}));
+  }
+  const kw=s12Kw;
+  const out=kw?items.filter(it=>it.no.includes(kw)||it.loc.includes(kw)||(it.zone&&String(it.zone.name||'').includes(kw))):items;
+  const order={residential:0,commercial:1,apartment:2};
+  return out.sort((a,b)=>order[a.kind]-order[b.kind]||a.no.localeCompare(b.no,'ko',{numeric:true}));
+}
+function s12AptHtml(card){
+  const rows=(card.points||[]).map(p=>{
+    const units=(p.units||[]).map(u=>{const ho=esc(String(u.ho||'').replace(/호$/,''));return u.forbidden?`<s>${ho}</s>`:ho;}).join(', ');
+    return `<div class="s12-dong"><b>${esc(p.complexName||'')} ${esc(p.dong||'')}</b>${units?` (호) ${units}`:''}</div>`;
+  });
+  return rows.join('')||'<div>등록된 동/호가 없습니다.</div>';
+}
+function s12CardHtml(it,idx){
+  const kindLabel={residential:'주택',commercial:'상가',apartment:'아파트'}[it.kind];
+  const hasForbidden=it.kind==='apartment'&&(it.card.points||[]).some(p=>(p.units||[]).some(u=>u.forbidden));
+  const body=it.kind==='apartment'
+    ?`<div class="s12-body apt"><div class="s12-apt">${s12AptHtml(it.card)}</div></div>`
+    :`<div class="s12-body" data-zone="${idx}"><div class="s12-msg">지도 준비 중…</div></div>`;
+  return `<div class="s12-scaler"><div class="s12-card">
+    <div class="s12-title">구역 지도 카드</div>
+    <div class="s12-fields"><b>위치</b><span class="s12-fv loc">${esc(it.loc)}</span><b>구역 번호</b><span class="s12-fv no">${esc(it.no)}</span></div>
+    ${body}
+    <div class="s12-note">${S12_NOTE}</div>
+    <div class="s12-foot"><span>S-12-KO</span><span>${kindLabel}${hasForbidden?' · 취소선 = 방문 금지':''}</span></div>
+  </div></div>`;
+}
+function s12Rescale(){
+  const list=document.getElementById('s12-list');
+  const first=list&&list.querySelector('.s12-card');
+  if(!first)return;
+  const cw=first.offsetWidth,ch=first.offsetHeight;
+  const k=Math.min(1,(list.clientWidth-16)/cw);
+  list.querySelectorAll('.s12-scaler').forEach(sc=>{
+    sc.style.width=(cw*k)+'px';sc.style.height=(ch*k)+'px';
+    sc.firstElementChild.style.transform=`scale(${k})`;
+  });
+}
+window.addEventListener('resize',()=>{const v=document.getElementById('s12-viewer');if(v&&v.classList.contains('on'))s12Rescale();});
+function s12FitApt(el){
+  // 동/호가 많은 카드는 글자를 줄여 지도칸 안에 맞춘다(최소 5pt).
+  const box=el.parentElement;let fs=8.5;
+  while(el.offsetHeight>box.clientHeight-4&&fs>5){fs-=.5;el.style.fontSize=fs+'pt';}
+}
+function s12ZoneMap(z){
+  const key=z.id+'|'+JSON.stringify(z.polygon);
+  if(_s12MapCache.has(key))return _s12MapCache.get(key);
+  if(!_s12ProjMap){
+    const el=document.createElement('div');
+    el.id='s12-proj-map';
+    el.style.cssText=`position:fixed;left:-10000px;top:0;width:${S12_MAP_W}px;height:${S12_MAP_H}px;pointer-events:none;`;
+    document.body.appendChild(el);
+    _s12ProjMap=new kakao.maps.Map(el,{center:new kakao.maps.LatLng(38.2,128.59),level:3,draggable:false});
+  }
+  const m=_s12ProjMap,b=new kakao.maps.LatLngBounds();
+  z.polygon.forEach(([lat,lng])=>b.extend(new kakao.maps.LatLng(lat,lng)));
+  m.setBounds(b,30,30,30,30);
+  const proj=m.getProjection();
+  const pts=z.polygon.map(([lat,lng])=>{const p=proj.containerPointFromCoords(new kakao.maps.LatLng(lat,lng));return Math.round(p.x)+','+Math.round(p.y);}).join(' ');
+  const tmp=document.createElement('div');
+  tmp.style.cssText=`position:fixed;left:-10000px;top:0;width:${S12_MAP_W}px;height:${S12_MAP_H}px;`;
+  document.body.appendChild(tmp);
+  new kakao.maps.StaticMap(tmp,{center:m.getCenter(),level:m.getLevel()});
+  const img=tmp.querySelector('img');
+  const r={src:img?img.src:'',pts};
+  tmp.remove();
+  _s12MapCache.set(key,r);
+  return r;
+}
+function renderS12Cards(){
+  const token=++s12RenderToken;
+  const list=document.getElementById('s12-list');
+  if(!list)return;
+  const items=s12Items();
+  _s12Items=items;
+  const cnt=document.getElementById('s12-count');
+  if(cnt)cnt.textContent=`(${items.length}장)`;
+  list.innerHTML=items.length?items.map(s12CardHtml).join(''):'<div class="s12-status">해당 구역이 없습니다.</div>';
+  s12Rescale();
+  list.querySelectorAll('.s12-apt').forEach(s12FitApt);
+  const bodies=[...list.querySelectorAll('.s12-body[data-zone]')];
+  if(!bodies.length){_s12Status('');return;}
+  _s12Status(`지도 준비 0/${bodies.length}`);
+  whenKakaoReady(()=>{
+    let i=0;
+    const step=()=>{
+      if(token!==s12RenderToken)return;
+      const end=Math.min(i+15,bodies.length);
+      for(;i<end;i++){
+        const el=bodies[i],it=items[Number(el.dataset.zone)];
+        try{
+          const r=s12ZoneMap(it.zone);
+          el.innerHTML=`<img src="${esc(r.src)}" alt="" loading="lazy"><svg viewBox="0 0 ${S12_MAP_W} ${S12_MAP_H}" preserveAspectRatio="none"><polygon points="${r.pts}" fill="rgba(220,38,38,.14)" stroke="#dc2626" stroke-width="4" stroke-linejoin="round"/></svg>`;
+        }catch(e){el.innerHTML='<div class="s12-msg">지도를 만들 수 없습니다.</div>';}
+      }
+      _s12Status(i<bodies.length?`지도 준비 ${i}/${bodies.length}`:`지도 ${bodies.length}개 준비 완료`);
+      if(i<bodies.length)setTimeout(step,0);
+    };
+    step();
+  },()=>{if(token===s12RenderToken)_s12Status('카카오 지도를 불러오지 못했습니다(인터넷 확인).');});
+}
+async function printS12Cards(){
+  const list=document.getElementById('s12-list');
+  if(!list||!list.querySelector('.s12-card')){toast('출력할 카드가 없습니다.');return;}
+  if(list.querySelector('.s12-body[data-zone] .s12-msg')){toast('지도를 준비하는 중입니다. 잠시 후 다시 눌러주세요.');return;}
+  if(typeof window.print!=='function'){toast('이 브라우저는 인쇄를 지원하지 않습니다. 크롬에서 열어주세요.');return;}
+  const imgs=[...list.querySelectorAll('img')];
+  imgs.forEach(img=>{img.loading='eager';});
+  _s12Status('지도 이미지 불러오는 중…');
+  await Promise.all(imgs.map(img=>img.complete&&img.naturalWidth?null:new Promise(res=>{
+    img.addEventListener('load',res,{once:true});img.addEventListener('error',res,{once:true});setTimeout(res,20000);
+  })));
+  const paper=document.getElementById('s12-paper')?.value==='a4'?'a4':'card';
+  document.getElementById('s12-page-style')?.remove();
+  const st=document.createElement('style');
+  st.id='s12-page-style';
+  st.textContent=paper==='a4'?'@page{size:A4 portrait;margin:3mm 0;}':'@page{size:146mm 94mm;margin:0;}';
+  document.head.appendChild(st);
+  const root=document.documentElement;
+  root.classList.remove('s12-paper-card','s12-paper-a4');
+  root.classList.add('s12-printing','s12-paper-'+paper);
+  const cleanup=()=>{
+    root.classList.remove('s12-printing','s12-paper-card','s12-paper-a4');
+    st.remove();
+    window.removeEventListener('afterprint',cleanup);
+    _s12Status('');
+  };
+  window.addEventListener('afterprint',cleanup);
+  _s12Status('인쇄 창에서 "PDF로 저장"을 고르세요.');
+  setTimeout(()=>window.print(),50);
+}
+
 // H126: 예전엔 리스너가 로그인 후 initApp()에서만 붙어서, 로그인 화면은
 // 서버를 전혀 읽지 않고 그 기기에 남은 옛 인도자 명단/인도자·관리자 PIN/
 // 인도자 잠금으로 판단했다(다른 기기에서 인도자 추가·PIN 변경이 로그인

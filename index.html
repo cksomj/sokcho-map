@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
-<link rel="stylesheet" href="styles.css?v=20261115-h126-leader-sync">
+<link rel="stylesheet" href="styles.css?v=20261115-h127-s12-cards">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -528,7 +528,7 @@
 
       <!-- 관리자 -->
       <div class="page" id="p-admin">
-        <div class="ph"><h2>관리자</h2><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-sm btn-p" onclick="manualSyncNowH119()">☁️ 바로 반영하기</button><button class="btn btn-sm btn-out" id="s13-open-btn" onclick="openS13Viewer()">📋 구역 배정 기록</button><button class="btn btn-sm btn-dk" onclick="doLogout()">로그아웃</button></div></div>
+        <div class="ph"><h2>관리자</h2><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-sm btn-p" onclick="manualSyncNowH119()">☁️ 바로 반영하기</button><button class="btn btn-sm btn-out" id="s13-open-btn" onclick="openS13Viewer()">📋 구역 배정 기록</button><button class="btn btn-sm btn-out" onclick="openS12Viewer()">🗂️ S-12 구역 카드</button><button class="btn btn-sm btn-dk" onclick="doLogout()">로그아웃</button></div></div>
         <div class="pb">
           <div class="adm-sec">
             <div class="adm-title">전체 통계</div>
@@ -874,6 +874,32 @@
     </div>
   </div>
 </div>
+<!-- V2 H127: S-12 구역 지도 카드(관리자 전용) — 주택/상가는 카카오 정적지도+구역 경계,
+     아파트 카드는 단지/동/호를 글씨로. 인쇄(=PDF로 저장)는 이 창만 출력한다. -->
+<div id="s12-viewer" class="s12-viewer">
+  <div class="s12-bar">
+    <div class="s12-bar-top">
+      <div class="s12-bar-title">🗂️ S-12 구역 카드 <span id="s12-count" class="s12-count"></span></div>
+      <button class="btn btn-sm btn-out" onclick="closeS12Viewer()">닫기</button>
+    </div>
+    <div class="s12-bar-row">
+      <button class="btn btn-sm btn-out s12-type on" data-type="all" onclick="setS12Type('all')">전체</button>
+      <button class="btn btn-sm btn-out s12-type" data-type="residential" onclick="setS12Type('residential')">🏠 주택</button>
+      <button class="btn btn-sm btn-out s12-type" data-type="commercial" onclick="setS12Type('commercial')">🏪 상가</button>
+      <button class="btn btn-sm btn-out s12-type" data-type="apartment" onclick="setS12Type('apartment')">🏢 아파트</button>
+    </div>
+    <div class="s12-bar-row">
+      <input type="text" id="s12-search" class="s12-search" placeholder="🔍 구역 번호 또는 이름" oninput="onS12Search(this.value)">
+      <select id="s12-paper" class="s12-paper" title="용지">
+        <option value="card">카드 크기(146×94mm)</option>
+        <option value="a4">A4에 3장씩</option>
+      </select>
+      <button class="btn btn-sm btn-p" id="s12-print-btn" onclick="printS12Cards()">📄 PDF 저장 / 인쇄</button>
+    </div>
+    <div class="s12-status" id="s12-status"></div>
+  </div>
+  <div class="s12-list" id="s12-list"></div>
+</div>
 <div id="toast"></div>
 
 <script src="leaflet.js?v=20260507-meetup-route"></script>
@@ -888,6 +914,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261115-h126-leader-sync"></script>
+<script src="app.js?v=20261115-h127-s12-cards"></script>
 </body>
 </html>

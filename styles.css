@@ -1415,3 +1415,57 @@ tr:last-child td{border-bottom:none;}
 /* 토스트 */
 #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(17,24,39,.9);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;max-width:90%;}
 #toast.on{opacity:1;}
+
+/* V2 H127: 목록 접기/펼치기 삼각형(▸/▾)을 큰 파란 원 버튼으로 — 글자(▸/▾)는
+   기존 JS가 그대로 바꾸고, 모양만 CSS로 키운다. */
+#home-list-handle-icon,[id$="-toggle-icon"]{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:var(--pl);color:#fff;font-size:17px;font-weight:900;line-height:1;flex-shrink:0;box-shadow:0 2px 6px rgba(27,82,153,.35);}
+
+/* V2 H127: S-12 구역 지도 카드 */
+.s12-viewer{display:none;position:fixed;inset:0;z-index:9000;background:#e8edf2;flex-direction:column;}
+.s12-viewer.on{display:flex;}
+.s12-bar{flex-shrink:0;background:#fff;border-bottom:1px solid var(--bd);padding:10px 12px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:8px;}
+.s12-bar-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.s12-bar-title{font-size:16px;font-weight:900;}
+.s12-count{font-size:13px;color:var(--txm);font-weight:700;}
+.s12-bar-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.s12-type.on{background:var(--p);color:#fff;border-color:var(--p);}
+.s12-search{flex:1 1 160px;min-width:0;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;background:var(--bg2);outline:none;}
+.s12-paper{padding:7px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;background:#fff;}
+.s12-status{font-size:12px;color:var(--txm);min-height:16px;}
+.s12-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 8px 40px;display:flex;flex-direction:column;align-items:center;gap:12px;}
+.s12-scaler{position:relative;flex-shrink:0;}
+.s12-scaler>.s12-card{position:absolute;left:0;top:0;transform-origin:0 0;}
+.s12-card{width:146mm;height:94mm;padding:4.5mm 6mm 3.5mm;background:#fff;color:#000;display:flex;flex-direction:column;font-family:"Noto Sans KR",-apple-system,sans-serif;box-shadow:0 2px 8px rgba(15,23,42,.15);overflow:hidden;}
+.s12-title{text-align:center;font-size:15pt;font-weight:900;letter-spacing:.5pt;line-height:1.2;}
+.s12-fields{display:flex;align-items:flex-end;gap:3mm;margin-top:2mm;font-size:10.5pt;font-weight:900;line-height:1.3;}
+.s12-fields b{flex-shrink:0;}
+.s12-fv{border-bottom:1.3px dotted #000;font-weight:700;padding:0 1mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.s12-fv.loc{flex:1;min-width:0;}
+.s12-fv.no{width:30mm;flex-shrink:0;text-align:center;}
+.s12-body{width:134mm;height:53mm;margin:2.2mm 0 1.6mm;position:relative;border:1px solid #888;overflow:hidden;background:#f3f4f6;}
+.s12-body img,.s12-body svg{position:absolute;inset:0;width:100%;height:100%;display:block;}
+.s12-body .s12-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9pt;color:#6b7280;}
+.s12-body.apt{background:#fff;padding:2mm 3mm;border-color:#000;}
+.s12-apt{column-count:2;column-gap:5mm;font-size:8.5pt;line-height:1.35;}
+.s12-apt .s12-dong{break-inside:avoid;margin-bottom:1.2mm;}
+.s12-apt .s12-dong b{font-weight:900;}
+.s12-apt s{color:#555;}
+.s12-note{font-size:8pt;font-weight:900;line-height:1.35;}
+.s12-foot{display:flex;justify-content:space-between;font-size:6.5pt;margin-top:.6mm;color:#000;}
+.s12-kind{font-size:7.5pt;font-weight:700;border:1px solid #000;border-radius:2mm;padding:0 1.5mm;margin-left:1.5mm;vertical-align:middle;}
+@media print{
+  html.s12-printing,html.s12-printing body{height:auto!important;overflow:visible!important;background:#fff!important;}
+  html.s12-printing body>*:not(#s12-viewer){display:none!important;}
+  html.s12-printing #s12-viewer,html.s12-printing #s12-viewer *{visibility:visible!important;}
+  html.s12-printing #s12-viewer{position:static!important;display:block!important;background:#fff!important;}
+  html.s12-printing .s12-bar{display:none!important;}
+  html.s12-printing .s12-list{display:block!important;overflow:visible!important;padding:0!important;}
+  html.s12-printing .s12-scaler{width:auto!important;height:auto!important;break-inside:avoid;page-break-inside:avoid;}
+  html.s12-printing .s12-scaler>.s12-card{position:static!important;transform:none!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  html.s12-printing.s12-paper-card .s12-scaler{break-after:page;page-break-after:always;}
+  html.s12-printing.s12-paper-card .s12-scaler:last-child{break-after:auto;page-break-after:auto;}
+  html.s12-printing.s12-paper-a4 .s12-scaler{margin:0 auto 2.5mm;width:146mm!important;}
+  html.s12-printing.s12-paper-a4 .s12-card{outline:.3mm dashed #999;}
+  html.s12-printing.s12-paper-a4 .s12-scaler:nth-child(3n){break-after:page;page-break-after:always;}
+  html.s12-printing.s12-paper-a4 .s12-scaler:last-child{break-after:auto;page-break-after:auto;}
+}
