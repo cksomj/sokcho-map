@@ -1505,3 +1505,10 @@ html.role-volunteer #menu-toggle-btn{display:none!important;}
 #p-admin .home-apt-body.adm-body-full{max-height:none!important;overflow:visible!important;}
 #p-admin .home-apt-section.adm-full-open>.home-apt-header{position:sticky;top:-14px;z-index:20;background:var(--bg);border-bottom:1px solid var(--bd);box-shadow:0 2px 6px rgba(15,23,42,.06);}
 @media(max-width:767px){#p-admin .home-apt-section.adm-full-open>.home-apt-header{top:-10px;}} /* .pb 위 여백만큼 올려 머리말 위로 목록이 비치지 않게 */
+
+/* V2 H143: S-12 인터폰 카드 — 왼쪽 단지·동·호 글씨, 오른쪽 상가 지도 */
+.s12-body.int{display:flex;background:#fff;border-color:#000;padding:0;}
+.s12-int-text{flex:1 1 0;min-width:0;padding:2mm 3mm;overflow:hidden;position:relative;}
+.s12-body.int .s12-apt{column-count:1;}
+.s12-int-map{width:52mm;height:100%;flex-shrink:0;position:relative;border-left:1px solid #000;background:#f3f4f6;overflow:hidden;}
+.s12-int-cap{position:absolute;left:0;right:0;bottom:0;background:rgba(255,255,255,.9);font-size:7pt;font-weight:800;padding:.5mm 1mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:2;}

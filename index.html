@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
-<link rel="stylesheet" href="styles.css?v=20261115-h142-zone-stat">
+<link rel="stylesheet" href="styles.css?v=20261115-h143-interphone">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -466,6 +466,21 @@
                 <div style="padding:0 14px 14px;" id="home-apt-card-list"></div>
               </div>
             </div>
+            <!-- H143: 인터폰 아파트 카드(6001~) -->
+            <div class="home-apt-section" id="home-int-section">
+              <div class="home-apt-header" onclick="toggleHomeInterphoneSection()">
+                <span>📞 인터폰 아파트 (<span id="home-int-count">0</span>)</span>
+                <span id="home-int-toggle-icon">▸</span>
+              </div>
+              <div class="home-apt-body hide" id="home-int-body">
+                <div style="display:flex;gap:5px;padding:0 14px 8px;flex-wrap:wrap;">
+                  <div class="chip on" onclick="setHomeIntFilter('all',this)">전체</div>
+                  <div class="chip" onclick="setHomeIntFilter('undone',this)">미완료</div>
+                  <div class="chip" onclick="setHomeIntFilter('done',this)">완료</div>
+                </div>
+                <div style="padding:0 14px 14px;" id="home-int-card-list"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -608,6 +623,18 @@
               </div>
               <div class="home-apt-body hide" id="adm-aptcards-body">
                 <div id="apt-card-list"></div>
+              </div>
+            </div>
+          </div>
+          <!-- H143: 인터폰 아파트 카드 목록 -->
+          <div class="adm-sec">
+            <div class="home-apt-section" id="adm-intcards-section">
+              <div class="home-apt-header" onclick="toggleAdminIntCardsSection()">
+                <span>📞 인터폰 아파트 카드 목록 (<span id="adm-intcards-count">0</span>)</span>
+                <span id="adm-intcards-toggle-icon">▸</span>
+              </div>
+              <div class="home-apt-body hide" id="adm-intcards-body">
+                <div id="int-card-list"></div>
               </div>
             </div>
           </div>
@@ -901,6 +928,7 @@
       <button class="btn btn-sm btn-out s12-type" data-type="residential" onclick="setS12Type('residential')">🏠 주택</button>
       <button class="btn btn-sm btn-out s12-type" data-type="commercial" onclick="setS12Type('commercial')">🏪 상가</button>
       <button class="btn btn-sm btn-out s12-type" data-type="apartment" onclick="setS12Type('apartment')">🏢 아파트</button>
+      <button class="btn btn-sm btn-out s12-type" data-type="interphone" onclick="setS12Type('interphone')">📞 인터폰</button>
     </div>
     <div class="s12-bar-row">
       <input type="text" id="s12-search" class="s12-search" placeholder="🔍 구역 번호 또는 이름" oninput="onS12Search(this.value)">
@@ -930,6 +958,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261115-h142-zone-stat"></script>
+<script src="app.js?v=20261115-h143-interphone"></script>
 </body>
 </html>

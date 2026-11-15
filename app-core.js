@@ -114,7 +114,7 @@ const S={
 // 정보가 내 기기에 나타나는 등). 이 두 키만 순수 localStorage로 남긴다.
 // ================================================================
 const FIRESTORE_SYNC_EXCLUDED_KEYS_H105=new Set(['sokcho_auto_login','sokcho_last_login_gps']);
-const FIRESTORE_SYNC_KEYS_H105=['sokcho_zones','sokcho_records','sokcho_progress','sokcho_apartment_registry_v1','sokcho_apartment_cards_v1','sokcho_volunteers','sokcho_leaders','sokcho_contacts','sokcho_routes','sokcho_research_links','sokcho_live','sokcho_s13_v1','sokcho_s13_congregation','sokcho_admin_pin','sokcho_leader_pin','sokcho_admin_recovery_email','sokcho_active_leader','sokcho_h63_import_done','sokcho_builtin_samples_removed','sokcho_deleted_zone_ids','sokcho_deleted_apartment_card_ids'];
+const FIRESTORE_SYNC_KEYS_H105=['sokcho_zones','sokcho_records','sokcho_progress','sokcho_apartment_registry_v1','sokcho_apartment_cards_v1','sokcho_interphone_cards_v1','sokcho_volunteers','sokcho_leaders','sokcho_contacts','sokcho_routes','sokcho_research_links','sokcho_live','sokcho_s13_v1','sokcho_s13_congregation','sokcho_admin_pin','sokcho_leader_pin','sokcho_admin_recovery_email','sokcho_active_leader','sokcho_h63_import_done','sokcho_builtin_samples_removed','sokcho_deleted_zone_ids','sokcho_deleted_apartment_card_ids'];
 const FIRESTORE_WRITE_DEBOUNCE_MS_H105=1500;
 let _storageCacheH105={};
 let _firestoreWriteTimersH105={};
@@ -197,7 +197,7 @@ function manualSyncNowH119(){
   persistVolunteers();persistContacts();persistApartmentRegistry();
   persistApartmentCards();persistResearchLinks();
   if(typeof db==='undefined'||!db){toast('⚠️ 반영 실패 - 인터넷 확인');return;}
-  const keys=['sokcho_zones','sokcho_records','sokcho_routes','sokcho_progress','sokcho_apartment_registry_v1','sokcho_apartment_cards_v1','sokcho_volunteers','sokcho_leaders','sokcho_contacts','sokcho_research_links'];
+  const keys=['sokcho_zones','sokcho_records','sokcho_routes','sokcho_progress','sokcho_apartment_registry_v1','sokcho_apartment_cards_v1','sokcho_interphone_cards_v1','sokcho_volunteers','sokcho_leaders','sokcho_contacts','sokcho_research_links'];
   toast('☁️ 서버에 반영하는 중입니다...');
   Promise.all(keys.map(key=>{
     const value=_storageCacheH105[key];
@@ -256,7 +256,7 @@ function _reloadAfterRemoteChangeH105(key){
       S._apartmentRegistryLoaded=false;loadApartmentRegistry();
       if(typeof renderApartmentComplexList==='function')renderApartmentComplexList();
       if(typeof renderCardBuilder==='function')renderCardBuilder();
-    }else if(key==='sokcho_apartment_cards_v1'){
+    }else if(key==='sokcho_apartment_cards_v1'||key==='sokcho_interphone_cards_v1'){ // H143: 인터폰 카드도 같은 목록에 함께 로드
       S._apartmentCardsLoaded=false;loadApartmentCards();
       if(typeof renderApartmentCardList==='function')renderApartmentCardList();
       if(typeof renderHomeApartmentCardList==='function')renderHomeApartmentCardList();
@@ -1331,17 +1331,44 @@ function loadApartmentCards(){
       storageSet('sokcho_h63_import_done','1');
     }
   }
+  // H143: 인터폰 아파트 카드(6001~)는 별도 저장 항목에 있고, 메모리에서는 아파트
+  // 카드와 같은 목록(S.apartmentCards)에 함께 둔다 — 봉사 진행/카카오/S-13 기록 등
+  // 아파트 카드 흐름을 그대로 쓰기 위해서. 기존 카드 문서(이미 ~360KB)와 합치면
+  // 문서 한도(1MB)에 가까워지므로 저장만 나눈다.
+  const iraw=storageGet(INTERPHONE_CARDS_KEY_H143);
+  let ints=[];
+  if(iraw!=null){
+    _interphoneRawSeenH143=true;
+    try{const s=JSON.parse(iraw);if(s&&Array.isArray(s.cards))ints=s.cards;}catch(e){}
+  }
+  S.apartmentCards=S.apartmentCards.filter(c=>!isInterphoneCard(c)).concat(ints);
   S._apartmentCardsLoaded=true;
+}
+const INTERPHONE_CARDS_KEY_H143='sokcho_interphone_cards_v1';
+let _interphoneRawSeenH143=false;
+function isInterphoneCard(c){return !!(c&&c.kind==='interphone');}
+function interphoneShopZoneIds(){
+  loadApartmentCards();
+  const s=new Set();
+  S.apartmentCards.forEach(c=>{if(isInterphoneCard(c)&&c.shop&&c.shop.zoneId!=null)s.add(String(c.shop.zoneId));});
+  return s;
 }
 function persistApartmentCards(){
   const deletedIds=new Set(loadDeletedApartmentCardIds());
   if(deletedIds.size)S.apartmentCards=S.apartmentCards.filter(c=>!deletedIds.has(String(c&&c.id)));
-  storageSet('sokcho_apartment_cards_v1',JSON.stringify({schemaVersion:1,cards:S.apartmentCards}));
+  storageSet('sokcho_apartment_cards_v1',JSON.stringify({schemaVersion:1,cards:S.apartmentCards.filter(c=>!isInterphoneCard(c))}));
+  // H143: 인터폰 카드는 서버 값을 한 번이라도 받은 기기에서만 저장(아직 못 받은 기기가
+  // 빈 목록으로 서버를 덮어쓰지 않게 — H122 원칙). 바뀐 경우에만 쓴다.
+  const ints=S.apartmentCards.filter(isInterphoneCard);
+  if(_interphoneRawSeenH143||ints.length){
+    const v=JSON.stringify({schemaVersion:1,cards:ints});
+    if(storageGet(INTERPHONE_CARDS_KEY_H143)!==v)storageSet(INTERPHONE_CARDS_KEY_H143,v);
+  }
 }
 function nextApartmentCardId(){
   // V2 H43/PARTB: 딘 확정 — 아파트구역카드는 500번대(5001~). 기존 카드가
   // 하나도 없어(딘 확인) 마이그레이션 불필요, 앞으로 만들 카드부터 적용.
-  return Math.max(5000,...S.apartmentCards.map(c=>Number(c.id)||0))+1;
+  return Math.max(5000,...S.apartmentCards.filter(c=>!isInterphoneCard(c)).map(c=>Number(c.id)||0))+1; // H143: 인터폰(6001~) 제외
 }
 function unitNumber(ho){
   const m=String(ho||'').match(/\d+/);
@@ -1892,10 +1919,11 @@ function renderApartmentCardList(keepOpenId){
   loadApartmentCards();
   if(keepOpenId!=null)apartmentCardOpenId=keepOpenId;
   const countEl=document.getElementById('adm-aptcards-count');
-  if(countEl)countEl.textContent=S.apartmentCards.length;
+  if(countEl)countEl.textContent=S.apartmentCards.filter(c=>!isInterphoneCard(c)).length; // H143
   const wrap=document.getElementById('apt-card-list');
   if(!wrap)return;
-  wrap.innerHTML=S.apartmentCards.length?S.apartmentCards.map(card=>{
+  const _normH143=S.apartmentCards.filter(c=>!isInterphoneCard(c)),_intH143=S.apartmentCards.filter(isInterphoneCard);
+  const _htmlH143=list=>list.map(card=>{
     const totalUnits=card.points.reduce((s,p)=>s+p.units.length,0);
     const open=apartmentCardOpenId===card.id;
     return `<div class="apt-complex-row" id="apt-card-${card.id}">
@@ -1903,7 +1931,7 @@ function renderApartmentCardList(keepOpenId){
         <div style="min-width:0;">
           <div style="font-size:13px;font-weight:700;"><span class="zno">#${card.number}</span> ${esc(aptCardDisplayName(card.name))}</div>
           <div style="font-size:12px;color:var(--txm);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-            <span>${card.points.length}개 지점 · 총 ${totalUnits}호</span>
+            <span>${card.points.length}개 지점 · 총 ${totalUnits}호${card.shop?` · 🏪 ${esc(card.shop.name)}${card.shop.done?' ✓':''}`:''}</span>
             <span class="zc-status ${card.status==='완료'?'done':card.status==='미완료'||card.status==='진행중'?'progress':'reset'}">${esc(card.status)}</span>
           </div>
         </div>
@@ -1941,7 +1969,22 @@ function renderApartmentCardList(keepOpenId){
         </div>
       </div>`:''}
     </div>`;
-  }).join(''):'<div style="font-size:12px;color:var(--txm);padding:8px 0;">생성된 카드가 없습니다.</div>';
+  }).join('');
+  wrap.innerHTML=_normH143.length?_htmlH143(_normH143):'<div style="font-size:12px;color:var(--txm);padding:8px 0;">생성된 카드가 없습니다.</div>';
+  const iw=document.getElementById('int-card-list');
+  if(iw)iw.innerHTML=_intH143.length?_htmlH143(_intH143):'<div style="font-size:12px;color:var(--txm);padding:8px 0;">인터폰 카드가 없습니다.</div>';
+  const ic=document.getElementById('adm-intcards-count');
+  if(ic)ic.textContent=_intH143.length;
+}
+function toggleAdminIntCardsSection(){ // H143
+  const body=document.getElementById('adm-intcards-body');
+  const icon=document.getElementById('adm-intcards-toggle-icon');
+  if(!body)return;
+  const open=body.classList.contains('hide');
+  body.classList.toggle('hide',!open);
+  if(icon)icon.textContent=open?'▾':'▸';
+  if(open)renderApartmentCardList();
+  admSectionFullH140(body,open);
 }
 
 // ================================================================
@@ -2013,6 +2056,7 @@ function openApartmentCardKakaoStart(cardId){
   // 항상 첫 지점(0)을 사용 — S.aptSession이 이 카드로 활성화되어 있지
   // 않으므로 아래 조건이 자연히 false가 되어 그대로 유지된다.
   const idx=(S.aptSession.active&&S.aptSession.cardId===cardId)?(S.aptSession.currentPointIdx||0):0;
+  if(idx===interphoneShopIdx(card)&&idx>=0){openZoneKakaoStart(card.shop.zoneId);return;} // H143: 상가 칸
   const pt=apartmentCardPointCoord(card,idx);
   if(!pt){
     toast('이 지점에 좌표가 없습니다. 관리자 화면에서 동(또는 단지) 좌표를 먼저 등록하세요.');return;
@@ -2082,12 +2126,13 @@ function selectHomeApartmentCard(cardId){
 }
 function renderHomeApartmentCardList(){
   loadApartmentCards();
+  renderHomeInterphoneList(); // H143
   const wrap=document.getElementById('home-apt-card-list');
   if(!wrap)return;
   const countEl=document.getElementById('home-apt-count');
-  if(countEl)countEl.textContent=S.apartmentCards.length;
+  if(countEl)countEl.textContent=S.apartmentCards.filter(c=>!isInterphoneCard(c)).length; // H143
   // V2 H67: 미완료(진행중/미완료 포함) 우선, 완료는 뒤로(구역/상가와 동일 규칙)
-  let cards=[...S.apartmentCards].sort((a,b)=>(a.status==='완료'?1:0)-(b.status==='완료'?1:0)||(Number(a.number)||0)-(Number(b.number)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
+  let cards=[...S.apartmentCards].filter(c=>!isInterphoneCard(c)).sort((a,b)=>(a.status==='완료'?1:0)-(b.status==='완료'?1:0)||(Number(a.number)||0)-(Number(b.number)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
   // H131: 미완료=진행중/미완료만(미시작 제외) — 지도/목록 탭과 같은 기준
   cards=cards.filter(c=>homeAptFilter==='all'||(homeAptFilter==='undone'&&(c.status==='진행중'||c.status==='미완료'))||(homeAptFilter==='done'&&c.status==='완료'));
   if(!cards.length){
@@ -2115,6 +2160,121 @@ function renderHomeApartmentCardList(){
       ${action}
     </div>`;
   }).join('');
+}
+
+// ================================================================
+// H143: 홈 화면 "📞 인터폰 아파트" 섹션 — 아파트 카드와 같은 행/버튼(봉사 시작·
+// 이어하기·카카오맵), 필터(전체/미완료/완료)는 H131 기준과 같다.
+// ================================================================
+let homeIntFilter='all';
+function setHomeIntFilter(mode,el){
+  homeIntFilter=mode;
+  document.querySelectorAll('#home-int-section .chip').forEach(c=>c.classList.remove('on'));
+  if(el)el.classList.add('on');
+  renderHomeInterphoneList();
+}
+function toggleHomeInterphoneSection(){
+  const body=document.getElementById('home-int-body');
+  const icon=document.getElementById('home-int-toggle-icon');
+  if(!body)return;
+  const willShow=body.classList.contains('hide');
+  body.classList.toggle('hide',!willShow);
+  if(icon)icon.textContent=willShow?'▾':'▸';
+  if(willShow)renderHomeInterphoneList();
+  updateHomeListTallH129(willShow?body.closest('.home-apt-section'):null);
+}
+function renderHomeInterphoneList(){
+  const wrap=document.getElementById('home-int-card-list');
+  const all=S.apartmentCards.filter(isInterphoneCard);
+  const countEl=document.getElementById('home-int-count');
+  if(countEl)countEl.textContent=all.length;
+  if(!wrap)return;
+  let cards=all.sort((a,b)=>(a.status==='완료'?1:0)-(b.status==='완료'?1:0)||(Number(a.number)||0)-(Number(b.number)||0));
+  cards=cards.filter(c=>homeIntFilter==='all'||(homeIntFilter==='undone'&&(c.status==='진행중'||c.status==='미완료'))||(homeIntFilter==='done'&&c.status==='완료'));
+  if(!cards.length){wrap.innerHTML='<p style="font-size:13px;color:var(--txm);text-align:center;padding:14px 0;">인터폰 카드가 없습니다.</p>';return;}
+  wrap.innerHTML=cards.map(card=>{
+    const done=card.status==='완료';
+    const inProg=card.status==='진행중'||card.status==='미완료';
+    const total=apartmentCardCheckableUnits(card),doneCnt=apartmentCardCompletedUnits(card);
+    const selected=S.homeSelectedAptCard===card.id;
+    const action=done
+      ?`<span class="home-zone-action" style="font-size:12px;color:#3B6D11;font-weight:800;">완료 잠김</span>`
+      :inProg
+        ?`<button onclick="event.stopPropagation();startApartmentCardAndGo(${card.id},true)" class="btn btn-sm home-zone-action" style="background:#FAEEDA;color:var(--warn);border:1px solid #FAC775;">이어하기</button>`
+        :`<button onclick="event.stopPropagation();startApartmentCardAndGo(${card.id},false)" class="btn btn-sm btn-p home-zone-action">봉사 시작</button>`;
+    return `<div id="home-apt-card-item-${card.id}" class="home-zone-row home-apt-card-row ${selected?'selected':''}" onclick="selectHomeApartmentCard(${card.id})">
+      <div style="min-width:0;">
+        <div class="home-zone-title"><span>#${card.number} </span>${esc(card.name)}</div>
+        <div class="home-zone-meta">${card.points.length}개 단지 · ${doneCnt}/${total}호${card.shop?` · 🏪 ${esc(card.shop.name)}${card.shop.done?' ✓':''}`:''}</div>
+      </div>
+      <span class="zc-status ${done?'done':inProg?'progress':'reset'}">${esc(card.status)}</span>
+      <button class="btn btn-sm btn-out home-zone-action" onclick="event.stopPropagation();openApartmentCardKakaoStart(${card.id})" style="flex-shrink:0;">카카오맵</button>
+      ${action}
+    </div>`;
+  }).join('');
+}
+// H143: 인터폰 카드의 상가 칸(봉사 진행 화면에서 마지막 지점 다음) — 지도 + 카카오맵 + 상가 완료
+function interphoneShopIdx(card){return isInterphoneCard(card)&&card.shop?card.points.length:-1;}
+function aptCardAllDoneH143(card){
+  const unitsDone=apartmentCardCheckableUnits(card)>0&&apartmentCardCompletedUnits(card)>=apartmentCardCheckableUnits(card);
+  return unitsDone&&(!(isInterphoneCard(card)&&card.shop)||!!card.shop.done);
+}
+function aptSvcPointNavHtml(card,pIdx){
+  const si=interphoneShopIdx(card);
+  return `<div class="apt-svc-point-nav">
+    ${card.points.map((pp,i)=>{
+      const ppCheckable=pp.units.filter(u=>!u.forbidden);
+      const ppDone=ppCheckable.length>0&&ppCheckable.every(u=>u.completed);
+      return `<button class="apt-svc-point-nav-btn${i===pIdx?' active':''}${ppDone?' done':''}" onclick="goToAptSvcPoint(${i})">${i+1}</button>`;
+    }).join('')}
+    ${si>=0?`<button class="apt-svc-point-nav-btn${pIdx===si?' active':''}${card.shop.done?' done':''}" onclick="goToAptSvcPoint(${si})">🏪</button>`:''}
+  </div>`;
+}
+function interphoneShopHtml(card){
+  const z=S.zones.find(z=>String(z.id)===String(card.shop.zoneId));
+  const label=z?zoneDisplayLabel(z.id):'';
+  return `<div class="apt-svc-point-card">
+    <div class="apt-svc-point-head">🏪 상가 · <span class="zno">${esc(label)}</span> ${esc(card.shop.name)}</div>
+    <div id="int-shop-map" style="position:relative;width:100%;aspect-ratio:960/380;border:1px solid var(--bd);border-radius:8px;overflow:hidden;background:#f3f4f6;margin:8px 0;">
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:#6b7280;">${z?'지도 준비 중…':'상가 구역 정보를 찾을 수 없습니다.'}</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button class="svc-locate-btn" onclick="openZoneKakaoStart(${JSON.stringify(card.shop.zoneId)})">카카오맵으로 가기</button>
+    </div>
+    <label style="display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;padding:12px;border:1px solid var(--bd);border-radius:8px;background:${card.shop.done?'var(--okbg)':'#fff'};cursor:pointer;">
+      <input type="checkbox" ${card.shop.done?'checked':''} onchange="toggleInterphoneShopDone()" style="width:22px;height:22px;"> 상가 봉사 완료
+    </label>
+  </div>`;
+}
+function fillInterphoneShopMap(card){
+  const z=S.zones.find(z=>String(z.id)===String(card.shop.zoneId));
+  if(!z)return;
+  whenKakaoReady(()=>{
+    s12LoadParcels().then(()=>{
+      const el=document.getElementById('int-shop-map');
+      if(!el)return;
+      try{
+        const r=s12ZoneMap(z);
+        el.innerHTML=`<img src="${esc(r.src)}" alt="" style="position:absolute;inset:0;width:100%;height:100%;">${s12MapSvg(r).replace('<svg ','<svg style="position:absolute;inset:0;width:100%;height:100%;" ')}`;
+      }catch(e){el.innerHTML='<div style="padding:12px;font-size:12px;color:#6b7280;">지도를 만들 수 없습니다.</div>';}
+    },()=>{});
+  },()=>{});
+}
+function toggleInterphoneShopDone(){
+  const card=S.apartmentCards.find(c=>c.id===S.aptSession.cardId);
+  if(!card||!card.shop)return;
+  card.shop.done=!card.shop.done;
+  persistApartmentCards();
+  renderAptSvcChecklist();
+  if(card.shop.done&&aptCardAllDoneH143(card))completeAptSvcSession();
+  else if(card.shop.done)toast('🏪 상가 완료. 남은 아파트 호수를 마저 체크하세요.');
+}
+function afterAptUnitsCheckedH143(card){
+  // 아파트 호수가 모두 끝났을 때: 상가가 남았으면 상가 칸으로, 아니면 기존처럼 완료
+  if(aptCardAllDoneH143(card)){completeAptSvcSession();return;}
+  const si=interphoneShopIdx(card);
+  const unitsDone=apartmentCardCheckableUnits(card)>0&&apartmentCardCompletedUnits(card)>=apartmentCardCheckableUnits(card);
+  if(unitsDone&&si>=0&&!card.shop.done){S.aptSession.currentPointIdx=si;renderAptSvcChecklist();toast('🏢 아파트 호수 완료! 🏪 상가가 남았습니다.');}
 }
 
 // ---- PART 2: 봉사시작 → 체크리스트 → 이어하기/구역변경/잠시나가기/완료 ----
@@ -2192,7 +2352,7 @@ function closeAptSvcFullscreen(){
 }
 function goToAptSvcPoint(pIdx){
   const card=S.apartmentCards.find(c=>c.id===S.aptSession.cardId);
-  if(!card||!card.points[pIdx])return;
+  if(!card||(!card.points[pIdx]&&pIdx!==interphoneShopIdx(card)))return; // H143: 상가 칸 허용
   S.aptSession.currentPointIdx=pIdx;
   renderAptSvcChecklist();
 }
@@ -2200,7 +2360,7 @@ function goToNextAptSvcPoint(){
   const card=S.apartmentCards.find(c=>c.id===S.aptSession.cardId);
   if(!card)return;
   const cur=S.aptSession.currentPointIdx||0;
-  if(cur+1<card.points.length){
+  if(cur+1<card.points.length||cur+1===interphoneShopIdx(card)){ // H143: 마지막 지점 다음은 상가 칸
     S.aptSession.currentPointIdx=cur+1;
     renderAptSvcChecklist();
   }else{
@@ -2229,6 +2389,11 @@ function renderAptSvcChecklist(){
   const card=S.apartmentCards.find(c=>c.id===S.aptSession.cardId);
   const wrap=document.getElementById('apt-svc-checklist');
   if(!wrap||!card)return;
+  if(S.aptSession.currentPointIdx===interphoneShopIdx(card)&&S.aptSession.currentPointIdx>=0){ // H143: 상가 칸
+    wrap.innerHTML=aptSvcPointNavHtml(card,S.aptSession.currentPointIdx)+interphoneShopHtml(card);
+    fillInterphoneShopMap(card);
+    return;
+  }
   if(S.aptSession.currentPointIdx==null||!card.points[S.aptSession.currentPointIdx]){
     S.aptSession.currentPointIdx=initAptSvcCurrentPointIdx(card);
   }
@@ -2247,13 +2412,8 @@ function renderAptSvcChecklist(){
   // 조회해서 그 값을 버튼에 넘긴다.
   const nextCoord=nextPt?apartmentCardPointCoord(card,pIdx+1):null;
 
-  const pointNav=`<div class="apt-svc-point-nav">
-    ${card.points.map((pp,i)=>{
-      const ppCheckable=pp.units.filter(u=>!u.forbidden);
-      const ppDone=ppCheckable.length>0&&ppCheckable.every(u=>u.completed);
-      return `<button class="apt-svc-point-nav-btn${i===pIdx?' active':''}${ppDone?' done':''}" onclick="goToAptSvcPoint(${i})">${i+1}</button>`;
-    }).join('')}
-  </div>`;
+  const pointNav=aptSvcPointNavHtml(card,pIdx); // H143: 인터폰이면 🏪 상가 칸 버튼 포함
+  const shopNext=!nextPt&&interphoneShopIdx(card)>=0;
 
   const floorGroups=groupApartmentUnitsByFloor(p.units.map(u=>u.ho));
   const unitByHo={};
@@ -2295,7 +2455,7 @@ function renderAptSvcChecklist(){
     ${nextCoord?`<div style="display:flex;gap:8px;">
       <button class="svc-secondary-btn" onclick="openAptCardPointMapView(${nextCoord[0]},${nextCoord[1]})">카카오지도로 위치 확인</button>
       <button class="svc-locate-btn" onclick="openAptCardPointNavi(${nextCoord[0]},${nextCoord[1]})">카카오네비 연결</button>
-    </div>`:nextPt?'<div style="font-size:12px;color:var(--txm);">다음 지점의 좌표가 없습니다. 관리자 화면에서 동(또는 단지) 좌표를 먼저 등록하세요.</div>':'<div style="font-size:12px;color:var(--txm);">마지막 지점입니다. "봉사 완료"를 눌러 마무리하세요.</div>'}
+    </div>`:nextPt?'<div style="font-size:12px;color:var(--txm);">다음 지점의 좌표가 없습니다. 관리자 화면에서 동(또는 단지) 좌표를 먼저 등록하세요.</div>':shopNext?`<div style="display:flex;gap:8px;"><button class="svc-secondary-btn" onclick="goToAptSvcPoint(${card.points.length})">🏪 상가로 이동</button><button class="svc-locate-btn" onclick="openZoneKakaoStart(${JSON.stringify(card.shop.zoneId)})">카카오맵</button></div>`:'<div style="font-size:12px;color:var(--txm);">마지막 지점입니다. "봉사 완료"를 눌러 마무리하세요.</div>'}
   </div>`:'';
 
   wrap.innerHTML=pointNav+checklistHtml+advanceHtml;
@@ -2355,7 +2515,7 @@ function toggleAptSvcFloorAll(pIdx,floor){
   persistApartmentCards();
   renderAptSvcChecklist();
   if(newVal&&apartmentCardCheckableUnits(card)>0&&apartmentCardCompletedUnits(card)>=apartmentCardCheckableUnits(card)){
-    completeAptSvcSession();
+    afterAptUnitsCheckedH143(card); // H143: 상가가 남았으면 상가 칸으로
   }
 }
 function toggleAptSvcUnit(pIdx,uIdx){
@@ -2369,7 +2529,7 @@ function toggleAptSvcUnit(pIdx,uIdx){
   renderAptSvcChecklist();
   // 전체 unit(금지 제외) 체크 완료 시 "완료" 버튼과 동일한 흐름으로 자동 진입
   if(u.completed&&apartmentCardCheckableUnits(card)>0&&apartmentCardCompletedUnits(card)>=apartmentCardCheckableUnits(card)){
-    completeAptSvcSession();
+    afterAptUnitsCheckedH143(card); // H143
   }
 }
 function pauseAptSvcSession(){
@@ -3571,7 +3731,7 @@ function startFromSheet(){gotoRoute();}
 function renderSideList(keyword){
   let zones=S.zones;
   if(S.mapFilter==='residential')zones=zones.filter(z=>z.type==='residential');
-  else if(S.mapFilter==='commercial')zones=zones.filter(z=>z.type==='commercial');
+  else if(S.mapFilter==='commercial'){const _h=interphoneShopZoneIds();zones=zones.filter(z=>z.type==='commercial'&&!_h.has(String(z.id)));} // H143
   else if(S.mapFilter==='undone')zones=zones.filter(z=>isInProgress(z.id));
   else if(S.mapFilter==='standby')zones=zones.filter(z=>getZoneState(z.id)==='standby');
   // 키워드 필터
@@ -3996,9 +4156,10 @@ function renderRouteGrid(keyword){
   // 보고서 참고). 데이터/필터링 로직은 전혀 안 건드리고, 이미 필터링·정렬된 zones/aptCards를
   // type별로 다시 나눠 헤더(전체 개수, 필터와 무관 — 홈/관리자 화면과 동일한 관례)만 끼워넣는다.
   const resZones=zones.filter(z=>z.type==='residential');
-  const comZones=zones.filter(z=>z.type==='commercial');
+  const _hidRH143=interphoneShopZoneIds(); // H143
+  const comZones=zones.filter(z=>z.type==='commercial'&&!_hidRH143.has(String(z.id)));
   const resTotal=S.zones.filter(z=>z.type==='residential').length;
-  const comTotal=S.zones.filter(z=>z.type==='commercial').length;
+  const comTotal=S.zones.filter(z=>z.type==='commercial'&&!_hidRH143.has(String(z.id))).length;
   const sectionHeader=(icon,label,count)=>`<div class="zc-section-header" style="grid-column:1/-1;font-size:13px;font-weight:800;padding:10px 2px 2px;">${icon} ${label} (${count})</div>`;
   const resHtml=resZones.length?sectionHeader('🏠','주택',resTotal)+resZones.map(renderZoneItem).join(''):'';
   const comHtml=comZones.length?sectionHeader('🏪','상가',comTotal)+comZones.map(renderZoneItem).join(''):'';
@@ -4817,7 +4978,8 @@ function setHomeComFilter(mode,el){
   renderHomeCommercialList();
 }
 function renderHomeCommercialList(){
-  const all=S.zones.filter(z=>z.type==='commercial');
+  const _hidH143=interphoneShopZoneIds(); // H143: 인터폰 카드에 들어간 상가는 상가 목록에서 숨김
+  const all=S.zones.filter(z=>z.type==='commercial'&&!_hidH143.has(String(z.id)));
   const countEl=document.getElementById('home-com-count');
   if(countEl)countEl.textContent=all.length;
   // V2 H67: 미완료 우선, 완료는 뒤로(구역/아파트와 동일 규칙)
@@ -4894,7 +5056,7 @@ function updateHomeListTallH129(openedSection){
     panel.classList.remove('home-list-collapsed');
     if(icon)icon.textContent='▾';
   }
-  const anyOpen=['home-res-body','home-com-body','home-apt-body'].some(id=>{const el=document.getElementById(id);return el&&!el.classList.contains('hide');});
+  const anyOpen=['home-res-body','home-com-body','home-apt-body','home-int-body'].some(id=>{const el=document.getElementById(id);return el&&!el.classList.contains('hide');});
   const tall=mobile&&anyOpen&&!panel.classList.contains('home-list-collapsed');
   wrap.classList.toggle('home-list-tall',tall);
   if(tall&&openedSection)setTimeout(()=>{panel.scrollTop=openedSection.offsetTop;},30);
@@ -6139,7 +6301,8 @@ function toggleAdminVolSection(){
   if(adminVolSectionOpen)renderVolList();
 }
 function renderAdmCommercialGrid(){
-  const all=S.zones.filter(z=>z.type==='commercial');
+  const _hidH143=interphoneShopZoneIds(); // H143: 인터폰 카드에 들어간 상가는 상가 목록에서 숨김
+  const all=S.zones.filter(z=>z.type==='commercial'&&!_hidH143.has(String(z.id)));
   const countEl=document.getElementById('adm-com-count');
   if(countEl)countEl.textContent=all.length;
   const zones=adminZoneFilterSort(all);
@@ -6774,21 +6937,24 @@ function onS12Search(v){
 function _s12Status(t){const el=document.getElementById('s12-status');if(el)el.textContent=t||'';}
 function s12Items(){
   const labels=zoneGroupLabelMap();
+  const _s12HidH143=interphoneShopZoneIds();
   const items=[];
   if(s12Type!=='apartment'){
     S.zones.forEach(z=>{
       if(!Array.isArray(z.polygon)||z.polygon.length<3)return;
       const kind=z.type==='commercial'?'commercial':'residential';
       if(s12Type!=='all'&&s12Type!==kind)return;
+      if(kind==='commercial'&&_s12HidH143.has(String(z.id)))return; // H143: 인터폰 카드에 들어간 상가
       items.push({kind,zone:z,no:String(labels[z.id]||('#'+z.id)).replace(/^#/,''),loc:displayZoneNameCleaned(z.name)});
     });
   }
-  if(s12Type==='all'||s12Type==='apartment'){
-    (S.apartmentCards||[]).forEach(c=>items.push({kind:'apartment',card:c,no:String(c.number!=null?c.number:c.id),loc:aptCardDisplayName(c.name)}));
-  }
+  (S.apartmentCards||[]).forEach(c=>{ // H143: 인터폰 카드는 별도 종류
+    const kind=isInterphoneCard(c)?'interphone':'apartment';
+    if(s12Type==='all'||s12Type===kind)items.push({kind,card:c,no:String(c.number!=null?c.number:c.id),loc:aptCardDisplayName(c.name)});
+  });
   const kw=s12Kw;
   const out=kw?items.filter(it=>it.no.includes(kw)||it.loc.includes(kw)||(it.zone&&String(it.zone.name||'').includes(kw))):items;
-  const order={residential:0,commercial:1,apartment:2};
+  const order={residential:0,commercial:1,apartment:2,interphone:3};
   return out.sort((a,b)=>order[a.kind]-order[b.kind]||a.no.localeCompare(b.no,'ko',{numeric:true}));
 }
 function s12AptHtml(card){
@@ -6799,9 +6965,11 @@ function s12AptHtml(card){
   return rows.join('')||'<div>등록된 동/호가 없습니다.</div>';
 }
 function s12CardHtml(it,idx){
-  const kindLabel={residential:'주택',commercial:'상가',apartment:'아파트'}[it.kind];
-  const hasForbidden=it.kind==='apartment'&&(it.card.points||[]).some(p=>(p.units||[]).some(u=>u.forbidden));
-  const body=it.kind==='apartment'
+  const kindLabel={residential:'주택',commercial:'상가',apartment:'아파트',interphone:'인터폰'}[it.kind];
+  const hasForbidden=!!it.card&&(it.card.points||[]).some(p=>(p.units||[]).some(u=>u.forbidden));
+  const body=it.kind==='interphone' // H143: 왼쪽 단지·동·호, 오른쪽 상가 지도
+    ?`<div class="s12-body int"><div class="s12-int-text"><div class="s12-apt">${s12AptHtml(it.card)}</div></div>${it.card.shop?`<div class="s12-int-map" data-shopzone="${esc(String(it.card.shop.zoneId))}"><div class="s12-msg">상가 지도 준비 중…</div><div class="s12-int-cap">🏪 ${esc(it.card.shop.name)}</div></div>`:''}</div>`
+    :it.kind==='apartment'
     ?`<div class="s12-body apt"><div class="s12-apt">${s12AptHtml(it.card)}</div></div>`
     :`<div class="s12-body" data-zone="${idx}"><div class="s12-msg">지도 준비 중…</div></div>`;
   return `<div class="s12-scaler"><div class="s12-card">
@@ -6917,14 +7085,14 @@ async function s12BuildAllParcels(){
   const v=document.getElementById('s12-viewer');
   if(v&&v.classList.contains('on'))renderS12();
 }
-function s12ZoneMap(z){
+function s12ZoneMap(z,W=S12_MAP_W,H=S12_MAP_H,mmW=134){ // H143: 크기 매개변수(기본=S-12 지도칸)
   const parcels=s12ParcelsFor(z)||[];
-  const key=z.id+'|'+s12PolySig(z)+'|'+parcels.length;
+  const key=z.id+'|'+s12PolySig(z)+'|'+parcels.length+'|'+W+'x'+H;
   if(_s12MapCache.has(key))return _s12MapCache.get(key);
   if(!_s12ProjMap){
     const el=document.createElement('div');
     el.id='s12-proj-map';
-    el.style.cssText=`position:fixed;left:-10000px;top:0;width:${S12_MAP_W}px;height:${S12_MAP_H}px;pointer-events:none;`;
+    el.style.cssText=`position:fixed;left:-10000px;top:0;width:${W}px;height:${H}px;pointer-events:none;`;
     document.body.appendChild(el);
     _s12ProjMap=new kakao.maps.Map(el,{center:new kakao.maps.LatLng(38.2,128.59),level:3,draggable:false});
   }
@@ -6933,7 +7101,7 @@ function s12ZoneMap(z){
   const lats=z.polygon.map(p=>Number(p[0])),lngs=z.polygon.map(p=>Number(p[1]));
   const center=LL((Math.min(...lats)+Math.max(...lats))/2,(Math.min(...lngs)+Math.max(...lngs))/2);
   // 1) 박스 크기에서 경계가 들어가는 가장 확대된 레벨과 남는 배율
-  el.style.width=S12_MAP_W+'px';el.style.height=S12_MAP_H+'px';m.relayout();
+  el.style.width=W+'px';el.style.height=H+'px';m.relayout();
   const b=new kakao.maps.LatLngBounds();
   z.polygon.forEach(([lat,lng])=>b.extend(LL(lat,lng)));
   m.setBounds(b,0,0,0,0);
@@ -6941,11 +7109,11 @@ function s12ZoneMap(z){
   const xy=z.polygon.map(([lat,lng])=>proj.containerPointFromCoords(LL(lat,lng)));
   const bw=Math.max(1,Math.max(...xy.map(p=>p.x))-Math.min(...xy.map(p=>p.x)));
   const bh=Math.max(1,Math.max(...xy.map(p=>p.y))-Math.min(...xy.map(p=>p.y)));
-  let fit=Math.min(S12_MAP_W/bw,S12_MAP_H/bh)*0.92; // 경계 둘레 여백 약 4%
+  let fit=Math.min(W/bw,H/bh)*0.92; // 경계 둘레 여백 약 4%
   // 2) 한 단계 더 확대한 레벨로, 박스를 채우는 만큼의 영역을 큰 이미지로 받는다
   if(lv>1){lv-=1;fit/=2;}
-  const vw=Math.max(200,Math.min(2048,Math.round(S12_MAP_W/fit)));
-  const vh=Math.round(vw*S12_MAP_H/S12_MAP_W);
+  const vw=Math.max(200,Math.min(2048,Math.round(W/fit)));
+  const vh=Math.round(vw*H/W);
   el.style.width=vw+'px';el.style.height=vh+'px';m.relayout();
   m.setLevel(lv);m.setCenter(center);
   proj=m.getProjection();
@@ -6957,13 +7125,13 @@ function s12ZoneMap(z){
   document.body.appendChild(tmp);
   new kakao.maps.StaticMap(tmp,{center,level:lv});
   const img=tmp.querySelector('img');
-  const r={src:img?img.src:'',poly,dots,vw,vh};
+  const r={src:img?img.src:'',poly,dots,vw,vh,mmW};
   tmp.remove();
   _s12MapCache.set(key,r);
   return r;
 }
 function s12MapSvg(r){
-  const u=r.vw/134; // 지도칸 가로 134mm → 1mm에 해당하는 단위
+  const u=r.vw/(r.mmW||134); // 지도칸 가로(mm) → 1mm에 해당하는 단위
   const fs=1.9*u,rad=0.6*u,sw=0.55*u,halo=0.6*u;
   const f=n=>n.toFixed(1);
   // 번지 글씨는 위에서부터 놓고, 이미 놓은 글씨와 겹치면 글씨만 생략(점은 유지)
@@ -6993,16 +7161,16 @@ function s12MapSvg(r){
 // ================================================================
 let s12Mode='list',s12Sel=new Set(),s12Only=null,_s12Addr=null;
 const S12_ADDR_CACHE_KEY='sokcho_s12_addr_cache_v1';
-function s12Key(it){return it.kind==='apartment'?'a'+it.card.id:'z'+it.zone.id;}
+function s12Key(it){return it.card?'a'+it.card.id:'z'+it.zone.id;}
 function _s12AddrCache(){
   if(_s12Addr)return _s12Addr;
   try{_s12Addr=JSON.parse(localStorage.getItem(S12_ADDR_CACHE_KEY)||'{}')||{};}catch(e){_s12Addr={};}
   return _s12Addr;
 }
 function _s12SaveAddr(){try{localStorage.setItem(S12_ADDR_CACHE_KEY,JSON.stringify(_s12Addr||{}));}catch(e){}}
-function s12AddrSig(it){return it.kind==='apartment'?'a1':s12PolySig(it.zone);}
+function s12AddrSig(it){return it.card?'a1':s12PolySig(it.zone);}
 function s12AddrPoint(it){
-  if(it.kind==='apartment')return apartmentCardPointCoord(it.card,0);
+  if(it.card)return apartmentCardPointCoord(it.card,0);
   const pts=s12ParcelsFor(it.zone),c=zoneCenter(it.zone);
   if(pts&&pts.length){
     let best=pts[0],bd=Infinity;
@@ -7030,7 +7198,7 @@ function s12FillAddresses(items,token){
       while(q.length){
         if(token!==s12RenderToken)return;
         const it=q.shift(),pt=s12AddrPoint(it);
-        const addr=pt?await new Promise(res=>gc.coord2Address(pt[1],pt[0],(r,st)=>res(st===OK&&r[0]?s12FormatAddr(r[0],it.kind):''))):'';
+        const addr=pt?await new Promise(res=>gc.coord2Address(pt[1],pt[0],(r,st)=>res(st===OK&&r[0]?s12FormatAddr(r[0],it.card?'apartment':it.kind):''))):'';
         cache[s12Key(it)]={sig:s12AddrSig(it),addr};dirty++;
         const el=document.getElementById('s12-addr-'+s12Key(it));
         if(el)el.textContent=addr||'주소 없음';
@@ -7050,7 +7218,7 @@ function renderS12List(){
   const cnt=document.getElementById('s12-count');
   if(cnt)cnt.textContent=`(${items.length}개)`;
   const cache=_s12AddrCache();
-  const kindLabel={residential:'주택',commercial:'상가',apartment:'아파트'};
+  const kindLabel={residential:'주택',commercial:'상가',apartment:'아파트',interphone:'인터폰'};
   list.innerHTML=items.length?`<div class="s12-pick">${items.map(it=>{
     const k=s12Key(it),c=cache[k],sel=s12Sel.has(k);
     const addr=c&&c.sig===s12AddrSig(it)?(c.addr||'주소 없음'):'주소 찾는 중…';
@@ -7106,7 +7274,7 @@ function renderS12Cards(){
   s12Rescale();
   list.querySelectorAll('.s12-apt').forEach(s12FitApt);
   const bodies=[...list.querySelectorAll('.s12-body[data-zone]')];
-  if(!bodies.length){_s12Status('');return;}
+  if(!bodies.length&&!list.querySelector('.s12-int-map[data-shopzone]')){_s12Status('');return;} // H143: 상가 지도칸만 있어도 진행
   _s12Status(`지도 준비 0/${bodies.length}`);
   whenKakaoReady(()=>{
     let i=0;
@@ -7123,7 +7291,21 @@ function renderS12Cards(){
       _s12Status(i<bodies.length?`지도 준비 ${i}/${bodies.length}`:`지도 ${bodies.length}개 준비 완료`);
       if(i<bodies.length)setTimeout(step,0);
     };
-    s12LoadParcels().then(step,step); // H138: 서버의 번지 데이터를 먼저 불러온 뒤 그린다
+    // H143: 인터폰 카드의 상가 지도칸(52×53mm) — 번지 데이터를 불러온 뒤 그린다
+    const fillShopMapsH143=()=>{
+      if(token!==s12RenderToken)return;
+      list.querySelectorAll('.s12-int-map[data-shopzone]').forEach(el=>{
+        const z=S.zones.find(z=>String(z.id)===el.dataset.shopzone);
+        const cap=el.querySelector('.s12-int-cap');
+        try{
+          if(!z)throw 0;
+          const r=s12ZoneMap(z,520,530,52);
+          el.innerHTML=`<img src="${esc(r.src)}" alt="" loading="lazy">${s12MapSvg(r)}`;
+          if(cap)el.appendChild(cap);
+        }catch(e){el.innerHTML='<div class="s12-msg">상가 지도를 만들 수 없습니다.</div>';if(cap)el.appendChild(cap);}
+      });
+    };
+    s12LoadParcels().then(()=>{step();fillShopMapsH143();},()=>{step();fillShopMapsH143();}); // H138: 서버의 번지 데이터를 먼저 불러온 뒤 그린다
   },()=>{if(token===s12RenderToken)_s12Status('카카오 지도를 불러오지 못했습니다(인터넷 확인).');});
 }
 async function printS12Cards(){
