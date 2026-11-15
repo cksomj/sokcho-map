@@ -487,11 +487,60 @@ function kakaoStartAppUrlForZone(z){
   // sp를 비워두면 현재 위치가 출발지로 채워진다. by는 기존 FOOT을 그대로 유지.
   return `kakaomap://route?sp=&ep=${pt[0]},${pt[1]}&by=FOOT`;
 }
+// ================================================================
+// H132: 카카오맵 도착지를 "가장 가까운 실제 건물"로 맞춘다.
+// 시작핀이 없을 때 도착지는 경로 첫 점/경계 꼭짓점/"여기까지" 지점인데,
+// 실측(350개 구역) 결과 이 점들의 대부분(경로 첫 점 338곳 중 316곳, 여기까지
+// 12곳 중 8곳)이 길·빈 땅 위라 카카오맵에서 도착지 주소가 안 잡히거나
+// 조회가 안 됐다. 카카오 주소 조회로 그 점 둘레(최대 약 40m)에서 도로명
+// 주소가 있는 건물을 찾아(구역 안을 우선) 그 건물 주소의 좌표로 연다.
+// 관리자가 직접 찍은 시작핀은 그대로 쓴다. 못 찾거나 2초를 넘기면 원래 점.
+// ================================================================
+const _kakaoSnapCacheH132=new Map();
+function _snapToBuildingH132(pt,z,done){
+  const key=pt[0].toFixed(6)+','+pt[1].toFixed(6);
+  if(_kakaoSnapCacheH132.has(key)){done(_kakaoSnapCacheH132.get(key));return;}
+  if(!(window.kakao&&kakao.maps&&kakao.maps.services&&kakao.maps.services.Geocoder)){done(null);return;}
+  const gc=new kakao.maps.services.Geocoder(),OK=kakao.maps.services.Status.OK;
+  const poly=(z&&Array.isArray(z.polygon))?z.polygon:[];
+  const mLat=1/111000,mLng=1/(111000*Math.cos(pt[0]*Math.PI/180));
+  const rings=[[0],[8],[16],[25],[40]]; // m
+  let finished=false;
+  const finish=r=>{if(finished)return;finished=true;_kakaoSnapCacheH132.set(key,r);done(r);};
+  const timer=setTimeout(()=>{finished=true;done(null);},2000);
+  const rev=(lat,lng)=>new Promise(ok=>gc.coord2Address(lng,lat,(res,st)=>ok(st===OK&&res[0]&&res[0].road_address?{lat,lng,road:res[0].road_address.address_name}:null)));
+  (async()=>{
+    for(const [r] of rings){
+      const cands=r===0?[[pt[0],pt[1]]]:Array.from({length:8},(_,i)=>{const a=i*Math.PI/4;return [pt[0]+Math.sin(a)*r*mLat,pt[1]+Math.cos(a)*r*mLng];});
+      const hits=(await Promise.all(cands.map(c=>rev(c[0],c[1])))).filter(Boolean);
+      if(finished)return;
+      if(!hits.length)continue;
+      const inside=hits.filter(h=>poly.length>=3&&pointInsidePolyStrict([h.lat,h.lng],poly));
+      const best=(inside.length?inside:hits)[0];
+      // 건물 주소의 대표 좌표(주소점)로 맞춘다 — 카카오맵이 그 주소를 그대로 보여줌
+      const exact=await new Promise(ok=>gc.addressSearch(best.road,(res,st)=>ok(st===OK&&res[0]?[Number(res[0].y),Number(res[0].x)]:null)));
+      clearTimeout(timer);
+      const p=exact&&Number.isFinite(exact[0])&&Number.isFinite(exact[1])?exact:[best.lat,best.lng];
+      finish({pt:p,road:best.road});
+      return;
+    }
+    clearTimeout(timer);finish(null);
+  })().catch(()=>{clearTimeout(timer);if(!finished){finished=true;done(null);}});
+}
 function openZoneKakaoStart(zoneId){
   const z=S.zones.find(z=>String(z.id)===String(zoneId));
   if(!z){toast('구역을 먼저 선택하세요.');return;}
-  const notice=hasCustomStartPoint(z)?null:'📍 저장된 시작핀이 없어 근처 위치로 안내합니다';
-  openExternalApp(kakaoStartAppUrlForZone(z),kakaoPointUrlForZone(z),'카카오맵',{notice});
+  if(hasCustomStartPoint(z)){
+    openExternalApp(kakaoStartAppUrlForZone(z),kakaoPointUrlForZone(z),'카카오맵');
+    return;
+  }
+  const pt=zoneStartPoint(z);
+  toast('📍 가까운 집 주소를 찾는 중입니다...');
+  _snapToBuildingH132(pt,z,snap=>{
+    const p=snap?snap.pt:pt;
+    const notice=snap?`📍 ${snap.road}`:'📍 저장된 시작핀이 없어 근처 위치로 안내합니다';
+    openExternalApp(`kakaomap://route?sp=&ep=${p[0]},${p[1]}&by=FOOT`,`https://map.kakao.com/link/map/${p[0]},${p[1]}`,'카카오맵',{notice});
+  });
 }
 function startPinIcon(label='출발지'){
   return L.divIcon({
