@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
-<link rel="stylesheet" href="styles.css?v=20261115-h137-handle-gesture">
+<link rel="stylesheet" href="styles.css?v=20261115-h138-s12-parcels">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -901,6 +901,7 @@
         <option value="card">카드 크기 1장씩(146×94mm)</option>
       </select>
       <button class="btn btn-sm btn-p" id="s12-print-btn" onclick="printS12Cards()">📄 PDF 저장 / 인쇄</button>
+      <button class="btn btn-sm btn-out" id="s12-parcel-btn" onclick="s12BuildAllParcels()" title="구역 안 건물 필지에 파란 점과 번지를 넣을 데이터를 만듭니다(처음 한 번, 경계가 바뀐 구역만 다시)">📍 번지 만들기</button>
     </div>
     <div class="s12-status" id="s12-status"></div>
   </div>
@@ -920,6 +921,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261115-h137-handle-gesture"></script>
+<script src="app.js?v=20261115-h138-s12-parcels"></script>
 </body>
 </html>

@@ -6782,8 +6782,97 @@ function s12FitApt(el){
   const box=el.parentElement;let fs=8.5;
   while(el.offsetHeight>box.clientHeight-4&&fs>5){fs-=.5;el.style.fontSize=fs+'pt';}
 }
+// ================================================================
+// H138: S-12 지도칸 개선(딘 요청 2026-11-15)
+// - 경계는 빨간 선만(안쪽 색 없음)
+// - 구역 안 "도로명 주소가 있는 건물" 필지 자리에 파란 점 + 번지
+// - 경계가 박스를 최대한 채우도록, 한 단계 더 확대한 정적지도를 최대 2배
+//   크기로 받아(선명) 박스에 맞춰 축소 표시
+// 번지 데이터는 카카오 주소조회로 만들어 구역마다 서버 app_data/s12p_<구역id>
+// 문서에 저장한다(딘 승인: 서버 저장). 경계가 바뀌면 sig가 달라져 그 구역만
+// "번지 만들기"로 다시 만든다. 데이터가 없는 구역은 지도+빨간 선만 그린다.
+// ================================================================
+const S12P_PREFIX='s12p_';
+let _s12Parcels=null,_s12ParcelBuildToken=0;
+function s12PolySig(z){const s=JSON.stringify(z.polygon||[]);let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return String(h);}
+function s12EncodePts(a){return a.map(p=>p[0].toFixed(6)+','+p[1].toFixed(6)+','+p[2]).join('|');}
+function s12DecodePts(s){return String(s||'').split('|').filter(Boolean).map(t=>{const parts=t.split(',');return [Number(parts[0]),Number(parts[1]),parts.slice(2).join(',')];}).filter(p=>Number.isFinite(p[0])&&Number.isFinite(p[1]));}
+async function s12LoadParcels(force){
+  if(_s12Parcels&&!force)return _s12Parcels;
+  const map={};
+  try{
+    if(typeof db!=='undefined'&&db&&typeof firebase!=='undefined'){
+      const FP=firebase.firestore.FieldPath.documentId();
+      const snap=await db.collection('app_data').where(FP,'>=',S12P_PREFIX).where(FP,'<',S12P_PREFIX+'').get();
+      snap.forEach(d=>{const v=d.data()||{};if(v.zoneId!=null)map[String(v.zoneId)]={sig:v.sig,pts:s12DecodePts(v.pts)};});
+    }
+  }catch(e){console.warn('[S-12] 번지 데이터 불러오기 실패(지도만 표시):',e);}
+  _s12Parcels=map;
+  return map;
+}
+function s12ParcelsFor(z){
+  const p=_s12Parcels&&_s12Parcels[String(z.id)];
+  return p&&p.sig===s12PolySig(z)?p.pts:null;
+}
+async function s12ComputeParcels(z){
+  const gc=new kakao.maps.services.Geocoder(),OK=kakao.maps.services.Status.OK;
+  const P=z.polygon;
+  const lats=P.map(p=>Number(p[0])),lngs=P.map(p=>Number(p[1]));
+  const minLa=Math.min(...lats),maxLa=Math.max(...lats),minLo=Math.min(...lngs),maxLo=Math.max(...lngs);
+  const mLat=111000,mLng=111000*Math.cos(minLa*Math.PI/180);
+  let step=5; // m — 구역이 크면 조회 수가 약 300회를 넘지 않게 간격을 넓힌다
+  const est=((maxLa-minLa)*mLat/step)*((maxLo-minLo)*mLng/step);
+  if(est>300)step*=Math.sqrt(est/300);
+  const samples=[];
+  for(let la=minLa+step/mLat/2;la<maxLa;la+=step/mLat)
+    for(let lo=minLo+step/mLng/2;lo<maxLo;lo+=step/mLng)
+      if(pointInsidePolyStrict([la,lo],P))samples.push([la,lo]);
+  const groups={},q=samples.slice();
+  await Promise.all(Array.from({length:6},async()=>{
+    while(q.length){
+      const [la,lo]=q.shift();
+      await new Promise(res=>gc.coord2Address(lo,la,(r,st)=>{
+        if(st===OK&&r[0]&&r[0].road_address&&r[0].address){ // 도로명 주소가 있는 곳 = 건물
+          const a=r[0].address;
+          const k=String(a.main_address_no||'')+(a.sub_address_no&&a.sub_address_no!=='0'?'-'+a.sub_address_no:'');
+          if(k)(groups[k]=groups[k]||[]).push([la,lo]);
+        }
+        res();
+      }));
+    }
+  }));
+  return Object.entries(groups).map(([k,arr])=>[arr.reduce((s,p)=>s+p[0],0)/arr.length,arr.reduce((s,p)=>s+p[1],0)/arr.length,k]);
+}
+async function s12BuildAllParcels(){
+  if(S.role!=='admin'){toast('관리자만 사용할 수 있습니다.');return;}
+  if(typeof db==='undefined'||!db){toast('서버에 연결되지 않았습니다.');return;}
+  const token=++_s12ParcelBuildToken;
+  const btn=document.getElementById('s12-parcel-btn');
+  if(btn)btn.disabled=true;
+  await s12LoadParcels(true);
+  await new Promise(r=>whenKakaoReady(r,r));
+  const todo=S.zones.filter(z=>Array.isArray(z.polygon)&&z.polygon.length>=3&&!s12ParcelsFor(z));
+  let done=0,fail=0;
+  for(const z of todo){
+    if(token!==_s12ParcelBuildToken)break;
+    _s12Status(`📍 번지 만드는 중 ${done}/${todo.length} — 화면을 켜 두세요`);
+    try{
+      const pts=await s12ComputeParcels(z);
+      const sig=s12PolySig(z);
+      await db.collection('app_data').doc(S12P_PREFIX+z.id).set({zoneId:z.id,sig,pts:s12EncodePts(pts),count:pts.length,updatedAt:Date.now()});
+      _s12Parcels[String(z.id)]={sig,pts};
+    }catch(e){fail++;console.warn('[S-12] 번지 만들기 실패:',z.id,e);}
+    done++;
+  }
+  if(btn)btn.disabled=false;
+  _s12MapCache.clear();
+  _s12Status(todo.length?`📍 번지 ${done-fail}개 구역 저장 완료${fail?` · 실패 ${fail}개(다시 누르면 실패한 것만 재시도)`:''}`:'📍 모든 구역의 번지가 이미 준비돼 있습니다.');
+  const v=document.getElementById('s12-viewer');
+  if(v&&v.classList.contains('on'))renderS12Cards();
+}
 function s12ZoneMap(z){
-  const key=z.id+'|'+JSON.stringify(z.polygon);
+  const parcels=s12ParcelsFor(z)||[];
+  const key=z.id+'|'+s12PolySig(z)+'|'+parcels.length;
   if(_s12MapCache.has(key))return _s12MapCache.get(key);
   if(!_s12ProjMap){
     const el=document.createElement('div');
@@ -6792,20 +6881,60 @@ function s12ZoneMap(z){
     document.body.appendChild(el);
     _s12ProjMap=new kakao.maps.Map(el,{center:new kakao.maps.LatLng(38.2,128.59),level:3,draggable:false});
   }
-  const m=_s12ProjMap,b=new kakao.maps.LatLngBounds();
-  z.polygon.forEach(([lat,lng])=>b.extend(new kakao.maps.LatLng(lat,lng)));
-  m.setBounds(b,30,30,30,30);
-  const proj=m.getProjection();
-  const pts=z.polygon.map(([lat,lng])=>{const p=proj.containerPointFromCoords(new kakao.maps.LatLng(lat,lng));return Math.round(p.x)+','+Math.round(p.y);}).join(' ');
+  const el=document.getElementById('s12-proj-map'),m=_s12ProjMap;
+  const LL=(a,b)=>new kakao.maps.LatLng(Number(a),Number(b));
+  const lats=z.polygon.map(p=>Number(p[0])),lngs=z.polygon.map(p=>Number(p[1]));
+  const center=LL((Math.min(...lats)+Math.max(...lats))/2,(Math.min(...lngs)+Math.max(...lngs))/2);
+  // 1) 박스 크기에서 경계가 들어가는 가장 확대된 레벨과 남는 배율
+  el.style.width=S12_MAP_W+'px';el.style.height=S12_MAP_H+'px';m.relayout();
+  const b=new kakao.maps.LatLngBounds();
+  z.polygon.forEach(([lat,lng])=>b.extend(LL(lat,lng)));
+  m.setBounds(b,0,0,0,0);
+  let lv=m.getLevel(),proj=m.getProjection();
+  const xy=z.polygon.map(([lat,lng])=>proj.containerPointFromCoords(LL(lat,lng)));
+  const bw=Math.max(1,Math.max(...xy.map(p=>p.x))-Math.min(...xy.map(p=>p.x)));
+  const bh=Math.max(1,Math.max(...xy.map(p=>p.y))-Math.min(...xy.map(p=>p.y)));
+  let fit=Math.min(S12_MAP_W/bw,S12_MAP_H/bh)*0.92; // 경계 둘레 여백 약 4%
+  // 2) 한 단계 더 확대한 레벨로, 박스를 채우는 만큼의 영역을 큰 이미지로 받는다
+  if(lv>1){lv-=1;fit/=2;}
+  const vw=Math.max(200,Math.min(2048,Math.round(S12_MAP_W/fit)));
+  const vh=Math.round(vw*S12_MAP_H/S12_MAP_W);
+  el.style.width=vw+'px';el.style.height=vh+'px';m.relayout();
+  m.setLevel(lv);m.setCenter(center);
+  proj=m.getProjection();
+  const px=(lat,lng)=>{const p=proj.containerPointFromCoords(LL(lat,lng));return [Math.round(p.x),Math.round(p.y)];};
+  const poly=z.polygon.map(([lat,lng])=>px(lat,lng).join(',')).join(' ');
+  const dots=parcels.map(p=>{const q=px(p[0],p[1]);return [q[0],q[1],String(p[2])];}).filter(q=>q[0]>=0&&q[1]>=0&&q[0]<=vw&&q[1]<=vh);
   const tmp=document.createElement('div');
-  tmp.style.cssText=`position:fixed;left:-10000px;top:0;width:${S12_MAP_W}px;height:${S12_MAP_H}px;`;
+  tmp.style.cssText=`position:fixed;left:-10000px;top:0;width:${vw}px;height:${vh}px;`;
   document.body.appendChild(tmp);
-  new kakao.maps.StaticMap(tmp,{center:m.getCenter(),level:m.getLevel()});
+  new kakao.maps.StaticMap(tmp,{center,level:lv});
   const img=tmp.querySelector('img');
-  const r={src:img?img.src:'',pts};
+  const r={src:img?img.src:'',poly,dots,vw,vh};
   tmp.remove();
   _s12MapCache.set(key,r);
   return r;
+}
+function s12MapSvg(r){
+  const u=r.vw/134; // 지도칸 가로 134mm → 1mm에 해당하는 단위
+  const fs=1.9*u,rad=0.6*u,sw=0.55*u,halo=0.6*u;
+  const f=n=>n.toFixed(1);
+  // 번지 글씨는 위에서부터 놓고, 이미 놓은 글씨와 겹치면 글씨만 생략(점은 유지)
+  const placed=[];let labels='';
+  [...r.dots].sort((a,b)=>a[1]-b[1]||a[0]-b[0]).forEach(([x,y,no])=>{
+    const w=no.length*fs*0.62,h=fs;
+    let bx=x+rad*1.7;
+    if(bx+w>r.vw)bx=x-rad*1.7-w;
+    const by=y-h/2;
+    if(placed.some(p=>bx<p[0]+p[2]&&bx+w>p[0]&&by<p[1]+p[3]&&by+h>p[1]))return;
+    placed.push([bx,by,w,h]);
+    labels+=`<text x="${f(bx)}" y="${f(by+h*0.82)}">${esc(no)}</text>`;
+  });
+  const circles=r.dots.map(([x,y])=>`<circle cx="${x}" cy="${y}" r="${f(rad)}"/>`).join('');
+  return `<svg viewBox="0 0 ${r.vw} ${r.vh}" preserveAspectRatio="none">`+
+    `<polygon points="${r.poly}" fill="none" stroke="#dc2626" stroke-width="${f(sw)}" stroke-linejoin="round"/>`+
+    `<g fill="#1d4ed8" stroke="#fff" stroke-width="${f(rad*0.35)}">${circles}</g>`+
+    `<g font-family="Noto Sans KR,-apple-system,sans-serif" font-weight="800" font-size="${f(fs)}" fill="#0b3d91" stroke="#fff" stroke-width="${f(halo)}" paint-order="stroke" stroke-linejoin="round">${labels}</g></svg>`;
 }
 function renderS12Cards(){
   const token=++s12RenderToken;
@@ -6830,13 +6959,13 @@ function renderS12Cards(){
         const el=bodies[i],it=items[Number(el.dataset.zone)];
         try{
           const r=s12ZoneMap(it.zone);
-          el.innerHTML=`<img src="${esc(r.src)}" alt="" loading="lazy"><svg viewBox="0 0 ${S12_MAP_W} ${S12_MAP_H}" preserveAspectRatio="none"><polygon points="${r.pts}" fill="rgba(220,38,38,.14)" stroke="#dc2626" stroke-width="4" stroke-linejoin="round"/></svg>`;
+          el.innerHTML=`<img src="${esc(r.src)}" alt="" loading="lazy">${s12MapSvg(r)}`; // H138
         }catch(e){el.innerHTML='<div class="s12-msg">지도를 만들 수 없습니다.</div>';}
       }
       _s12Status(i<bodies.length?`지도 준비 ${i}/${bodies.length}`:`지도 ${bodies.length}개 준비 완료`);
       if(i<bodies.length)setTimeout(step,0);
     };
-    step();
+    s12LoadParcels().then(step,step); // H138: 서버의 번지 데이터를 먼저 불러온 뒤 그린다
   },()=>{if(token===s12RenderToken)_s12Status('카카오 지도를 불러오지 못했습니다(인터넷 확인).');});
 }
 async function printS12Cards(){
