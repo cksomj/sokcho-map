@@ -444,6 +444,21 @@ function zoneCenter(z){
   }
   return best;
 }
+// H133: 지도를 축소할수록 구역 경계선을 가늘게. 카카오 레벨(1=가장 확대)
+// 2 이하는 기존 두께(3.5px, 선택 5px) 그대로, 한 단계씩 축소할 때마다
+// 줄여 최소 1.2px. 카카오 지도를 직접 확대/축소할 때(zoom_changed)도 즉시 반영.
+function zoneStrokeWeightH133(kakaoMap,active){
+  const lv=kakaoMap&&typeof kakaoMap.getLevel==='function'?kakaoMap.getLevel():2;
+  const f=lv<=2?1:lv===3?.82:lv===4?.65:lv===5?.5:.38;
+  return Math.max(1.2,Math.round((active?5:3.5)*f*10)/10);
+}
+function bindStrokeZoomH133(kakaoMap,polyMap){
+  if(!kakaoMap||kakaoMap.__strokeZoomH133||!window.kakao?.maps?.event)return;
+  kakaoMap.__strokeZoomH133=true;
+  kakao.maps.event.addListener(kakaoMap,'zoom_changed',()=>{
+    polyMap.forEach(it=>{if(it&&it.polygon)it.polygon.setOptions({strokeWeight:zoneStrokeWeightH133(kakaoMap,!!it.active)});});
+  });
+}
 function validMapPoint(pt){
   const p=routePointPair(pt);
   return p&&Number.isFinite(p[0])&&Number.isFinite(p[1])?p:null;
@@ -3431,9 +3446,11 @@ function drawAllZones(activeId){
       const dimmed=activeId!==null&&!isActive;
       const sc=zoneStrokeColor(z,isActive);
       const fillC=zoneFillColor(z,isActive);
-      item.polygon.setOptions({strokeWeight:isActive?5:3.5,strokeColor:sc,strokeOpacity:dimmed?.35:1,fillColor:fillC,fillOpacity:dimmed?.01:.05});
+      item.active=isActive;
+      item.polygon.setOptions({strokeWeight:zoneStrokeWeightH133(kakaoMap,isActive),strokeColor:sc,strokeOpacity:dimmed?.35:1,fillColor:fillC,fillOpacity:dimmed?.01:.05});
       item.polygon.setMap(show?kakaoMap:null);
     });
+    bindStrokeZoomH133(kakaoMap,mainKakaoPolygons);
   }
   const showLabels=zoneLabelsVisible(S.mainMap);
   S.zones.forEach(z=>{
@@ -4520,9 +4537,11 @@ function drawHomeZones(activeId){
       const dimmed=activeId!==null&&!isActive;
       const sc=zoneStrokeColor(z,isActive);
       const fillColor=zoneFillColor(z,isActive);
-      item.polygon.setOptions({strokeWeight:isActive?5:3.5,strokeColor:sc,strokeOpacity:dimmed?.35:1,fillColor,fillOpacity:dimmed?.01:.05});
+      item.active=isActive;
+      item.polygon.setOptions({strokeWeight:zoneStrokeWeightH133(kakaoMap,isActive),strokeColor:sc,strokeOpacity:dimmed?.35:1,fillColor,fillOpacity:dimmed?.01:.05});
       item.polygon.setMap(show?kakaoMap:null);
     });
+    bindStrokeZoomH133(kakaoMap,homeKakaoPolygons);
   }
   const showLabels=zoneLabelsVisible(homeMapInst);
   S.zones.forEach(z=>{
