@@ -4705,11 +4705,12 @@ function toggleHomeListPanel(){
     const panel=document.getElementById('home-list-panel');
     const icon=document.getElementById('home-list-handle-icon');
     if(!handle||!panel)return;
-    let dragging=false,startY=0,startHeight=0,maxH=0,moved=0;
+    let dragging=false,startY=0,startHeight=0,maxH=0,moved=0,lastDy=0,wasCollapsed=true;
     const expandedMaxH=()=>window.innerHeight*0.72; // CSS의 모바일 펼침 max-height(72vh)와 동일하게 유지
     function onDown(e){
       if(e.pointerType==='mouse'&&e.button!==0)return;
-      dragging=true;moved=0;
+      dragging=true;moved=0;lastDy=0;
+      wasCollapsed=panel.classList.contains('home-list-collapsed'); // H137: 누르기 시작할 때 상태
       startY=e.clientY;
       maxH=expandedMaxH();
       startHeight=panel.classList.contains('home-list-collapsed')?0:panel.getBoundingClientRect().height;
@@ -4719,6 +4720,7 @@ function toggleHomeListPanel(){
     function onMove(e){
       if(!dragging)return;
       const dy=e.clientY-startY; // 양수=아래로 드래그
+      lastDy=dy;
       moved=Math.max(moved,Math.abs(dy));
       let h=startHeight-dy;
       h=Math.max(0,Math.min(maxH,h));
@@ -4731,11 +4733,18 @@ function toggleHomeListPanel(){
       panel.style.transition='';
       const cur=parseFloat(panel.style.maxHeight)||0;
       panel.style.maxHeight='';
-      if(moved<8){ // 거의 안 움직였으면 기존 탭 토글과 동일하게 처리
+      // H137: 예전엔 8px만 움직여도 드래그로 보고 "놓을 때 높이가 최대치의
+      // 35%(폰 약 230px) 이상"이어야 펼쳐서, 손가락이 조금 흔들린 탭이나
+      // 짧게 끌어올린 경우 도로 접혀 "튕기는" 것처럼 보였다(재현 확인).
+      // 20px 미만 움직임은 탭(열기/닫기 토글), 그 이상은 방향으로 정한다
+      // (위로 끌면 펼침, 아래로 끌면 접힘).
+      if(moved<20){
+        // H137: onMove가 움직이는 순간 접힘 표시를 미리 지우므로, 시작 상태로 되돌린 뒤 토글
+        panel.classList.toggle('home-list-collapsed',wasCollapsed);
         toggleHomeListPanel();
         return;
       }
-      const shouldExpand=cur>maxH*0.35;
+      const shouldExpand=lastDy<0;
       panel.classList.toggle('home-list-collapsed',!shouldExpand);
       if(icon)icon.textContent=shouldExpand?'▾':'▸';
       updateHomeListTallH129();
