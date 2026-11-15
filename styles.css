@@ -1486,3 +1486,5 @@ html.role-volunteer #menu-toggle-btn{display:none!important;}
   #home-body.home-list-tall .home-apt-body{max-height:none;}
   #home-body.home-list-tall #home-zone-list{overflow:visible!important;}
 }
+/* V2 H134: 지도 위 "전체" 칩(나머지 칩 열고 닫기)은 항상 보라색 */
+#home-filter-chips .chip.home-chip-toggle,#home-filter-chips .chip.home-chip-toggle.on{background:#7F3FBF!important;border-color:#7F3FBF!important;color:#fff!important;}
