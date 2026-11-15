@@ -1898,6 +1898,13 @@ function apartmentCardCheckableUnits(card){return card.points.reduce((s,p)=>s+p.
 function apartmentCardPointCoord(card,idx){
   const pt=card&&card.points[idx];
   if(!pt)return null;
+  // H130: 동/단지 좌표는 단지 레지스트리(S.apartmentComplexes)에 있는데, 이
+  // 레지스트리는 관리자 화면(renderAdmin)이나 "서버값이 바뀌어 도착했을 때"만
+  // 메모리에 올라왔다. 전도인/인도자 화면은 둘 다 안 거쳐서 "어떨 땐 되고
+  // 어떨 땐 좌표 없음"이 됐다(H126 이후엔 로그인 전 도착분이 건너뛰어져 항상
+  // 실패). 여기서 아직 안 올라왔으면 캐시(=서버값)에서 읽는다. 저장값 자체가
+  // 없을 때(raw==null, 서버값 도착 전)는 seed 저장을 피하려고 읽지 않는다.
+  if(!S._apartmentRegistryLoaded&&storageGet('sokcho_apartment_registry_v1')!=null)loadApartmentRegistry();
   // V2 H4: 동(building) 좌표 우선 사용. 동 좌표가 없는 구버전 카드는 단지 좌표로 하위호환.
   if(Number.isFinite(pt.lat)&&Number.isFinite(pt.lng)){
     return[pt.lat,pt.lng];
