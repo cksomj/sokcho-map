@@ -1488,3 +1488,15 @@ html.role-volunteer #menu-toggle-btn{display:none!important;}
 }
 /* V2 H134: 지도 위 "전체" 칩(나머지 칩 열고 닫기)은 항상 보라색 */
 #home-filter-chips .chip.home-chip-toggle,#home-filter-chips .chip.home-chip-toggle.on{background:#7F3FBF!important;border-color:#7F3FBF!important;color:#fff!important;}
+
+/* V2 H139: S-12 목록 화면(구역번호·이름·주소) */
+.s12-viewer.mode-list #s12-print-btn,.s12-viewer.mode-list #s12-paper{display:none;}
+.s12-pick{width:100%;max-width:760px;display:flex;flex-direction:column;gap:6px;}
+.s12-row{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--bd);border-radius:10px;padding:10px 12px;cursor:pointer;box-shadow:var(--shadow-sm);}
+.s12-row.sel{border-color:var(--p);background:var(--pbg);}
+.s12-row input{width:22px;height:22px;flex-shrink:0;accent-color:var(--p);}
+.s12-row-no{font-weight:900;font-size:15px;min-width:62px;color:var(--tx);}
+.s12-row-main{flex:1;min-width:0;}
+.s12-row-name{font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.s12-row-kind{font-size:11px;font-weight:700;color:var(--txm);margin-left:4px;}
+.s12-row-addr{font-size:12px;color:var(--txm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}

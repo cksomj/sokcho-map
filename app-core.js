@@ -6708,7 +6708,8 @@ function openS12Viewer(){
   loadApartmentCards();
   const v=document.getElementById('s12-viewer');
   if(v)v.classList.add('on');
-  renderS12Cards();
+  s12Mode='list';s12Only=null; // H139: 처음엔 목록
+  renderS12();
 }
 function closeS12Viewer(){
   s12RenderToken++;
@@ -6718,11 +6719,12 @@ function closeS12Viewer(){
 function setS12Type(t){
   s12Type=t;
   document.querySelectorAll('#s12-viewer .s12-type').forEach(b=>b.classList.toggle('on',b.dataset.type===t));
-  renderS12Cards();
+  s12Mode='list';s12Only=null; // H139: 종류 버튼 → 목록
+  renderS12();
 }
 function onS12Search(v){
   clearTimeout(_s12SearchTimer);
-  _s12SearchTimer=setTimeout(()=>{s12Kw=String(v||'').trim();renderS12Cards();},250);
+  _s12SearchTimer=setTimeout(()=>{s12Kw=String(v||'').trim();s12Mode='list';s12Only=null;renderS12();},250); // H139: 검색 → 목록
 }
 function _s12Status(t){const el=document.getElementById('s12-status');if(el)el.textContent=t||'';}
 function s12Items(){
@@ -6868,7 +6870,7 @@ async function s12BuildAllParcels(){
   _s12MapCache.clear();
   _s12Status(todo.length?`📍 번지 ${done-fail}개 구역 저장 완료${fail?` · 실패 ${fail}개(다시 누르면 실패한 것만 재시도)`:''}`:'📍 모든 구역의 번지가 이미 준비돼 있습니다.');
   const v=document.getElementById('s12-viewer');
-  if(v&&v.classList.contains('on'))renderS12Cards();
+  if(v&&v.classList.contains('on'))renderS12();
 }
 function s12ZoneMap(z){
   const parcels=s12ParcelsFor(z)||[];
@@ -6936,11 +6938,122 @@ function s12MapSvg(r){
     `<g fill="#1d4ed8" stroke="#fff" stroke-width="${f(rad*0.35)}">${circles}</g>`+
     `<g font-family="Noto Sans KR,-apple-system,sans-serif" font-weight="800" font-size="${f(fs)}" fill="#0b3d91" stroke="#fff" stroke-width="${f(halo)}" paint-order="stroke" stroke-linejoin="round">${labels}</g></svg>`;
 }
+// ================================================================
+// H139: S-12 목록 화면 — 종류 버튼(전체/주택/상가/아파트)이나 검색을 하면
+// 먼저 "구역번호 · 이름 · 주소" 목록을 보여준다. 행을 누르면 그 카드 1장,
+// 체크한 뒤 "선택한 카드 보기"를 누르면 고른 카드만 카드 화면으로 보여주고
+// 그대로 PDF 저장/인쇄할 수 있다. 주소는 저장된 데이터가 없어 카카오
+// 주소조회로 채운다(주택/상가: 구역 안 건물 한 곳의 동+도로명, 아파트: 첫
+// 동의 도로명 주소). 조회 결과는 이 기기에만 기억(서버 저장 없음).
+// ================================================================
+let s12Mode='list',s12Sel=new Set(),s12Only=null,_s12Addr=null;
+const S12_ADDR_CACHE_KEY='sokcho_s12_addr_cache_v1';
+function s12Key(it){return it.kind==='apartment'?'a'+it.card.id:'z'+it.zone.id;}
+function _s12AddrCache(){
+  if(_s12Addr)return _s12Addr;
+  try{_s12Addr=JSON.parse(localStorage.getItem(S12_ADDR_CACHE_KEY)||'{}')||{};}catch(e){_s12Addr={};}
+  return _s12Addr;
+}
+function _s12SaveAddr(){try{localStorage.setItem(S12_ADDR_CACHE_KEY,JSON.stringify(_s12Addr||{}));}catch(e){}}
+function s12AddrSig(it){return it.kind==='apartment'?'a1':s12PolySig(it.zone);}
+function s12AddrPoint(it){
+  if(it.kind==='apartment')return apartmentCardPointCoord(it.card,0);
+  const pts=s12ParcelsFor(it.zone),c=zoneCenter(it.zone);
+  if(pts&&pts.length){
+    let best=pts[0],bd=Infinity;
+    pts.forEach(p=>{const d=(p[0]-c[0])**2+(p[1]-c[1])**2;if(d<bd){bd=d;best=p;}});
+    return [best[0],best[1]];
+  }
+  return c;
+}
+function s12FormatAddr(r,kind){
+  const strip=s=>String(s||'').replace(/^강원(특별자치도|도)\s*/,'');
+  if(kind==='apartment')return strip(r.road_address?r.road_address.address_name:(r.address&&r.address.address_name));
+  const a=r.address||{};
+  if(r.road_address&&r.road_address.road_name)return `${a.region_2depth_name?a.region_2depth_name+' ':''}${a.region_3depth_name||''} · ${r.road_address.road_name} 일대`;
+  return strip(a.address_name||'')+' 일대';
+}
+function s12FillAddresses(items,token){
+  const cache=_s12AddrCache();
+  const need=items.filter(it=>{const c=cache[s12Key(it)];return !(c&&c.sig===s12AddrSig(it));});
+  if(!need.length)return;
+  whenKakaoReady(()=>{
+    if(!(kakao.maps.services&&kakao.maps.services.Geocoder))return;
+    const gc=new kakao.maps.services.Geocoder(),OK=kakao.maps.services.Status.OK;
+    const q=need.slice();let dirty=0;
+    const worker=async()=>{
+      while(q.length){
+        if(token!==s12RenderToken)return;
+        const it=q.shift(),pt=s12AddrPoint(it);
+        const addr=pt?await new Promise(res=>gc.coord2Address(pt[1],pt[0],(r,st)=>res(st===OK&&r[0]?s12FormatAddr(r[0],it.kind):''))):'';
+        cache[s12Key(it)]={sig:s12AddrSig(it),addr};dirty++;
+        const el=document.getElementById('s12-addr-'+s12Key(it));
+        if(el)el.textContent=addr||'주소 없음';
+      }
+    };
+    Promise.all(Array.from({length:6},worker)).then(()=>{if(dirty)_s12SaveAddr();});
+  },()=>{});
+}
+function renderS12(){if(s12Mode==='list')renderS12List();else renderS12Cards();}
+function renderS12List(){
+  const token=++s12RenderToken;
+  const list=document.getElementById('s12-list');
+  if(!list)return;
+  document.getElementById('s12-viewer')?.classList.add('mode-list');
+  const items=s12Items();
+  _s12Items=items;
+  const cnt=document.getElementById('s12-count');
+  if(cnt)cnt.textContent=`(${items.length}개)`;
+  const cache=_s12AddrCache();
+  const kindLabel={residential:'주택',commercial:'상가',apartment:'아파트'};
+  list.innerHTML=items.length?`<div class="s12-pick">${items.map(it=>{
+    const k=s12Key(it),c=cache[k],sel=s12Sel.has(k);
+    const addr=c&&c.sig===s12AddrSig(it)?(c.addr||'주소 없음'):'주소 찾는 중…';
+    return `<div class="s12-row${sel?' sel':''}" data-key="${k}" onclick="s12RowTap('${k}')">`+
+      `<input type="checkbox" ${sel?'checked':''} onclick="event.stopPropagation();s12ToggleSel('${k}',this.checked)">`+
+      `<div class="s12-row-no">${esc(it.no)}</div>`+
+      `<div class="s12-row-main"><div class="s12-row-name">${esc(it.loc)}<span class="s12-row-kind">${kindLabel[it.kind]}</span></div>`+
+      `<div class="s12-row-addr" id="s12-addr-${k}">${esc(addr)}</div></div></div>`;
+  }).join('')}</div>`:'<div class="s12-status">해당 구역이 없습니다.</div>';
+  renderS12ModeRow();
+  _s12Status('행을 누르면 그 카드, 체크한 뒤 아래 버튼을 누르면 고른 카드만 봅니다.');
+  s12LoadParcels().then(()=>s12FillAddresses(items,token),()=>s12FillAddresses(items,token));
+}
+function s12RowTap(k){s12Only=new Set([k]);s12Mode='cards';renderS12();}
+function s12ToggleSel(k,on){
+  if(on)s12Sel.add(k);else s12Sel.delete(k);
+  document.querySelector(`.s12-row[data-key="${k}"]`)?.classList.toggle('sel',on);
+  renderS12ModeRow();
+}
+function s12SelectAllVisible(on){_s12Items.forEach(it=>{const k=s12Key(it);if(on)s12Sel.add(k);else s12Sel.delete(k);});renderS12List();}
+function s12ShowSelected(){
+  const shown=new Set(_s12Items.map(s12Key));
+  const picked=[...s12Sel].filter(k=>shown.has(k));
+  s12Only=picked.length?new Set(picked):null; // 고른 게 없으면 목록 전체
+  s12Mode='cards';renderS12();
+}
+function s12BackToList(){s12Mode='list';s12Only=null;renderS12();}
+function renderS12ModeRow(){
+  const row=document.getElementById('s12-mode-row');
+  if(!row)return;
+  if(s12Mode==='list'){
+    const shown=new Set(_s12Items.map(s12Key));
+    const n=[...s12Sel].filter(k=>shown.has(k)).length;
+    row.innerHTML=`<button class="btn btn-sm btn-out" onclick="s12SelectAllVisible(true)">전체 선택</button>`+
+      `<button class="btn btn-sm btn-out" onclick="s12SelectAllVisible(false)">선택 해제</button>`+
+      `<button class="btn btn-sm btn-p" onclick="s12ShowSelected()">${n?`선택한 ${n}장 카드 보기`:`목록 ${_s12Items.length}장 모두 카드로 보기`}</button>`;
+  }else{
+    row.innerHTML=`<button class="btn btn-sm btn-out" onclick="s12BackToList()">◀ 목록</button>`;
+  }
+}
 function renderS12Cards(){
   const token=++s12RenderToken;
   const list=document.getElementById('s12-list');
   if(!list)return;
-  const items=s12Items();
+  document.getElementById('s12-viewer')?.classList.remove('mode-list');
+  let items=s12Items();
+  if(s12Only)items=items.filter(it=>s12Only.has(s12Key(it))); // H139: 목록에서 고른 카드만
+  renderS12ModeRow();
   _s12Items=items;
   const cnt=document.getElementById('s12-count');
   if(cnt)cnt.textContent=`(${items.length}장)`;
