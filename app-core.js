@@ -3127,7 +3127,16 @@ function isAutoLoginValid(saved){
   return false;
 }
 
+// H141: 연구자료 링크/검색은 새 탭(또는 JW Library 앱)으로 열리는데, 돌아오는
+// 사이 폰이 이 앱 탭을 다시 로드하면 자동 로그인 후 역할별 기본 화면(인도자=
+// 실시간)으로 가 버려 "튕겨 나간" 것처럼 보였다(재현 확인). 마지막으로 보던
+// 화면과 연구자료 검색어를 이 탭에만(sessionStorage) 기억했다가, 다시 로드돼
+// 자동 로그인할 때 그 화면으로 돌아온다. 앱을 새로 열거나 로그아웃하면 기본 화면.
+const LAST_TAB_KEY_H141='sokcho_last_tab',RESEARCH_Q_KEY_H141='sokcho_research_q';
+function _ssGetH141(k){try{return sessionStorage.getItem(k)||'';}catch(e){return '';}}
+function _ssSetH141(k,v){try{if(v)sessionStorage.setItem(k,v);else sessionStorage.removeItem(k);}catch(e){}}
 function finishLogin(opts={}){
+  const resumeTabH141=opts.auto?_ssGetH141(LAST_TAB_KEY_H141):'';
   if(S.role==='leader')setLeaderLock(S.user);
   if(S.role==='volunteer')rememberVolNameH135(S.user); // H135
   if(!opts.auto)saveAutoLogin();
@@ -3175,6 +3184,9 @@ function finishLogin(opts={}){
     setTimeout(()=>goTab('home'),300);
   }
   if(opts.auto)toast(`${S.user}님 자동 로그인되었습니다.`);
+  if(resumeTabH141){ // H141: 다시 로드되기 전 보던 화면으로(기본 화면 이동 뒤에)
+    setTimeout(()=>{const t=document.getElementById('t-'+resumeTabH141);if(t&&!t.classList.contains('hide')&&document.getElementById('p-'+resumeTabH141))goTab(resumeTabH141);},450);
+  }
 }
 
 function doLogin(){
@@ -3227,6 +3239,7 @@ function requestLoginGps(){
 }
 
 function doLogout(){
+  _ssSetH141(LAST_TAB_KEY_H141,'');_ssSetH141(RESEARCH_Q_KEY_H141,''); // H141
   const logoutRole=S.role, logoutUser=S.user;
   clearAutoLogin();
   // 진행 중 세션 미완료 처리
@@ -3277,6 +3290,14 @@ function tryAutoLogin(){
 // 탭 전환
 // ================================================================
 function goTab(name){
+  if(S.role)_ssSetH141(LAST_TAB_KEY_H141,name); // H141
+  if(name==='research'){ // H141: 연구자료 검색어 복원/기억
+    const inp=document.getElementById('research-search');
+    if(inp){
+      if(!inp.value)inp.value=_ssGetH141(RESEARCH_Q_KEY_H141);
+      if(!inp.__qH141){inp.__qH141=true;inp.addEventListener('input',()=>_ssSetH141(RESEARCH_Q_KEY_H141,inp.value.trim()));}
+    }
+  }
   if(S.aptBuildingPinEdit!=null&&name!=='map')S.aptBuildingPinEdit=null; // 지도 탭을 벗어나면 좌표찍기 모드 자동 취소 (V2 H3/H4)
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
