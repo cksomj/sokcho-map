@@ -3027,13 +3027,20 @@ function selectRole(role){
 // (doLogin()이 그대로 .value를 읽으므로 doLogin/finishLogin/
 // requestLoginGps는 전혀 안 건드림), 입력값으로 S.volunteers/
 // S.leaders를 실시간으로 부분일치(포함) 검색해서 후보를 보여준다.
+// H135: 한 번 들어갔던 전도인은 이 폰의 로그인 화면 이름 칸에 이름이 자동으로
+// 들어가게 한다. 기기별 값이라 storageSet(=Firestore 동기화)을 쓰지 않고
+// localStorage에만 둔다(다른 사람 폰에 내 이름이 뜨면 안 되므로).
+const REMEMBERED_VOL_NAME_KEY_H135='sokcho_my_vol_name';
+function rememberedVolNameH135(){try{return localStorage.getItem(REMEMBERED_VOL_NAME_KEY_H135)||'';}catch(e){return '';}}
+function rememberVolNameH135(name){try{if(name)localStorage.setItem(REMEMBERED_VOL_NAME_KEY_H135,name);}catch(e){}}
 function fillSelForRole(role){
   loadVolunteers();loadContacts();
   loadLeaders();
   if(role==='volunteer'){
     const inp=document.getElementById('l-vol-name');
-    if(inp)inp.value='';
-    renderNameSearchResults('vol','');
+    const remembered=rememberedVolNameH135(); // H135: 이 폰에서 전에 들어갔던 전도인 이름
+    if(inp)inp.value=remembered;
+    renderNameSearchResults('vol',remembered);
   } else if(role==='leader'){
     const inp=document.getElementById('l-leader-name');
     if(inp)inp.value='';
@@ -3122,6 +3129,7 @@ function isAutoLoginValid(saved){
 
 function finishLogin(opts={}){
   if(S.role==='leader')setLeaderLock(S.user);
+  if(S.role==='volunteer')rememberVolNameH135(S.user); // H135
   if(!opts.auto)saveAutoLogin();
   document.getElementById('scr-login').classList.remove('active');
   document.getElementById('scr-app').classList.add('active');
