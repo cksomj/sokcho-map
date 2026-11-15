@@ -4638,6 +4638,8 @@ function renderHomeZoneList(kw){
     (homeMapFilter==='commercial'&&z.type==='commercial')||
     (homeMapFilter==='undone'&&isInProgress(z.id))||
     (homeMapFilter==='standby'&&getZoneState(z.id)==='standby'));
+  // H136: 주택 섹션 전용 필터(전체/미완료/완료) — 상가와 같은 기준
+  zones=zones.filter(z=>homeResFilter==='all'||(homeResFilter==='undone'&&isInProgress(z.id))||(homeResFilter==='done'&&isDone(z.id)));
   if(kw&&kw.trim()){
     const k=kw.trim().toLowerCase();
     // V2 H124: 원본 숫자 id/이름/거리명만 보고 H48의 그룹형 표시번호
@@ -4769,6 +4771,14 @@ function toggleHomeCommercialSection(){
   if(icon)icon.textContent=willShow?'▾':'▸';
   if(willShow)renderHomeCommercialList();
   updateHomeListTallH129(willShow?body.closest('.home-apt-section'):null);
+}
+// H136: 주택 섹션 전용 필터(상가 homeComFilter와 같은 방식)
+let homeResFilter='all';
+function setHomeResFilter(mode,el){
+  homeResFilter=mode;
+  document.querySelectorAll('#home-res-section .chip').forEach(c=>c.classList.remove('on'));
+  if(el)el.classList.add('on');
+  renderHomeZoneList(document.getElementById('home-zone-search')?.value||'');
 }
 function setHomeComFilter(mode,el){
   homeComFilter=mode;

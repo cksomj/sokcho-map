@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
-<link rel="stylesheet" href="styles.css?v=20261115-h135-remember-vol">
+<link rel="stylesheet" href="styles.css?v=20261115-h136-res-chips">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -429,6 +429,12 @@
                 <span id="home-res-toggle-icon">▸</span>
               </div>
               <div class="home-apt-body hide" id="home-res-body">
+                <!-- H136: 주택도 상가/아파트와 같은 전체/미완료/완료 칩 -->
+                <div style="display:flex;gap:5px;padding:0 14px 8px;flex-wrap:wrap;">
+                  <div class="chip on" onclick="setHomeResFilter('all',this)">전체</div>
+                  <div class="chip" onclick="setHomeResFilter('undone',this)">미완료</div>
+                  <div class="chip" onclick="setHomeResFilter('done',this)">완료</div>
+                </div>
                 <div style="overflow-y:auto;padding:0 14px 14px;" id="home-zone-list"></div>
               </div>
             </div>
@@ -914,6 +920,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261115-h135-remember-vol"></script>
+<script src="app.js?v=20261115-h136-res-chips"></script>
 </body>
 </html>
