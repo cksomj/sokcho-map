@@ -579,6 +579,7 @@ function markSelectedCards(id=activeZoneId()){
   });
 }
 function syncRoleUi(){
+  document.documentElement.classList.toggle('role-volunteer',S.role==='volunteer'); // V2 H129: 전도인 화면 ☰ 숨김
   const isAdmin=S.role==='admin';
   const isLeader=S.role==='leader';
   const canUseExternal=S.role==='admin'||S.role==='leader';
@@ -1707,7 +1708,7 @@ function showApartmentCardLine(cardId){
       cardLineLayers.push(...addRouteArrowMarkers(S.mainMap,pts,'#378ADD',720));
     }
     fitMapBounds(S.mainMap,L.latLngBounds(pts),{padding:[52,52],maxZoom:18});
-    toast(`"${card.name}" 카드의 ${pts.length}개 지점을 지도에 표시했습니다.`);
+    toast(`"${aptCardDisplayName(card.name)}" 카드의 ${pts.length}개 지점을 지도에 표시했습니다.`);
   },350);
 }
 let apartmentCardOpenId=null;
@@ -1729,7 +1730,7 @@ function renameApartmentCard(cardId){
 function deleteApartmentCard(cardId){
   const card=S.apartmentCards.find(c=>c.id===cardId);
   if(!card)return;
-  if(!confirm(`"${card.name}" 카드를 삭제하시겠습니까?`))return;
+  if(!confirm(`"${aptCardDisplayName(card.name)}" 카드를 삭제하시겠습니까?`))return;
   S.apartmentCards=S.apartmentCards.filter(c=>c.id!==cardId);
   addDeletedApartmentCardId(cardId); // V2 H14: 영구 제외 목록에 기록(어떤 저장 경로로도 재발 방지)
   persistApartmentCards();
@@ -1836,7 +1837,7 @@ function renderApartmentCardList(keepOpenId){
     return `<div class="apt-complex-row" id="apt-card-${card.id}">
       <div class="apt-complex-head" onclick="toggleApartmentCardOpen(${card.id})">
         <div style="min-width:0;">
-          <div style="font-size:13px;font-weight:700;">#${card.number} ${esc(card.name)}</div>
+          <div style="font-size:13px;font-weight:700;"><span class="zno">#${card.number}</span> ${esc(aptCardDisplayName(card.name))}</div>
           <div style="font-size:12px;color:var(--txm);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
             <span>${card.points.length}개 지점 · 총 ${totalUnits}호</span>
             <span class="zc-status ${card.status==='완료'?'done':card.status==='미완료'||card.status==='진행중'?'progress':'reset'}">${esc(card.status)}</span>
@@ -1849,7 +1850,7 @@ function renderApartmentCardList(keepOpenId){
       </div>
       ${open?`<div class="apt-complex-body">
         <div class="add-row">
-          <input type="text" id="apt-card-name-${card.id}" placeholder="카드 이름" value="${esc(card.name)}">
+          <input type="text" id="apt-card-name-${card.id}" placeholder="카드 이름" value="${esc(aptCardDisplayName(card.name))}">
           <button class="btn btn-sm btn-p" onclick="renameApartmentCard(${card.id})">이름 저장</button>
         </div>
         ${card.points.map((p,pIdx)=>`<div class="apt-building-row">
@@ -1960,6 +1961,7 @@ function toggleHomeApartmentSection(){
   body.classList.toggle('hide',!willShow);
   if(icon)icon.textContent=willShow?'▾':'▸';
   if(willShow)renderHomeApartmentCardList();
+  updateHomeListTallH129(willShow?body.closest('.home-apt-section'):null);
 }
 function setHomeAptFilter(mode,el){
   homeAptFilter=mode;
@@ -2033,7 +2035,7 @@ function renderHomeApartmentCardList(){
         :`<button onclick="event.stopPropagation();startApartmentCardAndGo(${card.id},false)" class="btn btn-sm btn-p home-zone-action">봉사 시작</button>`;
     return `<div id="home-apt-card-item-${card.id}" class="home-zone-row home-apt-card-row ${selected?'selected':''}" onclick="selectHomeApartmentCard(${card.id})">
       <div style="min-width:0;">
-        <div class="home-zone-title"><span>#${card.number} </span>${esc(card.name)}</div>
+        <div class="home-zone-title"><span>#${card.number} </span>${esc(aptCardDisplayName(card.name))}</div>
         <div class="home-zone-meta">${card.points.length}개 지점 · ${doneCnt}/${total}호</div>
       </div>
       <span class="zc-status ${done?'done':inProg?'progress':'reset'}">${esc(card.status)}</span>
@@ -2103,7 +2105,7 @@ function openAptSvcFullscreen(cardId){
   if(!card||!fs)return;
   fs.style.display='flex';
   const nameEl=document.getElementById('apt-svc-card-name');
-  if(nameEl)nameEl.textContent=card.name;
+  if(nameEl)nameEl.textContent=aptCardDisplayName(card.name);
   const assignee=document.getElementById('apt-svc-assignee');
   if(assignee)assignee.textContent=card.assignedPublisher?`담당: ${card.assignedPublisher}`:'';
   S.aptSession.currentPointIdx=initAptSvcCurrentPointIdx(card);
@@ -2324,7 +2326,7 @@ function aptSvcTempLeave(){
 function completeAptSvcSession(){
   const card=S.apartmentCards.find(c=>c.id===S.aptSession.cardId);
   if(!card)return;
-  showAppConfirm('봉사를 완료할까요?',`"${card.name}" 카드를 완료 처리합니다.`,'완료',()=>{
+  showAppConfirm('봉사를 완료할까요?',`"${aptCardDisplayName(card.name)}" 카드를 완료 처리합니다.`,'완료',()=>{
     card.status='완료';
     card.endTime=new Date().toISOString();
     recordS13Completion(s13TerritoryIdForAptCard(card.id),Date.now()); // V2 J1: S-13 완료 기록
@@ -2333,7 +2335,7 @@ function completeAptSvcSession(){
     S.aptSession.cardId=null;
     S.aptSession.startTime=null;
     closeAptSvcFullscreen();
-    toast(`✅ ${card.name} 봉사 완료! 기록이 저장되었습니다.`);
+    toast(`✅ ${aptCardDisplayName(card.name)} 봉사 완료! 기록이 저장되었습니다.`);
     goTab('home');
     renderHomeApartmentCardList();
   });
@@ -3443,7 +3445,7 @@ function openSheet(id){
     return;
   }
   if(window.innerWidth<768){
-    document.getElementById('sh-name').textContent=`${zoneDisplayLabel(z.id)} ${displayZoneNameCleaned(z.name)}`;
+    document.getElementById('sh-name').innerHTML=`<span class="zno">${zoneDisplayLabel(z.id)}</span> ${esc(displayZoneNameCleaned(z.name))}`;
     document.getElementById('sh-badges').innerHTML=bh;
     document.getElementById('sh-info').innerHTML=ih;
     const sh=document.getElementById('zsheet');
@@ -3452,7 +3454,7 @@ function openSheet(id){
   } else {
     document.getElementById('side-zone-list').style.display='none';
     document.getElementById('side-zone-detail').style.display='block';
-    document.getElementById('side-detail-name').textContent=`${zoneDisplayLabel(z.id)} ${displayZoneNameCleaned(z.name)}`;
+    document.getElementById('side-detail-name').innerHTML=`<span class="zno">${zoneDisplayLabel(z.id)}</span> ${esc(displayZoneNameCleaned(z.name))}`;
     document.getElementById('side-detail-badges').innerHTML=bh;
     document.getElementById('side-detail-info').innerHTML=ih;
   }
@@ -3508,7 +3510,7 @@ function renderSideList(keyword){
     const selected=String(activeZoneId())===String(z.id);
     return `<div id="side-zone-item-${z.id}" class="side-zone-item ${isRes?'res':'com'} ${selected?'selected':''}" onclick="openSheet(${z.id})">
       <div>
-        <div style="font-size:13px;font-weight:600;"><span style="color:var(--txm);font-size:11px;">${zoneDisplayLabel(z.id)} </span>${esc(displayZoneNameCleaned(z.name))}</div>
+        <div style="font-size:13px;font-weight:600;"><span class="zno" style="font-size:11px;">${zoneDisplayLabel(z.id)} </span>${esc(displayZoneNameCleaned(z.name))}</div>
         <div style="font-size:11px;color:var(--txm);">${z.streets.join(', ').slice(0,30)} · ${cnt}회</div>
       </div>
       <div style="width:9px;height:9px;border-radius:50%;background:${meta.color};flex-shrink:0;margin-left:8px;"></div>
@@ -3521,7 +3523,7 @@ function renderSideList(keyword){
     const click=done?`toast('완료된 카드입니다. 관리자가 초기화해야 다시 시작할 수 있습니다.')`:`startApartmentCardAndGo(${card.id},${inProg})`;
     return `<div id="side-apt-item-${card.id}" class="side-zone-item" style="border-left:3px solid #7F3FBF;" onclick="${click}">
       <div>
-        <div style="font-size:13px;font-weight:600;"><span style="color:#7F3FBF;font-size:11px;">아파트 #${card.number} </span>${esc(card.name)}</div>
+        <div style="font-size:13px;font-weight:600;"><span style="color:#7F3FBF;font-size:11px;font-weight:900;">아파트 #${card.number} </span>${esc(aptCardDisplayName(card.name))}</div>
         <div style="font-size:11px;color:var(--txm);">${card.points.length}개 지점 · ${apartmentCardCompletedUnits(card)}/${apartmentCardCheckableUnits(card)}호</div>
       </div>
       <div style="width:9px;height:9px;border-radius:50%;background:${meta.color};flex-shrink:0;margin-left:8px;"></div>
@@ -3579,7 +3581,7 @@ function searchZonesMobile(kw){
     const isRes=z.type==='residential';
     return `<div onclick="selectSearchResult(${z.id})" style="padding:11px 14px;border-bottom:1px solid var(--bd);cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
       <div>
-        <div style="font-size:13px;font-weight:600;"><span style="color:var(--txm);font-size:11px;">${zoneDisplayLabel(z.id)} </span>${esc(displayZoneNameCleaned(z.name))}</div>
+        <div style="font-size:13px;font-weight:600;"><span class="zno" style="font-size:11px;">${zoneDisplayLabel(z.id)} </span>${esc(displayZoneNameCleaned(z.name))}</div>
         <div style="font-size:11px;color:var(--txm);margin-top:2px;">${isRes?'주택구역':'상가구역'} · ${z.streets.join(', ').slice(0,25)}</div>
       </div>
       <div style="width:9px;height:9px;border-radius:50%;background:${done?'#3B6D11':'#d1d5db'};flex-shrink:0;margin-left:8px;"></div>
@@ -3875,7 +3877,7 @@ function renderRouteGrid(keyword){
     return `<div id="rte-zone-item-${z.id}" class="zc ${isRes?'res':'com'} ${selected?'selected':''}" onclick="${click}">
       <div class="zc-dot" style="background:${done?'#3B6D11':inProg?'#D85A30':'#d1d5db'};"></div>
       <div class="zc-badge"><span class="badge ${isRes?'badge-res':'badge-com'}">${isRes?'주택':'상가'}</span></div>
-      <div class="zc-name"><span style="color:var(--txm);font-size:10px;">${zoneDisplayLabel(z.id)} </span>${esc(displayZoneNameCleaned(z.name))}</div>
+      <div class="zc-name"><span class="zno" style="font-size:10px;">${zoneDisplayLabel(z.id)} </span>${esc(displayZoneNameCleaned(z.name))}</div>
       <div class="zc-meta">${z.streets.length}개 거리 · ${cnt}회${routeCnt?` · 경로 ${routeCnt}개`:''}</div>
       <div class="zc-status-row">
         <span class="zc-status ${statusClass}">${statusIcon} ${statusText}</span>
@@ -3910,7 +3912,7 @@ function renderRouteGrid(keyword){
     return `<div id="rte-apt-item-${card.id}" class="zc" style="border-left:3px solid #7F3FBF;" onclick="${click}">
       <div class="zc-dot" style="background:${done?'#3B6D11':inProg?'#D85A30':'#d1d5db'};"></div>
       <div class="zc-badge"><span class="badge" style="background:#F1E9FA;color:#7F3FBF;">아파트</span></div>
-      <div class="zc-name"><span style="color:var(--txm);font-size:10px;">#${card.number} </span>${esc(card.name)}</div>
+      <div class="zc-name"><span class="zno" style="font-size:10px;">#${card.number} </span>${esc(aptCardDisplayName(card.name))}</div>
       <div class="zc-meta">${card.points.length}개 지점 · ${doneCnt}/${total}호</div>
       <div class="zc-status-row">
         <span class="zc-status ${statusClass}">${statusIcon} ${esc(card.status)}</span>
@@ -4602,6 +4604,7 @@ function toggleHomeListPanel(){
   const willExpand=panel.classList.contains('home-list-collapsed');
   panel.classList.toggle('home-list-collapsed',!willExpand);
   if(icon)icon.textContent=willExpand?'▾':'▸';
+  updateHomeListTallH129();
 }
 // V2 H124: 목록 패널(#home-list-panel) 전체를 손잡이(#home-list-handle)로
 // 드래그해서 접고 펼 수 있게 함 — 기존 탭 토글(toggleHomeListPanel)은
@@ -4648,6 +4651,7 @@ function toggleHomeListPanel(){
       const shouldExpand=cur>maxH*0.35;
       panel.classList.toggle('home-list-collapsed',!shouldExpand);
       if(icon)icon.textContent=shouldExpand?'▾':'▸';
+      updateHomeListTallH129();
     }
     handle.style.touchAction='none';
     handle.addEventListener('pointerdown',onDown);
@@ -4669,6 +4673,7 @@ function toggleHomeResSection(){
   body.classList.toggle('hide',!willShow);
   if(icon)icon.textContent=willShow?'▾':'▸';
   if(willShow)renderHomeZoneList(document.getElementById('home-zone-search')?.value||'');
+  updateHomeListTallH129(willShow?body.closest('.home-apt-section'):null);
 }
 function toggleHomeCommercialSection(){
   const body=document.getElementById('home-com-body');
@@ -4678,6 +4683,7 @@ function toggleHomeCommercialSection(){
   body.classList.toggle('hide',!willShow);
   if(icon)icon.textContent=willShow?'▾':'▸';
   if(willShow)renderHomeCommercialList();
+  updateHomeListTallH129(willShow?body.closest('.home-apt-section'):null);
 }
 function setHomeComFilter(mode,el){
   homeComFilter=mode;
@@ -4734,6 +4740,41 @@ function setLeaderZoneView(on){
   setTimeout(()=>{if(on)fitHomeMapToVisible();},320);
 }
 
+// ================================================================
+// V2 H129: 홈 화면 정리
+// - 필터 칩: "전체"를 누를 때마다 나머지 칩(주택/상가/미완료/봉사대기)을 열고 닫는다.
+// - 지도 위 오른쪽 버튼: "🏠 홈"을 누를 때마다 아래 버튼들을 열고 닫는다(폰 화면만,
+//   CSS가 767px 이하에서만 접는다). 인도자는 예전처럼 홈 화면 복귀도 함께 한다.
+// - 주택/상가/아파트 섹션을 열면(폰 화면) 목록 패널이 맨 위 칩/홈 버튼 줄 바로
+//   아래까지 올라가 길게 펼쳐지고, 연 섹션이 패널 맨 위로 오도록 스크롤한다.
+// ================================================================
+function toggleHomeChipsH129(){
+  const w=document.getElementById('home-filter-chips');
+  if(w)w.classList.toggle('home-chips-collapsed');
+}
+function toggleHomeMapCtrlsH129(){
+  if(S.role==='leader')showHomeNormal();
+  const w=document.getElementById('home-map-ctrls');
+  if(w)w.classList.toggle('home-ctrls-collapsed');
+}
+function updateHomeListTallH129(openedSection){
+  const wrap=document.getElementById('home-body');
+  const panel=document.getElementById('home-list-panel');
+  const icon=document.getElementById('home-list-handle-icon');
+  if(!wrap||!panel)return;
+  const mobile=window.matchMedia('(max-width:767px)').matches;
+  // 섹션을 새로 열었으면 접혀 있던 목록 패널도 같이 펼친다.
+  if(openedSection&&mobile&&panel.classList.contains('home-list-collapsed')){
+    panel.classList.remove('home-list-collapsed');
+    if(icon)icon.textContent='▾';
+  }
+  const anyOpen=['home-res-body','home-com-body','home-apt-body'].some(id=>{const el=document.getElementById(id);return el&&!el.classList.contains('hide');});
+  const tall=mobile&&anyOpen&&!panel.classList.contains('home-list-collapsed');
+  wrap.classList.toggle('home-list-tall',tall);
+  if(tall&&openedSection)setTimeout(()=>{panel.scrollTop=openedSection.offsetTop;},30);
+  if(!tall)panel.scrollTop=0;
+}
+window.addEventListener('resize',()=>updateHomeListTallH129());
 function showHomeNormal(){
   S.leaderRouteListOpen=false;
   setLeaderZoneView(false);
@@ -5786,6 +5827,8 @@ function zoneGroupLabelMap(){
   });
   return labelById;
 }
+// V2 H129: 아파트 카드 이름 뒤 옛 번호 "(구#350)"는 화면에서만 뺀다(저장값은 그대로).
+function aptCardDisplayName(name){return String(name||'').replace(/\s*\(구\s*#?\s*\d+\)/g,'').replace(/\s{2,}/g,' ').trim();}
 function zoneDisplayLabel(zoneId){
   return zoneGroupLabelMap()[zoneId]||`#${zoneId}`;
 }
@@ -6589,7 +6632,7 @@ function s12Items(){
     });
   }
   if(s12Type==='all'||s12Type==='apartment'){
-    (S.apartmentCards||[]).forEach(c=>items.push({kind:'apartment',card:c,no:String(c.number!=null?c.number:c.id),loc:String(c.name||'')}));
+    (S.apartmentCards||[]).forEach(c=>items.push({kind:'apartment',card:c,no:String(c.number!=null?c.number:c.id),loc:aptCardDisplayName(c.name)}));
   }
   const kw=s12Kw;
   const out=kw?items.filter(it=>it.no.includes(kw)||it.loc.includes(kw)||(it.zone&&String(it.zone.name||'').includes(kw))):items;

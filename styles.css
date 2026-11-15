@@ -966,7 +966,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
 .home-zone-row{display:grid;grid-template-columns:minmax(0,1.35fr) auto auto;align-items:center;gap:7px;background:#fff;border:1px solid var(--bd);border-radius:8px;border-left:5px solid #378ADD;padding:7px 8px;margin-bottom:4px;cursor:pointer;box-shadow:var(--shadow-sm);}
 .home-zone-row.com{border-left-color:#EF9F27;}
 .home-zone-title{font-size:12px;font-weight:900;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.home-zone-title span{font-size:9px;color:var(--txm);}
+.home-zone-title span{font-size:11px;color:var(--tx);font-weight:900;} /* V2 H129: 구역 번호 진하게 */
 .home-zone-meta{font-size:10px;color:var(--txm);line-height:1.1;white-space:nowrap;}
 .home-zone-action{padding:5px 8px!important;font-size:11px!important;white-space:nowrap;}
 @media(max-width:430px){
@@ -983,7 +983,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR
    900px 폭 제한과 맞물려 이름이 완전히 안 보이는 상태였음. */
 .admin-zone-row{display:grid;grid-template-columns:minmax(44px,auto) minmax(0,1fr);align-items:start;gap:7px;background:#fff;border:1px solid var(--bd);border-radius:8px;padding:6px 7px;border-left:5px solid var(--pl);box-shadow:var(--shadow-sm);}
 .admin-zone-row.com{border-left-color:#EF9F27;}
-.admin-zone-no{font-size:11px;font-weight:900;color:var(--txm);white-space:nowrap;padding-top:2px;}
+.admin-zone-no{font-size:12px;font-weight:900;color:var(--tx);white-space:nowrap;padding-top:2px;}
 .admin-zone-name{font-size:12px;font-weight:900;display:flex;align-items:center;gap:5px;min-width:0;} /* V2 H46: 이름 텍스트만 잘리게 하고 "✏ 명칭수정" 버튼은 항상 보이게(이전엔 이 div 전체에 overflow:hidden이 걸려 좁은(PC) 화면에서 버튼까지 함께 잘려 안 보였음) */
 .admin-zone-name-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .admin-zone-meta{font-size:10px;color:var(--txm);white-space:nowrap;}
@@ -1469,4 +1469,20 @@ tr:last-child td{border-bottom:none;}
   html.s12-printing.s12-paper-auto .s12-list{font-size:0!important;text-align:center;}
   html.s12-printing.s12-paper-auto .s12-scaler{display:inline-block!important;vertical-align:top;margin:0 .5mm 1mm;}
   html.s12-printing.s12-paper-auto .s12-card{zoom:.98;outline:.3mm dashed #999;outline-offset:-.15mm;text-align:left;}
+}
+
+/* V2 H129: 구역 번호(#0000)를 이름보다 진하게 */
+.zno{font-weight:900!important;color:var(--tx)!important;}
+/* V2 H129: 지도 위 필터 칩 — "전체"로 나머지 칩을 열고 닫음 */
+#home-filter-chips.home-chips-collapsed .chip:not(.home-chip-toggle){display:none;}
+/* V2 H129: 전도인 화면에서는 ☰ 메뉴(홈·나가기 — 지도 위 버튼과 중복)를 숨김 */
+html.role-volunteer #menu-toggle-btn{display:none!important;}
+@media(max-width:767px){
+  /* V2 H129: 지도 위 오른쪽 버튼 — "🏠 홈"으로 아래 버튼들을 열고 닫음(폰 화면만) */
+  #home-map-ctrls.home-ctrls-collapsed > :not(.home-ctrl-toggle){display:none!important;}
+  /* V2 H129: 주택/상가/아파트 섹션을 열면 목록이 위로 올라가 길게 펼쳐짐 — 맨 위 칩/홈 버튼 줄(약 56px)은 그대로 보임 */
+  #home-body.home-list-tall #home-list-handle{position:absolute;left:0;right:0;top:56px;z-index:460;border-top:1px solid var(--bd);box-shadow:0 -4px 12px rgba(15,23,42,.12);}
+  #home-body.home-list-tall #home-list-panel{position:absolute;left:0;right:0;top:108px;bottom:0;max-height:none!important;z-index:460;display:block!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;}
+  #home-body.home-list-tall .home-apt-body{max-height:none;}
+  #home-body.home-list-tall #home-zone-list{overflow:visible!important;}
 }

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
-<link rel="stylesheet" href="styles.css?v=20261115-h128-s12-multi">
+<link rel="stylesheet" href="styles.css?v=20261115-h129-home-toggles">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -380,12 +380,12 @@
           </div>
         </div>
         <!-- 본문: 모바일=세로, PC=가로 분할 -->
-        <div style="flex:1;display:flex;overflow:hidden;flex-direction:column;">
+        <div style="flex:1;display:flex;overflow:hidden;flex-direction:column;position:relative;" id="home-body">
           <!-- 지도 영역 -->
           <div style="flex:1;position:relative;min-height:200px;">
             <div style="position:relative;width:100%;height:100%;"><div id="home-map-kakao-bg" class="kakao-bg"></div><div id="home-map" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;"></div></div>
-            <div style="position:absolute;top:8px;right:8px;z-index:500;display:flex;flex-direction:column;gap:7px;">
-              <button class="mbtn home-mobile-overlay-btn" onclick="showHomeNormal()">🏠 홈</button>
+            <div style="position:absolute;top:8px;right:8px;z-index:500;display:flex;flex-direction:column;gap:7px;" id="home-map-ctrls" class="home-ctrls-collapsed">
+              <button class="mbtn home-mobile-overlay-btn home-ctrl-toggle" onclick="toggleHomeMapCtrlsH129()">🏠 홈</button>
               <button class="mbtn home-mobile-overlay-btn" onclick="doLogout()">↩ 나가기</button>
               <button class="mbtn" onclick="zoomHomeMap(1)">＋ 지도 확대</button>
               <button class="mbtn" onclick="zoomHomeMap(-1)">－ 지도 축소</button>
@@ -393,8 +393,8 @@
               <button class="mbtn" onclick="toggleHomeWide()" id="home-wide-btn">⛶ 크게 보기</button>
             </div>
             <!-- 필터 칩 -->
-            <div style="position:absolute;top:8px;left:8px;z-index:400;display:flex;gap:5px;flex-wrap:wrap;">
-              <div class="chip on" onclick="filterHomeMap('all',this)">전체</div>
+            <div style="position:absolute;top:8px;left:8px;z-index:400;display:flex;gap:5px;flex-wrap:wrap;" id="home-filter-chips" class="home-chips-collapsed">
+              <div class="chip on home-chip-toggle" onclick="filterHomeMap('all',this);toggleHomeChipsH129()">전체</div>
               <div class="chip" onclick="filterHomeMap('residential',this)">주택</div>
               <div class="chip" onclick="filterHomeMap('commercial',this)">상가</div>
               <div class="chip" onclick="filterHomeMap('undone',this)">미완료</div>
@@ -914,6 +914,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261115-h128-s12-multi"></script>
+<script src="app.js?v=20261115-h129-home-toggles"></script>
 </body>
 </html>
