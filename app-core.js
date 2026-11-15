@@ -2024,7 +2024,8 @@ function renderHomeApartmentCardList(){
   if(countEl)countEl.textContent=S.apartmentCards.length;
   // V2 H67: 미완료(진행중/미완료 포함) 우선, 완료는 뒤로(구역/상가와 동일 규칙)
   let cards=[...S.apartmentCards].sort((a,b)=>(a.status==='완료'?1:0)-(b.status==='완료'?1:0)||(Number(a.number)||0)-(Number(b.number)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
-  cards=cards.filter(c=>homeAptFilter==='all'||(homeAptFilter==='undone'&&c.status!=='완료')||(homeAptFilter==='done'&&c.status==='완료'));
+  // H131: 미완료=진행중/미완료만(미시작 제외) — 지도/목록 탭과 같은 기준
+  cards=cards.filter(c=>homeAptFilter==='all'||(homeAptFilter==='undone'&&(c.status==='진행중'||c.status==='미완료'))||(homeAptFilter==='done'&&c.status==='완료'));
   if(!cards.length){
     wrap.innerHTML='<p style="font-size:13px;color:var(--txm);text-align:center;padding:14px 0;">아파트 카드가 없습니다.</p>';
     return;
@@ -4515,7 +4516,8 @@ function drawHomeZones(activeId){
 }
 
 function filterHomeMap(type,el){
-  document.querySelectorAll('#p-home .chip').forEach(c=>c.classList.remove('on'));
+  // H131: 지도 칩만 선택 표시를 바꾼다(예전엔 #p-home 전체 칩을 지워 상가/아파트 목록 칩 표시가 실제 필터와 어긋났음)
+  document.querySelectorAll('#home-filter-chips .chip').forEach(c=>c.classList.remove('on'));
   el.classList.add('on');
   homeMapFilter=type;
   drawHomeZones(null);
@@ -4704,7 +4706,8 @@ function renderHomeCommercialList(){
   if(countEl)countEl.textContent=all.length;
   // V2 H67: 미완료 우선, 완료는 뒤로(구역/아파트와 동일 규칙)
   let zones=[...all].sort((a,b)=>(isDone(a.id)?1:0)-(isDone(b.id)?1:0)||(Number(a.id)||0)-(Number(b.id)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
-  zones=zones.filter(z=>homeComFilter==='all'||(homeComFilter==='undone'&&!isDone(z.id))||(homeComFilter==='done'&&isDone(z.id)));
+  // H131: 미완료=진행 중 구역만(봉사대기 제외) — 지도/목록 탭과 같은 기준
+  zones=zones.filter(z=>homeComFilter==='all'||(homeComFilter==='undone'&&isInProgress(z.id))||(homeComFilter==='done'&&isDone(z.id)));
   const wrap=document.getElementById('home-com-list');
   if(!wrap)return;
   if(!zones.length){
