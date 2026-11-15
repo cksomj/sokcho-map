@@ -213,7 +213,19 @@ function manualSyncNowH119(){
 // S 캐시가 없거나(예: sokcho_live, sokcho_s13_v1, PIN류) 매번
 // storageGet()을 직접 호출해 읽는 값들은 캐시만 갱신되면 다음 조회
 // 시 자동으로 최신값이라 여기서 별도 처리가 필요 없다.
+// H126: 리스너가 이제 로그인 전(로그인 화면)부터 붙는다. 첫 로그인 전
+// (initApp 미실행 = S.mainMap 없음)에는 지도/목록 화면이 아직 없으므로
+// 로그인에 쓰는 명단(인도자/봉사자/연락처)만 다시 읽고, 나머지 key는
+// 캐시 갱신만 해둔다(initApp의 load 함수들이 로그인 시 캐시에서 새로 읽음).
+const LOGIN_SCREEN_KEYS_H126=['sokcho_leaders','sokcho_volunteers','sokcho_contacts'];
+function _refreshLoginNameSearchH126(){
+  if(typeof renderNameSearchResults!=='function')return;
+  const v=document.getElementById('l-vol-name'),l=document.getElementById('l-leader-name');
+  renderNameSearchResults('vol',v?v.value:'');
+  renderNameSearchResults('leader',l?l.value:'');
+}
 function _reloadAfterRemoteChangeH105(key){
+  if(!S.mainMap&&!LOGIN_SCREEN_KEYS_H126.includes(key))return;
   try{
     if(key==='sokcho_zones'){
       try{const z=JSON.parse(storageGet('sokcho_zones')||'[]');S.zones=Array.isArray(z)?z:[];}catch(e){}
@@ -253,10 +265,14 @@ function _reloadAfterRemoteChangeH105(key){
     }else if(key==='sokcho_volunteers'){
       S._volunteersLoaded=false;loadVolunteers();
       if(typeof renderVolList==='function')renderVolList();
-      if(typeof fillSel==='function')fillSel();
+      // H126: fillSel()은 로그인 화면 이름칸을 비워버려, 이제 로그인 화면에서
+      // 서버 값이 도착하면 입력 중이던 이름이 지워진다 — 입력값은 두고
+      // 검색 결과만 새 명단으로 다시 그린다.
+      _refreshLoginNameSearchH126();
     }else if(key==='sokcho_leaders'){
       S._leadersLoaded=false;loadLeaders();
       if(typeof renderLeaderList==='function')renderLeaderList();
+      _refreshLoginNameSearchH126(); // H126: 로그인 화면 인도자 검색에도 즉시 반영
     }else if(key==='sokcho_contacts'){
       S._contactsLoaded=false;loadContacts();
     }else if(key==='sokcho_routes'){
@@ -314,7 +330,15 @@ function initFirestoreSyncH105(){
           // 있다가 나중에 정말로 삭제된 경우만) 로컬도 따라서 비우고,
           // 애초에 서버에 아직 아무 값도 없던 최초 상태에서는 로컬을
           // 절대 건드리지 않는다(로컬이 곧 유일한 데이터이므로 그대로 둠).
-          if(!_firestoreSeenRealValueH105.has(key))return;
+          // H126 예외(인도자 잠금 하나만): 잠금은 "지금 누가 인도 중인가"라는
+          // 공유 상태라 서버에 문서가 없으면 = 잠금 없음이다. 이 기기에 남은
+          // 옛 잠금(다른 기기에서 이미 해제됨)이 계속 "다른 인도자가
+          // 인도중입니다."로 막던 문제 — 서버 응답(캐시 아님)이고, 이 기기의
+          // 현재 인도자 본인 잠금(방금 로그인해 서버 쓰기 대기 중일 수 있음)이
+          // 아닐 때만 로컬 잠금을 비운다. 서버에는 아무것도 쓰지 않는다.
+          const staleLockH126=key==='sokcho_active_leader'&&!(snap.metadata&&snap.metadata.fromCache)
+            &&!(S.role==='leader'&&(getLeaderLock()||{}).name===S.user);
+          if(!_firestoreSeenRealValueH105.has(key)&&!staleLockH126)return;
           if(_storageCacheH105[key]==null)return; // 이미 로컬도 없음 — 더 할 일 없음
           delete _storageCacheH105[key];
           localStorage.removeItem(key);
@@ -609,8 +633,13 @@ function isLeaderLockedFor(name){
 function loadLeaders(){
   if(S._leadersLoaded)return;
   try{
-    const saved=JSON.parse(storageGet('sokcho_leaders')||'[]');
-    if(Array.isArray(saved)&&saved.length)S.leaders=saved;
+    // H126: 저장값이 실제로 있으면(빈 배열 = 관리자가 전원 삭제한 상태 포함)
+    // 그대로 적용한다. 예전엔 빈 배열이면 무시해서, 서버에서 전원 삭제해도
+    // 다른 기기는 옛 목록/기본 샘플을 계속 썼다. 키 자체가 없을 때(raw==null,
+    // 아직 서버/로컬 값을 받은 적 없음)만 코드 기본값을 유지한다(H112/H122).
+    const raw=storageGet('sokcho_leaders');
+    const saved=raw==null?null:JSON.parse(raw);
+    if(Array.isArray(saved))S.leaders=saved;
   }catch(e){}
   S.leaders=S.leaders.map(({name,color})=>({name,color:color||'#D85A30'}));
   S._leadersLoaded=true;
@@ -6513,4 +6542,10 @@ function stopLocShare(){
 function toggleLocShare(){
   // 사용하지 않음 (자동실행)
 }
+// H126: 예전엔 리스너가 로그인 후 initApp()에서만 붙어서, 로그인 화면은
+// 서버를 전혀 읽지 않고 그 기기에 남은 옛 인도자 명단/인도자·관리자 PIN/
+// 인도자 잠금으로 판단했다(다른 기기에서 인도자 추가·PIN 변경이 로그인
+// 화면에 반영 안 됨). 페이지가 열리자마자 리스너를 붙인다(서버→로컬
+// 방향만, 쓰기 없음). initApp()의 재호출은 이미 붙어 있으면 즉시 반환.
+initFirestoreSyncH105();
 tryAutoLogin();
