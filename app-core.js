@@ -5877,6 +5877,17 @@ function renderMonChart(){
   const c=new Array(12).fill(0);S.records.forEach(r=>{c[parseInt(r.date.split('-')[1])-1]++;});
   document.getElementById('mon-chart').innerHTML='<div class="compact-counts">'+Array.from({length:12},(_,i)=>`<span class="count-chip">${i+1}월 <b>${c[i]}</b></span>`).join('')+'</div>';
 }
+// H142: 구역별 봉사현황 — 접힌 섹션, 누르면 펼치고(그때 최신 횟수로 다시 그림) 화면 전체로(H140)
+function toggleAdminZoneStatSection(){
+  const body=document.getElementById('adm-zonestat-body');
+  const icon=document.getElementById('adm-zonestat-toggle-icon');
+  if(!body)return;
+  const open=body.classList.contains('hide');
+  body.classList.toggle('hide',!open);
+  if(icon)icon.textContent=open?'▾':'▸';
+  if(open)renderZoneChart();
+  admSectionFullH140(body,open);
+}
 function renderZoneChart(){
   // V2: 다른 화면들(H48)과 동일하게 재정리된 번호(#대표-순번/#id)와
   // 접두번호 제거된 이름을 보여준다 — 예전엔 원본 이름만(번호 없이)

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
-<link rel="stylesheet" href="styles.css?v=20261115-h141-resume-tab">
+<link rel="stylesheet" href="styles.css?v=20261115-h142-zone-stat">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -547,9 +547,17 @@
             <div class="adm-title">월별 현황</div>
             <div class="chart-box" id="mon-chart"></div>
           </div>
+          <!-- H142: 구역별 현황 → 구역별 봉사현황(접힘, 누르면 펼쳐서 횟수 보기) -->
           <div class="adm-sec">
-            <div class="adm-title">구역별 현황</div>
-            <div class="chart-box" id="zone-chart"></div>
+            <div class="home-apt-section" id="adm-zonestat-section">
+              <div class="home-apt-header" onclick="toggleAdminZoneStatSection()">
+                <span>📊 구역별 봉사현황 <span style="font-size:12px;font-weight:600;color:var(--txm);">(펼쳐서 횟수보기)</span></span>
+                <span id="adm-zonestat-toggle-icon">▸</span>
+              </div>
+              <div class="home-apt-body hide" id="adm-zonestat-body">
+                <div class="chart-box" id="zone-chart"></div>
+              </div>
+            </div>
           </div>
           <div class="adm-sec">
             <div class="adm-title">구역관리</div>
@@ -922,6 +930,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261115-h141-resume-tab"></script>
+<script src="app.js?v=20261115-h142-zone-stat"></script>
 </body>
 </html>
