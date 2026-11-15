@@ -6035,6 +6035,16 @@ function renderAdmGrid(){
 }
 // V2 H102: 상가(toggleAdminComSection)와 동일한 접기/펼치기 패턴을 주택에도 적용.
 let adminResSectionOpen=false;
+// H140: 관리자 구역관리의 주택/상가/아파트 카드 목록 — 열면 높이 제한(260px 상자)
+// 없이 전체 목록을 길게 펼치고, 그 섹션 머리말이 화면 맨 위로 오게 스크롤한다.
+// 머리말은 목록을 내려도 맨 위에 붙어 있어(sticky) 바로 닫을 수 있다.
+function admSectionFullH140(body,opened){
+  const section=body&&body.closest('.home-apt-section');
+  if(!section)return;
+  body.classList.toggle('adm-body-full',!!opened);
+  section.classList.toggle('adm-full-open',!!opened);
+  if(opened)setTimeout(()=>{try{section.scrollIntoView({block:'start'});}catch(e){}},60); // 즉시 이동(목록이 길어 부드러운 스크롤은 중간에 멈출 수 있음)
+}
 function toggleAdminResSection(){
   const body=document.getElementById('adm-res-body');
   const icon=document.getElementById('adm-res-toggle-icon');
@@ -6043,6 +6053,7 @@ function toggleAdminResSection(){
   body.classList.toggle('hide',!adminResSectionOpen);
   if(icon)icon.textContent=adminResSectionOpen?'▾':'▸';
   if(adminResSectionOpen)renderAdmResidentialGrid();
+  admSectionFullH140(body,adminResSectionOpen); // H140
 }
 // V2 H35: 관리자 구역관리 화면의 상가 섹션(H21 홈 화면 패턴과 동일한
 // 헤더+개수, 접이식 UI 재사용 — CSS는 home-apt-section 계열 그대로,
@@ -6057,6 +6068,7 @@ function toggleAdminComSection(){
   body.classList.toggle('hide',!adminComSectionOpen);
   if(icon)icon.textContent=adminComSectionOpen?'▾':'▸';
   if(adminComSectionOpen)renderAdmCommercialGrid();
+  admSectionFullH140(body,adminComSectionOpen); // H140
 }
 // V2: 아파트 카드 목록만 상가 바로 아래로 옮겨 접기/펼치기(단지등록/
 // 카드생성 도구는 딘 요청대로 별도의 항상 펼쳐진 블록으로 분리했고,
@@ -6071,6 +6083,7 @@ function toggleAdminAptCardsSection(){
   body.classList.toggle('hide',!adminAptCardsSectionOpen);
   if(icon)icon.textContent=adminAptCardsSectionOpen?'▾':'▸';
   if(adminAptCardsSectionOpen)renderApartmentCardList();
+  admSectionFullH140(body,adminAptCardsSectionOpen); // H140
 }
 // V2: 인도자/봉사자 명단도 상가/아파트와 동일한 접기/펼치기 패턴.
 let adminLeaderSectionOpen=false;
