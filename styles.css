@@ -1464,8 +1464,9 @@ tr:last-child td{border-bottom:none;}
   html.s12-printing .s12-scaler>.s12-card{position:static!important;transform:none!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   html.s12-printing.s12-paper-card .s12-scaler{break-after:page;page-break-after:always;}
   html.s12-printing.s12-paper-card .s12-scaler:last-child{break-after:auto;page-break-after:auto;}
-  html.s12-printing.s12-paper-a4 .s12-scaler{margin:0 auto 2.5mm;width:146mm!important;}
-  html.s12-printing.s12-paper-a4 .s12-card{outline:.3mm dashed #999;}
-  html.s12-printing.s12-paper-a4 .s12-scaler:nth-child(3n){break-after:page;page-break-after:always;}
-  html.s12-printing.s12-paper-a4 .s12-scaler:last-child{break-after:auto;page-break-after:auto;}
+  /* V2 H128: 용지에 맞게 여러 장 — 카드를 줄 단위로 채워, 인쇄 창에서 고른 용지/방향에
+     들어가는 만큼 자동 배치(A4 세로 3장, A4 가로 4장, A3 8장 등). 카드는 98%(약 143×92mm). */
+  html.s12-printing.s12-paper-auto .s12-list{font-size:0!important;text-align:center;}
+  html.s12-printing.s12-paper-auto .s12-scaler{display:inline-block!important;vertical-align:top;margin:0 .5mm 1mm;}
+  html.s12-printing.s12-paper-auto .s12-card{zoom:.98;outline:.3mm dashed #999;outline-offset:-.15mm;text-align:left;}
 }

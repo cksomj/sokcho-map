@@ -6702,23 +6702,23 @@ async function printS12Cards(){
   await Promise.all(imgs.map(img=>img.complete&&img.naturalWidth?null:new Promise(res=>{
     img.addEventListener('load',res,{once:true});img.addEventListener('error',res,{once:true});setTimeout(res,20000);
   })));
-  const paper=document.getElementById('s12-paper')?.value==='a4'?'a4':'card';
+  const paper=document.getElementById('s12-paper')?.value==='card'?'card':'auto'; // V2 H128: 기본=용지에 맞게 여러 장
   document.getElementById('s12-page-style')?.remove();
   const st=document.createElement('style');
   st.id='s12-page-style';
-  st.textContent=paper==='a4'?'@page{size:A4 portrait;margin:3mm 0;}':'@page{size:146mm 94mm;margin:0;}';
+  st.textContent=paper==='auto'?'@page{margin:3mm;}':'@page{size:146mm 94mm;margin:0;}'; // auto: 용지 크기/방향은 인쇄 창에서 선택
   document.head.appendChild(st);
   const root=document.documentElement;
-  root.classList.remove('s12-paper-card','s12-paper-a4');
+  root.classList.remove('s12-paper-card','s12-paper-auto');
   root.classList.add('s12-printing','s12-paper-'+paper);
   const cleanup=()=>{
-    root.classList.remove('s12-printing','s12-paper-card','s12-paper-a4');
+    root.classList.remove('s12-printing','s12-paper-card','s12-paper-auto');
     st.remove();
     window.removeEventListener('afterprint',cleanup);
     _s12Status('');
   };
   window.addEventListener('afterprint',cleanup);
-  _s12Status('인쇄 창에서 "PDF로 저장"을 고르세요.');
+  _s12Status(paper==='auto'?'인쇄 창에서 용지와 방향을 고르세요(A4 세로 3장, 가로 4장). PDF는 "PDF로 저장".':'인쇄 창에서 "PDF로 저장"을 고르세요.');
   setTimeout(()=>window.print(),50);
 }
 

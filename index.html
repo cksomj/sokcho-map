@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
-<link rel="stylesheet" href="styles.css?v=20261115-h127-s12-cards">
+<link rel="stylesheet" href="styles.css?v=20261115-h128-s12-multi">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -891,8 +891,8 @@
     <div class="s12-bar-row">
       <input type="text" id="s12-search" class="s12-search" placeholder="🔍 구역 번호 또는 이름" oninput="onS12Search(this.value)">
       <select id="s12-paper" class="s12-paper" title="용지">
-        <option value="card">카드 크기(146×94mm)</option>
-        <option value="a4">A4에 3장씩</option>
+        <option value="auto">용지에 맞게 여러 장</option>
+        <option value="card">카드 크기 1장씩(146×94mm)</option>
       </select>
       <button class="btn btn-sm btn-p" id="s12-print-btn" onclick="printS12Cards()">📄 PDF 저장 / 인쇄</button>
     </div>
@@ -914,6 +914,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261115-h127-s12-cards"></script>
+<script src="app.js?v=20261115-h128-s12-multi"></script>
 </body>
 </html>
