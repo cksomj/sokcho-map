@@ -2825,7 +2825,9 @@ function loadCoreData(){
     const zones=JSON.parse(storageGet('sokcho_zones')||'[]');
     S.zones=Array.isArray(zones)?zones:[];
   }catch(e){S.zones=[];}
-  if(Array.isArray(window.SOKCHO_ZONES_SEED)&&window.SOKCHO_ZONES_SEED.length){
+  // H180: 주택 구역 번호를 지역별로 새로 매긴 뒤(옛 번호·옛 이름 → 새 번호·새 이름) 내장 초기자료가 옛 번호로 다시 살아나지 않게,
+  // 초기자료는 이 기기에 구역 자료가 하나도 없을 때(처음 설치)만 넣는다.
+  if(S.zones.length===0&&Array.isArray(window.SOKCHO_ZONES_SEED)&&window.SOKCHO_ZONES_SEED.length){
     const zoneKey=z=>{
       const src=z&&z.source;
       if(src&&src.system==='icevening'&&src.originalId)return 'ice:'+String(src.originalId);
