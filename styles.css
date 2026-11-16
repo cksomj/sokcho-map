@@ -2097,3 +2097,5 @@ button[onclick^="clearAdminFocusH148"]{background:var(--g-blue)!important;border
 .pin-ask-btns-h175 button{flex:1;height:50px!important;font-size:17px!important;display:flex;align-items:center;justify-content:center;gap:4px;border-radius:14px!important;}
 /* H175: 봉사 화면에서는 알림을 위쪽에 띄워 아래 버튼(핀·미완료·완료)을 가리지 않게 */
 body:has(#svc-fullscreen[style*="flex"]) #toast,body:has(#apt-svc-fullscreen[style*="flex"]) #toast{top:calc(14px + env(safe-area-inset-top))!important;bottom:auto!important;z-index:9400!important;}
+/* H176: 핀 확인 상자 문구 — 해야 할 일(핀 찍기 → 미완료) 먼저, 예외 안내는 한 줄 띄워 작게 */
+.pin-ask-sub-h175{display:block;margin-top:8px;font-size:14px;color:#4E5968;}
