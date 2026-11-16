@@ -1509,6 +1509,14 @@ function toggleDateSortH145(key,el){
   else if(key==='rte')renderRouteGrid(kw('rte-search'));
   else if(key==='admapt'||key==='admint')renderApartmentCardList();
 }
+// H161: "날짜순" 한 버튼(눌러서 돌리기)을 처음부터 "지난봉사"(오래전 봉사 먼저)·"최근봉사"(최근 봉사 먼저) 두 버튼으로.
+// 누른 버튼이 켜지고, 같은 버튼을 다시 누르면 꺼져서 기본 순서(미완료 → 대기 → 완료, 번호순)로 돌아간다.
+function setDateSortH161(key,t,el){
+  const target=(dateSortH145[key]||0)===t?0:t;
+  dateSortH145[key]=(target+2)%3; // toggleDateSortH145가 +1 하므로 하나 앞에 맞춰 둔다
+  toggleDateSortH145(key,null);
+  document.querySelectorAll(`[data-ds="${key}"]`).forEach(b=>b.classList.toggle('ds-on',+b.dataset.dsm===target));
+}
 // H145: 관리자 아파트/인터폰 카드 목록 필터(전체/미완료/완료 — 다른 패널과 같은 기준)
 const admCardFilterH145={apt:'all',int:'all'};
 function setAdmCardFilterH145(k,mode,el){
@@ -7065,7 +7073,7 @@ function openJwOrgSearch(){
 // 자동으로 보인다 — 인도자 화면에는 같은 마크업이 있어도 항상 숨김.
 function researchLinkRowHtml(l,idPrefix){
   return `<div class="leader-card" id="${idPrefix}-${l.id}">
-    <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" style="flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--tx);text-decoration:none;">🔗 ${esc(l.title)}</a>
+    <a href="${esc(l.url)}" target="_self" rel="noreferrer" onclick="_ssSetH141(LAST_TAB_KEY_H141,S.role?'research':'')" style=""flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--tx);text-decoration:none;">🔗 ${esc(l.title)}</a>
     <div class="admin-pin-action hide" style="display:flex;gap:6px;flex-shrink:0;">
       <button class="btn btn-sm btn-out" onclick="editResearchLink(${l.id})">수정</button>
       <button class="btn btn-sm btn-dk" onclick="deleteResearchLink(${l.id})">삭제</button>
@@ -7937,4 +7945,29 @@ tryAutoLogin();
     el.addEventListener('touchcancel',end);
   }
   L.Map.addInitHook(function(){try{attach(this);}catch(e){}});
+})();
+
+// H161: 구역 목록(☰ 목록)에서 아래로 내려가면 "⬆ 처음으로" 버튼 — 바로가기로 이동한 뒤 맨 위로 쉽게
+(function routeToTopH161(){
+  function scroller(){
+    let el=document.getElementById('rte-grid');
+    while(el&&el!==document.body){const cs=getComputedStyle(el);if(/(auto|scroll)/.test(cs.overflowY)&&el.scrollHeight>el.clientHeight+4)return el;el=el.parentElement;}
+    return null;
+  }
+  function update(){
+    const btn=document.getElementById('rte-totop-h161');if(!btn)return;
+    const onRoute=document.getElementById('p-route')?.classList.contains('on')&&document.getElementById('zl-view')?.style.display!=='none';
+    const sc=onRoute&&scroller();
+    btn.classList.toggle('show',!!(sc&&sc.scrollTop>400));
+  }
+  window.routeToTopH161=function(){const sc=scroller();if(sc)sc.scrollTop=0;update();};
+  function setup(){
+    if(document.getElementById('rte-totop-h161'))return;
+    const b=document.createElement('button');b.type='button';b.id='rte-totop-h161';b.className='rte-totop-h161';b.textContent='⬆ 처음으로';
+    b.addEventListener('click',()=>window.routeToTopH161());
+    document.body.appendChild(b);
+    document.addEventListener('scroll',update,true);
+    setInterval(update,800); // 화면 전환 뒤에도 표시 상태를 맞춤
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
 })();

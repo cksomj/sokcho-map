@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"><!-- H150: 가독성 좋은 한글 글꼴 -->
-<link rel="stylesheet" href="styles.css?v=20261116-h160-no-sim">
+<link rel="stylesheet" href="styles.css?v=20261116-h161-research-totop">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -279,7 +279,7 @@
                 <button class="btn btn-sm btn-out" id="rte-filter-done" onclick="setRouteListFilter('done',this)">완료</button>
                 <button class="btn btn-sm btn-out" id="rte-filter-undone" onclick="setRouteListFilter('undone',this)">미완료</button>
                 <button class="btn btn-sm btn-out" id="rte-filter-standby" onclick="setRouteListFilter('standby',this)">봉사대기</button>
-                <button class="btn btn-sm btn-out date-sort-chip" onclick="toggleDateSortH145('rte',this)">📅 날짜순</button>
+                <button class="btn btn-sm btn-out date-sort-chip" data-ds="rte" data-dsm="1" onclick="setDateSortH161('rte',1,this)">지난봉사</button><button class="btn btn-sm btn-out date-sort-chip" data-ds="rte" data-dsm="2" onclick="setDateSortH161('rte',2,this)">최근봉사</button>
               </div>
             </div>
             <div class="zone-grid" id="rte-grid"></div>
@@ -447,7 +447,7 @@
                   <div class="chip on" onclick="setHomeResFilter('all',this)">전체</div>
                   <div class="chip" onclick="setHomeResFilter('undone',this)">미완료</div>
                   <div class="chip" onclick="setHomeResFilter('done',this)">완료</div>
-                  <div class="chip date-sort-chip" onclick="toggleDateSortH145('res',this)">📅 날짜순</div>
+                  <div class="chip date-sort-chip" data-ds="res" data-dsm="1" onclick="setDateSortH161('res',1,this)">지난봉사</div><div class="chip date-sort-chip" data-ds="res" data-dsm="2" onclick="setDateSortH161('res',2,this)">최근봉사</div>
                 </div>
                 <div style="overflow-y:auto;padding:0 14px 14px;" id="home-zone-list"></div>
               </div>
@@ -462,7 +462,7 @@
                   <div class="chip on" onclick="setHomeComFilter('all',this)">전체</div>
                   <div class="chip" onclick="setHomeComFilter('undone',this)">미완료</div>
                   <div class="chip" onclick="setHomeComFilter('done',this)">완료</div>
-                  <div class="chip date-sort-chip" onclick="toggleDateSortH145('com',this)">📅 날짜순</div>
+                  <div class="chip date-sort-chip" data-ds="com" data-dsm="1" onclick="setDateSortH161('com',1,this)">지난봉사</div><div class="chip date-sort-chip" data-ds="com" data-dsm="2" onclick="setDateSortH161('com',2,this)">최근봉사</div>
                 </div>
                 <div style="padding:0 14px 14px;" id="home-com-list"></div>
               </div>
@@ -477,7 +477,7 @@
                   <div class="chip on" onclick="setHomeAptFilter('all',this)">전체</div>
                   <div class="chip" onclick="setHomeAptFilter('undone',this)">미완료</div>
                   <div class="chip" onclick="setHomeAptFilter('done',this)">완료</div>
-                  <div class="chip date-sort-chip" onclick="toggleDateSortH145('apt',this)">📅 날짜순</div>
+                  <div class="chip date-sort-chip" data-ds="apt" data-dsm="1" onclick="setDateSortH161('apt',1,this)">지난봉사</div><div class="chip date-sort-chip" data-ds="apt" data-dsm="2" onclick="setDateSortH161('apt',2,this)">최근봉사</div>
                 </div>
                 <div style="padding:0 14px 14px;" id="home-apt-card-list"></div>
               </div>
@@ -493,7 +493,7 @@
                   <div class="chip on" onclick="setHomeIntFilter('all',this)">전체</div>
                   <div class="chip" onclick="setHomeIntFilter('undone',this)">미완료</div>
                   <div class="chip" onclick="setHomeIntFilter('done',this)">완료</div>
-                  <div class="chip date-sort-chip" onclick="toggleDateSortH145('int',this)">📅 날짜순</div>
+                  <div class="chip date-sort-chip" data-ds="int" data-dsm="1" onclick="setDateSortH161('int',1,this)">지난봉사</div><div class="chip date-sort-chip" data-ds="int" data-dsm="2" onclick="setDateSortH161('int',2,this)">최근봉사</div>
                 </div>
                 <div style="padding:0 14px 14px;" id="home-int-card-list"></div>
               </div>
@@ -604,7 +604,7 @@
                 <button class="btn btn-sm btn-out" id="adm-filter-done" onclick="setAdminZoneFilter('done',this)">완료</button>
                 <button class="btn btn-sm btn-out" id="adm-filter-undone" onclick="setAdminZoneFilter('undone',this)">미완료</button>
                 <button class="btn btn-sm btn-out" id="adm-filter-standby" onclick="setAdminZoneFilter('standby',this)">대기</button>
-                <button class="btn btn-sm btn-out date-sort-chip" onclick="toggleDateSortH145('adm',this)">📅 날짜순</button>
+                <button class="btn btn-sm btn-out date-sort-chip" data-ds="adm" data-dsm="1" onclick="setDateSortH161('adm',1,this)">지난봉사</button><button class="btn btn-sm btn-out date-sort-chip" data-ds="adm" data-dsm="2" onclick="setDateSortH161('adm',2,this)">최근봉사</button>
                 <button class="btn btn-sm btn-dk" onclick="resetDoneZones()">전체 초기화</button>
                 <button class="btn btn-sm btn-out" onclick="goTab('map');setTimeout(()=>startDraw(),200)">그리기</button>
               </div>
@@ -645,7 +645,7 @@
                   <div class="chip on" onclick="setAdmCardFilterH145('apt','all',this)">전체</div>
                   <div class="chip" onclick="setAdmCardFilterH145('apt','undone',this)">미완료</div>
                   <div class="chip" onclick="setAdmCardFilterH145('apt','done',this)">완료</div>
-                  <div class="chip date-sort-chip" onclick="toggleDateSortH145('admapt',this)">📅 날짜순</div>
+                  <div class="chip date-sort-chip" data-ds="admapt" data-dsm="1" onclick="setDateSortH161('admapt',1,this)">지난봉사</div><div class="chip date-sort-chip" data-ds="admapt" data-dsm="2" onclick="setDateSortH161('admapt',2,this)">최근봉사</div>
                 </div>
                 <div id="apt-card-list"></div>
               </div>
@@ -663,7 +663,7 @@
                   <div class="chip on" onclick="setAdmCardFilterH145('int','all',this)">전체</div>
                   <div class="chip" onclick="setAdmCardFilterH145('int','undone',this)">미완료</div>
                   <div class="chip" onclick="setAdmCardFilterH145('int','done',this)">완료</div>
-                  <div class="chip date-sort-chip" onclick="toggleDateSortH145('admint',this)">📅 날짜순</div>
+                  <div class="chip date-sort-chip" data-ds="admint" data-dsm="1" onclick="setDateSortH161('admint',1,this)">지난봉사</div><div class="chip date-sort-chip" data-ds="admint" data-dsm="2" onclick="setDateSortH161('admint',2,this)">최근봉사</div>
                 </div>
                 <div id="int-card-list"></div>
               </div>
@@ -1022,6 +1022,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261116-h160-no-sim"></script>
+<script src="app.js?v=20261116-h161-research-totop"></script>
 </body>
 </html>

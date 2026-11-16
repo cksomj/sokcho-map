@@ -1811,3 +1811,9 @@ input,textarea,select,[contenteditable="true"]{-webkit-user-select:text;user-sel
 @media (hover:none) and (pointer:coarse){
   button[onclick^="zoomMap("],button[onclick^="zoomRouteMap("],button[onclick^="zoomHomeMap("],button[onclick^="zoomMonitorMap("],button[onclick^="zoomSvcMap("],.leaflet-control-zoom{display:none!important;}
 }
+
+/* H161: 구역 목록 "⬆ 처음으로" 버튼(아래로 내려갔을 때만 보임) */
+.rte-totop-h161{display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom) + var(--nav-gap,0px));z-index:6500;border:none;border-radius:999px;background:var(--p);color:#fff;font-size:15px;font-weight:800;padding:12px 20px;box-shadow:0 6px 18px rgba(49,130,246,.35);cursor:pointer;}
+.rte-totop-h161.show{display:block;}
+/* H161: "봉사대기" 필터 버튼은 눌렀을 때 검정이 아니라 청색 */
+#rte-filter-standby.on{background:#1B64DA!important;border-color:#1B64DA!important;color:#fff!important;}
