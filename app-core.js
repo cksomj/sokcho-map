@@ -650,7 +650,9 @@ function updateStartPinEditButton(){
   }
 }
 function getVolColor(name){const i=S.volunteers.indexOf(name);return S.volColors[i%S.volColors.length]||'#378ADD';}
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2600);}
+// H167: 위치공유·GPS 관련 알림은 청색 바탕·작은 글씨로 빠르게(1.3초) 지나가게
+const LOC_TOAST_RE_H167=/(위치\s?공유|GPS|위치 권한|현재 위치|내 위치|위치를 (준비|확인|사용|가져)|온라인 위치)/;
+function toast(msg){const t=document.getElementById('toast');const loc=LOC_TOAST_RE_H167.test(String(msg));t.textContent=msg;t.classList.toggle('toast-loc',loc);t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),loc?1300:2600);}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function jsq(s){return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r?\n/g,' ');}
 function activeZoneId(){
@@ -1483,6 +1485,7 @@ function kickMainMapH154(){
   const map=S.mainMap;if(!map)return;
   const run=()=>{
     try{
+      if(map!==S.mainMap||!map._mapPane)return; // H166: 지운 지도는 건너뜀
       map.invalidateSize();
       const k=_kakaoInstances['main-map'];
       if(k){const c=map.getCenter();k.relayout();k.setCenter(new kakao.maps.LatLng(c.lat,c.lng));k.setLevel(Math.max(1,Math.min(14,20-map.getZoom())));}
@@ -3308,6 +3311,7 @@ function addBaseTiles(map){
         kakaoSyncPending=true;
         requestAnimationFrame(()=>{
           kakaoSyncPending=false;
+        if(!map._mapPane||!map._loaded)return; // H166: 다시 로그인하며 지운 지도에 늦게 도착한 맞춤 요청은 무시
         const c2 = map.getCenter();
         const z2 = map.getZoom();
         kakaoInst.relayout();

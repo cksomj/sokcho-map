@@ -1956,3 +1956,64 @@ input,textarea,select,[contenteditable="true"]{-webkit-user-select:text;user-sel
 .ui-ico-wrap{margin-right:.18em;}
 /* H166: 비활성 표가 잘리지 않게(긴 목록 그리기 미룸 설정이 테두리 밖을 잘라냄) */
 .dis-h163,.part-dis-h163{content-visibility:visible!important;contain:none!important;overflow:visible!important;margin-top:14px!important;}
+/* =====================================================================
+   H167: 버튼 디자인 — 진한 테두리 + 아주 옅은 그라데이션 + 살짝 돌출(과하지 않게)
+   전도인·인도자·관리자 모든 화면 공통. 누르면 살짝 눌려 들어감.
+   ===================================================================== */
+:root{
+  --b-raise:inset 0 1px 0 rgba(255,255,255,.85),0 1px 2px rgba(0,23,51,.10),0 3px 8px rgba(0,23,51,.06);
+  --b-raise-dark:inset 0 1px 0 rgba(255,255,255,.28),0 1px 2px rgba(0,23,51,.16),0 4px 10px rgba(0,23,51,.10);
+}
+/* 기본(보조) 버튼 */
+.btn-out,.mbtn,.svc-secondary-btn,.svc-locate-btn,.home-zone-action:not([style*="background"]),.apt-svc-point-nav-btn,.adm-fab-item,.dis-tab-h163:not(.on),.rd-btn{
+  background:linear-gradient(180deg,#FFFFFF 0%,#F3F5F8 100%)!important;
+  border:1.5px solid #C5CCD6!important;color:#191F28!important;box-shadow:var(--b-raise)!important;}
+.mbtn .ui-ico,.svc-locate-btn .ui-ico,.rd-btn .ui-ico,.adm-fab-item .i .ui-ico{color:#2F7BF0;}
+/* 주 버튼(파랑) */
+.btn-p,.apt-order-close,.home-focus-clear,#home-list-handle-icon,[id$="-toggle-icon"]:not(.is-open),.rte-totop-h161,.zone-card-btn-h158,.svc-note-btn-h162.blue{
+  background:linear-gradient(180deg,#4C97FF 0%,#2B78EE 100%)!important;border:1.5px solid #1A5FCF!important;color:#fff!important;box-shadow:var(--b-raise-dark)!important;}
+/* 접기(빨강) */
+[id$="-toggle-icon"].is-open{background:linear-gradient(180deg,#F25563 0%,#DE2F3D 100%)!important;border:1.5px solid #B81F2C!important;color:#fff!important;box-shadow:var(--b-raise-dark)!important;}
+/* 위험(삭제·비활성) */
+.btn-dk{background:linear-gradient(180deg,#FFF6F6 0%,#FFE4E6 100%)!important;border:1.5px solid #EE8F97!important;color:#D12A36!important;box-shadow:var(--b-raise)!important;}
+/* 완료(초록) */
+.btn-ok{background:linear-gradient(180deg,#F3FCF7 0%,#DDF4E7 100%)!important;border:1.5px solid #6DC897!important;color:#0B8A4D!important;box-shadow:var(--b-raise)!important;}
+/* 봉사 화면 큰 버튼 */
+.svc-main-btn.done{background:linear-gradient(180deg,#22B573 0%,#0E9658 100%)!important;border:1.5px solid #0A7A47!important;color:#fff!important;box-shadow:var(--b-raise-dark)!important;}
+.svc-main-btn.pause{background:linear-gradient(180deg,#FFA23A 0%,#F58300 100%)!important;border:1.5px solid #D06E00!important;color:#fff!important;box-shadow:var(--b-raise-dark)!important;}
+.svc-note-btn-h162{background:linear-gradient(180deg,#FFF8EC 0%,#FFEBCC 100%)!important;border:1.5px solid #F2B866!important;color:#A86000!important;box-shadow:var(--b-raise)!important;}
+/* 이어하기·봉사 시작(목록 카드 안의 색 버튼) — 색은 그대로, 테두리 진하게 + 돌출 */
+.home-zone-action[style*="background"]{box-shadow:var(--b-raise)!important;border-width:1.5px!important;filter:saturate(1.05);}
+/* 선택된 버튼(검정)·칩 */
+.btn-out.on,.btn.on{background:linear-gradient(180deg,#333D4B 0%,#191F28 100%)!important;border:1.5px solid #0B0F15!important;color:#fff!important;box-shadow:var(--b-raise-dark)!important;}
+#rte-filter-standby.on{background:linear-gradient(180deg,#3D80F0 0%,#1B64DA 100%)!important;border-color:#134FB4!important;}
+.chip{background:linear-gradient(180deg,#FFFFFF 0%,#F3F5F8 100%)!important;border:1.5px solid #C5CCD6!important;box-shadow:var(--b-raise)!important;}
+.chip.on{background:linear-gradient(180deg,#333D4B 0%,#191F28 100%)!important;border-color:#0B0F15!important;color:#fff!important;}
+.date-sort-chip.ds-on{background:linear-gradient(180deg,#8F63F2 0%,#7048E8 100%)!important;border-color:#5A35CF!important;color:#fff!important;}
+.rte-jump-btn{background:linear-gradient(180deg,#F2F8FF 0%,#E1EEFF 100%)!important;border:1.5px solid #9CC3FA!important;color:#1A5FCF!important;box-shadow:var(--b-raise)!important;}
+/* 관리자 원형·메뉴 버튼 */
+.adm-fab-item.on{background:linear-gradient(180deg,#333D4B 0%,#191F28 100%)!important;border-color:#0B0F15!important;}
+.adm-fab-item.on .i .ui-ico{color:#fff;}
+.menu-toggle-btn,.adm-fab-toggle{background:linear-gradient(180deg,#333D4B 0%,#191F28 100%)!important;border:1.5px solid #0B0F15!important;box-shadow:var(--b-raise-dark),0 8px 20px rgba(25,31,40,.25)!important;}
+.apt-svc-point-nav-btn.active{background:linear-gradient(180deg,#4C97FF 0%,#2B78EE 100%)!important;border-color:#1A5FCF!important;color:#fff!important;}
+.apt-svc-point-nav-btn.done{background:linear-gradient(180deg,#22B573 0%,#0E9658 100%)!important;border-color:#0A7A47!important;color:#fff!important;}
+/* 첫 화면 로그인 버튼도 같은 결 */
+#panel-volunteer .btn-p{background:linear-gradient(180deg,#4C97FF 0%,#2B78EE 100%)!important;border:1.5px solid #1A5FCF!important;}
+#panel-leader .btn-p{background:linear-gradient(180deg,#20C997 0%,#0CA678 100%)!important;border:1.5px solid #088A63!important;}
+#panel-admin .btn-p{background:linear-gradient(180deg,#8B6CF0 0%,#7048E8 100%)!important;border:1.5px solid #5A35CF!important;}
+#scr-login .btn.btn-p{box-shadow:var(--b-raise-dark)!important;}
+/* 눌림 */
+.btn:active,.mbtn:active,.chip:active,.svc-secondary-btn:active,.svc-main-btn:active,.svc-locate-btn:active,.home-zone-action:active,.adm-fab-item:active,.rd-btn:active,[id$="-toggle-icon"]:active,#home-list-handle-icon:active,.apt-order-close:active{
+  transform:translateY(1px)!important;box-shadow:inset 0 1px 2px rgba(0,23,51,.12)!important;}
+.btn:disabled{box-shadow:none!important;opacity:.5;}
+/* H167 통일: 선택·주요 상태는 모두 같은 파랑 그라데이션(검정·보라 없앰). 의미색(완료 초록·미완료 주황·삭제 빨강·접기 빨강)만 유지 */
+:root{--g-blue:linear-gradient(180deg,#4C97FF 0%,#2B78EE 100%);--g-blue-bd:#1A5FCF;}
+.btn-out.on,.btn.on,.chip.on,.adm-fab-item.on,.date-sort-chip.ds-on,#rte-filter-standby.on,.dis-tab-h163.on,.s12-type.on,.tab.on{
+  background:var(--g-blue)!important;border:1.5px solid var(--g-blue-bd)!important;color:#fff!important;box-shadow:var(--b-raise-dark)!important;}
+.adm-fab-item.on .i,.adm-fab-item.on .t{color:#fff!important;}
+.menu-toggle-btn,.adm-fab-toggle{background:var(--g-blue)!important;border:1.5px solid var(--g-blue-bd)!important;box-shadow:var(--b-raise-dark),0 8px 20px rgba(43,120,238,.35)!important;}
+#panel-volunteer .btn-p,#panel-leader .btn-p,#panel-admin .btn-p{background:var(--g-blue)!important;border:1.5px solid var(--g-blue-bd)!important;}
+.tab.on .ui-ico{color:#fff;}
+button[onclick^="clearAdminFocusH148"]{background:var(--g-blue)!important;border:1.5px solid var(--g-blue-bd)!important;color:#fff!important;}
+/* H167: 위치공유 관련 알림 — 청색 바탕, 작은 글씨 */
+#toast.toast-loc{background:linear-gradient(180deg,#4C97FF 0%,#2B78EE 100%)!important;color:#fff!important;font-size:12.5px!important;font-weight:700!important;padding:8px 14px!important;border:1px solid #1A5FCF;box-shadow:0 6px 16px rgba(43,120,238,.35)!important;}
