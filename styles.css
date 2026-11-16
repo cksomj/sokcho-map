@@ -1725,3 +1725,6 @@ input[type="checkbox"]{accent-color:var(--p);}
   .s13-viewer-modal{background:#fff!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}
   .s12-row{box-shadow:none!important;}
 }
+/* H150 보정2: 항목만 보는 화면(원형 버튼)에서는 명단을 잘라 보이지 않게 펼침, 입력칸은 흰색으로 또렷하게 */
+#p-admin .pb:has(#adm-focus-bar:not(.hide)) .home-apt-body{max-height:none!important;overflow:visible!important;}
+#p-admin .adm-sec:has(> .home-apt-section) input,#p-admin .adm-sec:has(> .home-apt-section) select{background:#fff!important;border-color:var(--bd)!important;}
