@@ -1477,8 +1477,8 @@ function fmtServiceDateH145(t){
 }
 const dateSortH145={};
 // H154: 목록은 항상 미완료 → 봉사대기(미시작) → 완료 순(날짜순으로 바꿔도 이 묶음 순서는 유지)
-function zonePrioH154(id){const s=getZoneState(id);return s==='progress'?0:s==='done'?2:1;}
-function cardPrioH154(c){return (c.status==='진행중'||c.status==='미완료')?0:c.status==='완료'?2:1;}
+function zonePrioH154(id){const s=getZoneState(id);return s==='progress'?0:s==='done'?1:2;} // H177: 미완료 → 완료 → 봉사대기(완료도 '전체' 위쪽에 보이게)
+function cardPrioH154(c){return (c.status==='진행중'||c.status==='미완료')?0:c.status==='완료'?1:2;} // H177
 function itemPrioH154(x){return Array.isArray(x&&x.points)&&x.number!=null?cardPrioH154(x):zonePrioH154(x.id);}
 const KEEP_ORDER_KEYS_H154=['adm','admapt','admint']; // 관리자 구역관리 목록은 번호순 그대로
 function kickMainMapH154(){
