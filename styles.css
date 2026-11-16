@@ -2039,3 +2039,7 @@ button[onclick^="clearAdminFocusH148"]{background:var(--g-blue)!important;border
 /* H168: 위치 켜짐("위치끄기") 상태는 파랑으로 */
 .mbtn.on,.rd-btn.on{background:var(--g-blue)!important;border:1.5px solid var(--g-blue-bd)!important;color:#fff!important;box-shadow:var(--b-raise-dark)!important;}
 .mbtn.on .ui-ico,.rd-btn.on .ui-ico{color:#fff!important;}
+
+/* H169: 지도 아래 범례 글씨 진하게 */
+.map-legend .leg{font-weight:800!important;color:#191F28!important;font-size:13px!important;}
+.map-legend .leg .ld{box-shadow:0 0 0 1.5px rgba(0,0,0,.08);}

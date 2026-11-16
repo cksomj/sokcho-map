@@ -3991,7 +3991,7 @@ function drawAllZones(activeId){
       const sc=zoneStrokeColor(z,isActive);
       const fillC=zoneFillColor(z,isActive);
       item.active=isActive;
-      item.polygon.setOptions({strokeWeight:zoneStrokeWeightH133(kakaoMap,isActive),strokeColor:sc,strokeOpacity:dimmed?.35:1,fillColor:fillC,fillOpacity:dimmed?.01:.05});
+      item.polygon.setOptions({strokeWeight:zoneStrokeWeightH133(kakaoMap,isActive),strokeColor:sc,strokeOpacity:dimmed?.35:1,fillColor:fillC,fillOpacity:dimmed?.03:.13});
       item.polygon.setMap(show?kakaoMap:null);
     });
     bindStrokeZoomH133(kakaoMap,mainKakaoPolygons);
@@ -4777,7 +4777,7 @@ function drawRdZonePolygon(z){
   if(!kakaoMap||!window.kakao?.maps?.Polygon)return;
   if(rdKakaoPoly)rdKakaoPoly.setMap(null);
   const path=(z.polygon||[]).map(pt=>new kakao.maps.LatLng(Number(pt[0]),Number(pt[1])));
-  rdKakaoPoly=new kakao.maps.Polygon({path,strokeWeight:3.8,strokeColor:zoneStrokeColor(z,true),strokeOpacity:1,fillColor:zoneFillColor(z,true),fillOpacity:.05}); // V2 H77: 이 지도는 항상 구역 1개만 보여주는 상세화면이라 고유색(선택색) 유지
+  rdKakaoPoly=new kakao.maps.Polygon({path,strokeWeight:3.8,strokeColor:zoneStrokeColor(z,true),strokeOpacity:1,fillColor:zoneFillColor(z,true),fillOpacity:.13}); // V2 H77: 이 지도는 항상 구역 1개만 보여주는 상세화면이라 고유색(선택색) 유지
   rdKakaoPoly.setMap(kakaoMap);
 }
 function drawRdZone(z){
@@ -5113,7 +5113,7 @@ function drawHomeZones(activeId){
       const fillColor=zoneFillColor(z,isActive);
       item.active=isActive;
       const focusHide=activeId!=null&&!isActive; // H156: 고른 구역 외 경계 숨김
-      item.polygon.setOptions({strokeWeight:zoneStrokeWeightH133(kakaoMap,isActive),strokeColor:sc,strokeOpacity:dimmed?.35:1,fillColor,fillOpacity:dimmed?.01:.05});
+      item.polygon.setOptions({strokeWeight:zoneStrokeWeightH133(kakaoMap,isActive),strokeColor:sc,strokeOpacity:dimmed?.35:1,fillColor,fillOpacity:dimmed?.03:.13});
       item.polygon.setMap(show&&!focusHide?kakaoMap:null);
     });
     bindStrokeZoomH133(kakaoMap,homeKakaoPolygons);
@@ -6277,7 +6277,7 @@ function drawSvcZonePolygon(z){
   if(!kakaoMap||!window.kakao?.maps?.Polygon)return;
   if(svcKakaoPoly)svcKakaoPoly.setMap(null);
   const path=(z.polygon||[]).map(pt=>new kakao.maps.LatLng(Number(pt[0]),Number(pt[1])));
-  svcKakaoPoly=new kakao.maps.Polygon({path,strokeWeight:3.5,strokeColor:zoneStrokeColor(z,true),strokeOpacity:1,fillColor:zoneFillColor(z,true),fillOpacity:.05}); // V2 H77: 구역 1개만 보여주는 봉사 진행화면 — 고유색 유지
+  svcKakaoPoly=new kakao.maps.Polygon({path,strokeWeight:3.5,strokeColor:zoneStrokeColor(z,true),strokeOpacity:1,fillColor:zoneFillColor(z,true),fillOpacity:.13}); // V2 H77: 구역 1개만 보여주는 봉사 진행화면 — 고유색 유지
   svcKakaoPoly.setMap(kakaoMap);
 }
 function openSvcFullscreen(zoneId){
@@ -7232,7 +7232,7 @@ function drawMonitorZones(){
   S.monMap._zonesDrawn=true;
   S.zones.forEach(z=>{
     const path=(z.polygon||[]).map(pt=>new kakao.maps.LatLng(Number(pt[0]),Number(pt[1])));
-    const polygon=new kakao.maps.Polygon({path,strokeWeight:3.2,strokeColor:zoneStrokeColor(z,false),strokeOpacity:.98,fillColor:zoneFillColor(z,false),fillOpacity:.05}); // V2 H77: 실시간현황 전체보기 — 선택 개념이 없어 항상 통일색
+    const polygon=new kakao.maps.Polygon({path,strokeWeight:3.2,strokeColor:zoneStrokeColor(z,false),strokeOpacity:.98,fillColor:zoneFillColor(z,false),fillOpacity:.13}); // V2 H77: 실시간현황 전체보기 — 선택 개념이 없어 항상 통일색
     polygon.setMap(kakaoMap);
   });
 }
@@ -8299,3 +8299,21 @@ function toggleLocateH168(k,silent){
     if(st.first){st.first=false;m.setView(ll,18);}
   },()=>{toast('위치 권한을 허용해주세요.');toggleLocateH168(k,true);},{enableHighAccuracy:true,maximumAge:3000,timeout:15000});
 }
+
+// ================================================================
+// H169: 지도 구역 색을 아래 범례와 같게 — 테두리=상태(완료 초록·미완료 주황빨강·봉사대기 청색),
+// 바탕=유형(주택 연파랑·상가 연주황). 비활성 구역은 H163대로 빨강. 모든 지도·모든 모드 공통.
+// ================================================================
+const ZONE_STATE_COLOR_H169={done:'#3B6D11',progress:'#D85A30',standby:'#185FA5'};
+const ZONE_TYPE_FILL_H169={residential:'#378ADD',commercial:'#EF9F27'};
+window.zoneStrokeColor=function(z,isActive){
+  if(!z)return ZONE_DEFAULT_COLOR;
+  if(!z.color)z.color=zoneAutoColor(S.zones.findIndex(x=>x===z)); // 기존처럼 구역 고유색은 계속 만들어 둠(다른 곳에서 씀)
+  if(isZoneDisabledH163(z.id))return '#E5333F';
+  return ZONE_STATE_COLOR_H169[getZoneState(z.id)]||ZONE_DEFAULT_COLOR;
+};
+window.zoneFillColor=function(z,isActive){
+  if(!z)return ZONE_DEFAULT_COLOR;
+  if(isZoneDisabledH163(z.id))return '#E5333F';
+  return ZONE_TYPE_FILL_H169[z.type]||'#378ADD';
+};
