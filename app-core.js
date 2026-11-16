@@ -3731,7 +3731,7 @@ function startFromSheet(){gotoRoute();}
 function renderSideList(keyword){
   let zones=S.zones;
   if(S.mapFilter==='residential')zones=zones.filter(z=>z.type==='residential');
-  else if(S.mapFilter==='commercial'){const _h=interphoneShopZoneIds();zones=zones.filter(z=>z.type==='commercial'&&!_h.has(String(z.id)));} // H143
+  else if(S.mapFilter==='commercial')zones=zones.filter(z=>z.type==='commercial'); // H144
   else if(S.mapFilter==='undone')zones=zones.filter(z=>isInProgress(z.id));
   else if(S.mapFilter==='standby')zones=zones.filter(z=>getZoneState(z.id)==='standby');
   // 키워드 필터
@@ -4156,10 +4156,9 @@ function renderRouteGrid(keyword){
   // 보고서 참고). 데이터/필터링 로직은 전혀 안 건드리고, 이미 필터링·정렬된 zones/aptCards를
   // type별로 다시 나눠 헤더(전체 개수, 필터와 무관 — 홈/관리자 화면과 동일한 관례)만 끼워넣는다.
   const resZones=zones.filter(z=>z.type==='residential');
-  const _hidRH143=interphoneShopZoneIds(); // H143
-  const comZones=zones.filter(z=>z.type==='commercial'&&!_hidRH143.has(String(z.id)));
+  const comZones=zones.filter(z=>z.type==='commercial'); // H144
   const resTotal=S.zones.filter(z=>z.type==='residential').length;
-  const comTotal=S.zones.filter(z=>z.type==='commercial'&&!_hidRH143.has(String(z.id))).length;
+  const comTotal=S.zones.filter(z=>z.type==='commercial').length;
   const sectionHeader=(icon,label,count)=>`<div class="zc-section-header" style="grid-column:1/-1;font-size:13px;font-weight:800;padding:10px 2px 2px;">${icon} ${label} (${count})</div>`;
   const resHtml=resZones.length?sectionHeader('🏠','주택',resTotal)+resZones.map(renderZoneItem).join(''):'';
   const comHtml=comZones.length?sectionHeader('🏪','상가',comTotal)+comZones.map(renderZoneItem).join(''):'';
@@ -4978,8 +4977,7 @@ function setHomeComFilter(mode,el){
   renderHomeCommercialList();
 }
 function renderHomeCommercialList(){
-  const _hidH143=interphoneShopZoneIds(); // H143: 인터폰 카드에 들어간 상가는 상가 목록에서 숨김
-  const all=S.zones.filter(z=>z.type==='commercial'&&!_hidH143.has(String(z.id)));
+  const all=S.zones.filter(z=>z.type==='commercial'); // H144: 상가 목록은 그대로 둔다(인터폰 카드에 들어간 상가도 표시)
   const countEl=document.getElementById('home-com-count');
   if(countEl)countEl.textContent=all.length;
   // V2 H67: 미완료 우선, 완료는 뒤로(구역/아파트와 동일 규칙)
@@ -6301,8 +6299,7 @@ function toggleAdminVolSection(){
   if(adminVolSectionOpen)renderVolList();
 }
 function renderAdmCommercialGrid(){
-  const _hidH143=interphoneShopZoneIds(); // H143: 인터폰 카드에 들어간 상가는 상가 목록에서 숨김
-  const all=S.zones.filter(z=>z.type==='commercial'&&!_hidH143.has(String(z.id)));
+  const all=S.zones.filter(z=>z.type==='commercial'); // H144: 상가 목록은 그대로 둔다(인터폰 카드에 들어간 상가도 표시)
   const countEl=document.getElementById('adm-com-count');
   if(countEl)countEl.textContent=all.length;
   const zones=adminZoneFilterSort(all);
@@ -6937,14 +6934,12 @@ function onS12Search(v){
 function _s12Status(t){const el=document.getElementById('s12-status');if(el)el.textContent=t||'';}
 function s12Items(){
   const labels=zoneGroupLabelMap();
-  const _s12HidH143=interphoneShopZoneIds();
   const items=[];
   if(s12Type!=='apartment'){
     S.zones.forEach(z=>{
       if(!Array.isArray(z.polygon)||z.polygon.length<3)return;
       const kind=z.type==='commercial'?'commercial':'residential';
       if(s12Type!=='all'&&s12Type!==kind)return;
-      if(kind==='commercial'&&_s12HidH143.has(String(z.id)))return; // H143: 인터폰 카드에 들어간 상가
       items.push({kind,zone:z,no:String(labels[z.id]||('#'+z.id)).replace(/^#/,''),loc:displayZoneNameCleaned(z.name)});
     });
   }
@@ -6967,9 +6962,9 @@ function s12AptHtml(card){
 function s12CardHtml(it,idx){
   const kindLabel={residential:'주택',commercial:'상가',apartment:'아파트',interphone:'인터폰'}[it.kind];
   const hasForbidden=!!it.card&&(it.card.points||[]).some(p=>(p.units||[]).some(u=>u.forbidden));
-  const body=it.kind==='interphone' // H143: 왼쪽 단지·동·호, 오른쪽 상가 지도
+  const body=it.kind==='interphone'&&it.card.shop // H143: 왼쪽 단지·동·호, 오른쪽 상가 지도(H144: 상가 없는 인터폰 카드는 아래 아파트와 같은 글씨 카드)
     ?`<div class="s12-body int"><div class="s12-int-text"><div class="s12-apt">${s12AptHtml(it.card)}</div></div>${it.card.shop?`<div class="s12-int-map" data-shopzone="${esc(String(it.card.shop.zoneId))}"><div class="s12-msg">상가 지도 준비 중…</div><div class="s12-int-cap">🏪 ${esc(it.card.shop.name)}</div></div>`:''}</div>`
-    :it.kind==='apartment'
+    :(it.kind==='apartment'||it.kind==='interphone')
     ?`<div class="s12-body apt"><div class="s12-apt">${s12AptHtml(it.card)}</div></div>`
     :`<div class="s12-body" data-zone="${idx}"><div class="s12-msg">지도 준비 중…</div></div>`;
   return `<div class="s12-scaler"><div class="s12-card">
