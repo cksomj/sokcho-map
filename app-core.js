@@ -5497,7 +5497,7 @@ function updateHomeListTallH129(openedSection){
     panel.classList.remove('home-list-collapsed');
     if(icon)icon.textContent='🗺 지도보기'; // H156
   }
-  const anyOpen=['home-res-body','home-com-body','home-apt-body','home-int-body'].some(id=>{const el=document.getElementById(id);return el&&!el.classList.contains('hide');});
+  const anyOpen=!!S.undoneModeH178||['home-res-body','home-com-body','home-apt-body','home-int-body'].some(id=>{const el=document.getElementById(id);return el&&!el.classList.contains('hide');}); // H181: 미완료 모음도 스크롤되는 큰 목록
   const tall=mobile&&anyOpen&&!panel.classList.contains('home-list-collapsed');
   wrap.classList.toggle('home-list-tall',tall);
   if(tall&&openedSection)setTimeout(()=>{panel.scrollTop=openedSection.offsetTop;},30);
@@ -8355,6 +8355,7 @@ function undoneItemsH178(){
 }
 function setUndoneModeH178(on){
   S.undoneModeH178=!!on;
+  document.getElementById('home-body')?.classList.toggle('undone-tall-h181',!!on); // H181
   const panel=document.getElementById('home-list-panel');
   if(panel)panel.classList.toggle('undone-mode-h178',!!on);
   const sec=document.getElementById('home-undone-section-h178');
@@ -8380,14 +8381,12 @@ function renderUndoneH178(){
   const zoneRow=z=>{const isRes=z.type==='residential';return `<div id="undone-zone-item-${z.id}" class="home-zone-row home-zone-row-kakao ${isRes?'res':'com'}" onclick="selectHomeZone(${JSON.stringify(z.id)})">
       <div style="min-width:0;"><div class="home-zone-title"><span>${zoneDisplayLabel(z.id)} </span>${esc(displayZoneNameCleaned(z.name))}</div>
       <div class="home-zone-meta">${fmtServiceDateH145(zoneLastServiceTsH145(z.id))} · ${isRes?'주택':'상가'} · ${z.streets.length}개 거리</div></div>
-      <span class="zc-status progress">미완료</span>
       <button class="btn btn-sm btn-out home-zone-action" onclick="event.stopPropagation();openZoneKakaoStart(${JSON.stringify(z.id)})" style="flex-shrink:0;">카카오맵</button>
       <button onclick="event.stopPropagation();startSessionAndRoute(${JSON.stringify(z.id)},true)" class="btn btn-sm home-zone-action" style="background:#FAEEDA;color:var(--warn);border:1px solid #FAC775;">이어하기</button>
     </div>`;};
   const cardRow=c=>{const total=apartmentCardCheckableUnits(c),done=apartmentCardCompletedUnits(c);return `<div id="undone-card-item-${c.id}" class="home-zone-row home-apt-card-row" onclick="selectHomeApartmentCard(${JSON.stringify(c.id)})">
       <div style="min-width:0;"><div class="home-zone-title"><span>#${c.number} </span>${esc(aptCardDisplayName(c.name))}</div>
       <div class="home-zone-meta">${fmtServiceDateH145(cardLastServiceTsH145(c))} · ${isInterphoneCard(c)?'인터폰':'아파트'} · ${done}/${total}호</div></div>
-      <span class="zc-status progress">${esc(c.status)}</span>
       <button class="btn btn-sm btn-out home-zone-action" onclick="event.stopPropagation();openApartmentCardKakaoStart(${JSON.stringify(c.id)})" style="flex-shrink:0;">카카오맵</button>
       <button onclick="event.stopPropagation();startApartmentCardAndGo(${JSON.stringify(c.id)},true)" class="btn btn-sm home-zone-action" style="background:#FAEEDA;color:var(--warn);border:1px solid #FAC775;">이어하기</button>
     </div>`;};

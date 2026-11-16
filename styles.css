@@ -2109,3 +2109,16 @@ body:has(#svc-fullscreen[style*="flex"]) #toast,body:has(#apt-svc-fullscreen[sty
 #home-list-panel.undone-mode-h178 > .home-apt-section:not(#home-undone-section-h178){display:none!important;}
 .home-undone-head-h178{background:#FFF4E6!important;border-bottom:2px solid #F7B267;}
 .home-undone-head-h178 > span{color:#B35400;font-weight:900;}
+
+/* H181: 먼저 미완료 — 목록을 홈 버튼 높이까지 끌어올려 스크롤, 한 줄짜리 작은 카드로 더 많이 보이게 */
+#home-body.home-list-tall.undone-tall-h181 #home-list-handle{top:0!important;}
+#home-body.home-list-tall.undone-tall-h181 #home-list-panel{top:66px!important;}
+#home-list-panel.undone-mode-h178 > div:first-child{display:none!important;} /* 검색칸 숨김 — 공간 확보 */
+#home-undone-section-h178 .home-apt-header{padding:10px 14px!important;position:sticky;top:0;z-index:2;}
+#home-undone-list-h178{padding:8px 10px 14px!important;}
+#home-undone-list-h178 .home-zone-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto auto!important;align-items:center!important;gap:6px!important;padding:9px 8px 9px 12px!important;margin-bottom:7px!important;border-radius:14px!important;content-visibility:visible!important;}
+#home-undone-list-h178 .home-zone-row > :first-child{grid-column:auto!important;min-width:0;}
+#home-undone-list-h178 .home-zone-title{font-size:15px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25!important;}
+#home-undone-list-h178 .home-zone-meta{font-size:12px!important;margin-top:2px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#home-undone-list-h178 .home-zone-action{min-height:0!important;height:36px!important;padding:0 10px!important;font-size:13.5px!important;justify-self:auto!important;}
+#home-body.home-list-tall.undone-tall-h181 #home-map-ctrls,#home-body.home-list-tall.undone-tall-h181 .home-focus-clear{display:none!important;} /* H181: 목록이 지도를 덮는 동안 지도 버튼 숨김 */
