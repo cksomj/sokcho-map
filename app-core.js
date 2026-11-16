@@ -114,7 +114,7 @@ const S={
 // 정보가 내 기기에 나타나는 등). 이 두 키만 순수 localStorage로 남긴다.
 // ================================================================
 const FIRESTORE_SYNC_EXCLUDED_KEYS_H105=new Set(['sokcho_auto_login','sokcho_last_login_gps']);
-const FIRESTORE_SYNC_KEYS_H105=['sokcho_zones','sokcho_records','sokcho_progress','sokcho_apartment_registry_v1','sokcho_apartment_cards_v1','sokcho_interphone_cards_v1','sokcho_trash_v1','sokcho_volunteers','sokcho_leaders','sokcho_contacts','sokcho_routes','sokcho_research_links','sokcho_live','sokcho_s13_v1','sokcho_s13_congregation','sokcho_admin_pin','sokcho_leader_pin','sokcho_admin_recovery_email','sokcho_active_leader','sokcho_h63_import_done','sokcho_builtin_samples_removed','sokcho_deleted_zone_ids','sokcho_deleted_apartment_card_ids'];
+const FIRESTORE_SYNC_KEYS_H105=['sokcho_zones','sokcho_records','sokcho_progress','sokcho_apartment_registry_v1','sokcho_apartment_cards_v1','sokcho_interphone_cards_v1','sokcho_trash_v1','sokcho_disabled_v1','sokcho_volunteers','sokcho_leaders','sokcho_contacts','sokcho_routes','sokcho_research_links','sokcho_live','sokcho_s13_v1','sokcho_s13_congregation','sokcho_admin_pin','sokcho_leader_pin','sokcho_admin_recovery_email','sokcho_active_leader','sokcho_h63_import_done','sokcho_builtin_samples_removed','sokcho_deleted_zone_ids','sokcho_deleted_apartment_card_ids'];
 const FIRESTORE_WRITE_DEBOUNCE_MS_H105=1500;
 let _storageCacheH105={};
 let _firestoreWriteTimersH105={};
@@ -197,7 +197,7 @@ function manualSyncNowH119(){
   persistVolunteers();persistContacts();persistApartmentRegistry();
   persistApartmentCards();persistResearchLinks();
   if(typeof db==='undefined'||!db){toast('⚠️ 반영 실패 - 인터넷 확인');return;}
-  const keys=['sokcho_zones','sokcho_records','sokcho_routes','sokcho_progress','sokcho_apartment_registry_v1','sokcho_apartment_cards_v1','sokcho_interphone_cards_v1','sokcho_trash_v1','sokcho_volunteers','sokcho_leaders','sokcho_contacts','sokcho_research_links'];
+  const keys=['sokcho_zones','sokcho_records','sokcho_routes','sokcho_progress','sokcho_apartment_registry_v1','sokcho_apartment_cards_v1','sokcho_interphone_cards_v1','sokcho_trash_v1','sokcho_disabled_v1','sokcho_volunteers','sokcho_leaders','sokcho_contacts','sokcho_research_links'];
   toast('☁️ 서버에 반영하는 중입니다...');
   Promise.all(keys.map(key=>{
     const value=_storageCacheH105[key];
@@ -275,6 +275,8 @@ function _reloadAfterRemoteChangeH105(key){
       _refreshLoginNameSearchH126(); // H126: 로그인 화면 인도자 검색에도 즉시 반영
     }else if(key==='sokcho_trash_v1'){
       if(typeof renderTrashH147==='function')renderTrashH147(); // H147
+    }else if(key==='sokcho_disabled_v1'){
+      if(typeof refreshDisabledViewsH163==='function')refreshDisabledViewsH163(); // H163: 다른 기기에서 비활성 설정이 바뀜
     }else if(key==='sokcho_contacts'){
       S._contactsLoaded=false;loadContacts();
     }else if(key==='sokcho_routes'){
@@ -1943,7 +1945,9 @@ function showApartmentCardLine(cardId){
   const modal=document.getElementById('apt-order-modal');
   if(!modal)return;
   document.getElementById('apt-order-title').textContent=`${card.number?('#'+card.number+' '):''}${aptCardDisplayName(card.name)}`;
-  document.getElementById('apt-order-list').innerHTML=items.map((x,i)=>`<li><span class="n">${i+1}</span><span class="t">${esc(x.p.complexName||'')} ${esc(x.p.dong||'')}</span><span class="u">${(x.p.units||[]).length}호${x.c?'':' · 좌표 없음'}</span></li>`).join('');
+  S.aptOrderCardH163=card.id;
+  document.getElementById('apt-order-list').classList.toggle('can-drag-h163',S.role==='admin');
+  document.getElementById('apt-order-list').innerHTML=items.map((x,i)=>`<li data-idx="${i}"><span class="n">${i+1}</span><span class="t">${esc(x.p.complexName||'')} ${esc(x.p.dong||'')}</span><span class="u">${(x.p.units||[]).length}호${x.c?'':' · 좌표 없음'}</span></li>`).join('');
   modal.classList.add('on');
   if(!aptOrderMapH152){
     aptOrderMapH152=L.map('apt-order-map',stableMapOptions({center:pts[0],zoom:17,zoomControl:true,attributionControl:false}));
@@ -2107,6 +2111,7 @@ function renderApartmentCardList(keepOpenId){
         </div>
         <div style="display:flex;gap:6px;">
           <button class="btn btn-sm btn-out" onclick="event.stopPropagation();showApartmentCardLine(${card.id})">봉사진행순서보기</button>
+          <button class="btn btn-sm ${isCardFlagDisabledH163(card.id)?'btn-ok':'btn-dk'}" onclick="event.stopPropagation();toggleCardDisabledH163(${JSON.stringify(card.id)})">${isCardFlagDisabledH163(card.id)?'✅ 활성화':'⛔ 비활성'}</button>
           <button class="btn btn-sm btn-dk" onclick="event.stopPropagation();deleteApartmentCard(${card.id})">삭제</button>
         </div>
       </div>
@@ -2167,8 +2172,8 @@ function toggleAdminIntCardsSection(){ // H143
 // 않는다 (openExternalApp만 공용 유틸로 재사용).
 // ================================================================
 function apartmentCardTotalUnits(card){return card.points.reduce((s,p)=>s+p.units.length,0);}
-function apartmentCardCompletedUnits(card){return card.points.reduce((s,p)=>s+p.units.filter(u=>u.completed).length,0);}
-function apartmentCardCheckableUnits(card){return card.points.reduce((s,p)=>s+p.units.filter(u=>!u.forbidden).length,0);}
+function apartmentCardCompletedUnits(card){return card.points.reduce((s,p)=>s+(isDongDisabledH163(p.complexName,p.dong)?0:p.units.filter(u=>u.completed).length),0);} // H163
+function apartmentCardCheckableUnits(card){return card.points.reduce((s,p)=>s+(isDongDisabledH163(p.complexName,p.dong)?0:p.units.filter(u=>!u.forbidden).length),0);} // H163: 비활성 동 제외
 // H86: 기존 apartmentCardFirstPointCoord(card)를 임의 지점 index를
 // 받는 형태로 일반화(호출부가 1곳뿐이라 별도 wrapper 없이 이름 자체를
 // 변경). 좌표 조회 로직(포인트 자체 → H84가 추가한 동 레지스트리 →
@@ -2412,7 +2417,7 @@ function aptSvcPointNavHtml(card,pIdx){
     ${card.points.map((pp,i)=>{
       const ppCheckable=pp.units.filter(u=>!u.forbidden);
       const ppDone=ppCheckable.length>0&&ppCheckable.every(u=>u.completed);
-      return `<button class="apt-svc-point-nav-btn${i===pIdx?' active':''}${ppDone?' done':''}" onclick="goToAptSvcPoint(${i})">${i+1}</button>`;
+      return `<button class="apt-svc-point-nav-btn${i===pIdx?' active':''}${ppDone?' done':''}${isDongDisabledH163(pp.complexName,pp.dong)?' dis-h163':''}" onclick="goToAptSvcPoint(${i})">${i+1}</button>`;
     }).join('')}
     ${si>=0?`<button class="apt-svc-point-nav-btn${pIdx===si?' active':''}${card.shop.done?' done':''}" onclick="goToAptSvcPoint(${si})">🏪</button>`:''}
   </div>`;
@@ -2481,6 +2486,7 @@ function startAptSvcSession(cardId,resume){
   persistApartmentCards();
 }
 function startApartmentCardAndGo(cardId,resume){
+  {const c=S.apartmentCards.find(x=>x.id===cardId);if(c&&isCardDisabledH163(c)){toast('⛔ 비활성 카드입니다. 관리자에게 문의하세요.');return;}} // H163
   startAptSvcSession(cardId,resume);
   openAptSvcFullscreen(cardId);
 }
@@ -2588,6 +2594,10 @@ function renderAptSvcChecklist(){
   const pIdx=S.aptSession.currentPointIdx;
   const p=card.points[pIdx];
   if(!p){wrap.innerHTML='';return;}
+  if(isDongDisabledH163(p.complexName,p.dong)){ // H163: 관리자가 비활성으로 정한 동
+    wrap.innerHTML=aptSvcPointNavHtml(card,pIdx)+`<div class="apt-svc-point-card dis-h163"><div class="apt-svc-point-head">${pIdx+1}/${card.points.length}. ${esc(p.complexName)} ${esc(p.dong)}</div><div class="dis-note-h163">⛔ 비활성 동입니다. 이번에는 봉사하지 않습니다.</div>${card.points[pIdx+1]||interphoneShopIdx(card)>=0?'<button class="btn btn-p" style="width:100%;margin-top:10px;" onclick="goToNextAptSvcPoint()">▶ 다음 포인트</button>':''}</div>`;
+    return;
+  }
   const checkableUnits=p.units.filter(u=>!u.forbidden);
   const doneCnt=checkableUnits.filter(u=>u.completed).length;
   const allDone=checkableUnits.length>0&&doneCnt===checkableUnits.length;
@@ -5529,6 +5539,7 @@ function updateHomeSessionUI(){
 // ================================================================
 // 봉사자/인도자: 구역 선택 → 경로 화면으로 이동 (세션은 "봉사 시작" 버튼에서)
 function startSessionAndRoute(zoneId, resume){
+  if(isZoneDisabledH163(zoneId)){toast('⛔ 비활성 구역입니다. 관리자에게 문의하세요.');return;} // H163
   if(isDone(zoneId)){
     toast('완료된 구역입니다. 관리자가 초기화한 뒤 다시 봉사할 수 있습니다.');
     return;
@@ -6693,6 +6704,7 @@ function renderAdminZoneRowHtml(z){
       <button class="btn btn-sm btn-out" onclick="goAdminZoneDraw(${z.id})">구역경계그리기</button>
       <button class="btn btn-sm btn-out" onclick="goAdminRouteDraw(${z.id})">🧭 경로그리기</button>
       <button class="btn btn-sm btn-out" onclick="goAdminZoneMapView(${z.id})">🗺 지도보기</button>
+      <button class="btn btn-sm ${isZoneDisabledH163(z.id)?'btn-ok':'btn-dk'}" onclick="toggleZoneDisabledH163(${JSON.stringify(z.id)})">${isZoneDisabledH163(z.id)?'✅ 활성화':'⛔ 비활성'}</button>
       <button class="btn btn-sm btn-dk" onclick="delZone(${z.id})">삭제</button>
     </div>
   </div>`;
@@ -7981,6 +7993,178 @@ tryAutoLogin();
     document.body.appendChild(b);
     document.addEventListener('scroll',update,true);
     setInterval(update,800); // 화면 전환 뒤에도 표시 상태를 맞춤
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
+})();
+
+
+// ================================================================
+// H163: 비활성 구역 — 관리자가 정한 주택·상가 구역, 아파트·인터폰 카드, 아파트 동을
+// 모든 모드(전도인·인도자·관리자)에서 비활성으로 표시한다(빨간 테두리 + 옅은 빨강, 봉사 시작 막음).
+// 저장: app_data/sokcho_disabled_v1 {zones:{id:1}, cards:{id:1}, dongs:{"단지|동":1}}
+// ================================================================
+const DISABLED_KEY_H163='sokcho_disabled_v1';
+function loadDisabledH163(){
+  try{const d=JSON.parse(storageGet(DISABLED_KEY_H163)||'null');if(d&&typeof d==='object')return {zones:d.zones||{},cards:d.cards||{},dongs:d.dongs||{}};}catch(e){}
+  return {zones:{},cards:{},dongs:{}};
+}
+function persistDisabledH163(d){storageSet(DISABLED_KEY_H163,JSON.stringify({schemaVersion:1,zones:d.zones,cards:d.cards,dongs:d.dongs,updatedAt:Date.now()}));}
+function dongKeyH163(c,d){return String(c||'').trim()+'|'+String(d||'').trim();}
+function isZoneDisabledH163(id){return !!loadDisabledH163().zones[String(id)];}
+function isCardFlagDisabledH163(id){return !!loadDisabledH163().cards[String(id)];}
+function isDongDisabledH163(c,d){return !!loadDisabledH163().dongs[dongKeyH163(c,d)];}
+function cardDisabledDongCountH163(card){return (card.points||[]).filter(p=>isDongDisabledH163(p.complexName,p.dong)).length;}
+function isCardDisabledH163(card){
+  if(!card)return false;
+  if(isCardFlagDisabledH163(card.id))return true;
+  const n=(card.points||[]).length;return n>0&&cardDisabledDongCountH163(card)===n; // 모든 동이 비활성이면 카드도 비활성
+}
+function setDisabledH163(kind,key,on){
+  if(S.role!=='admin'){toast('관리자만 바꿀 수 있습니다.');return;}
+  const d=loadDisabledH163();
+  if(on)d[kind][key]=1;else delete d[kind][key];
+  persistDisabledH163(d);
+  refreshDisabledViewsH163();
+}
+function toggleZoneDisabledH163(id){const on=!isZoneDisabledH163(id);setDisabledH163('zones',String(id),on);toast(on?'⛔ 비활성으로 바꿨습니다.':'✅ 다시 활성화했습니다.');}
+function toggleCardDisabledH163(id){const on=!isCardFlagDisabledH163(id);setDisabledH163('cards',String(id),on);toast(on?'⛔ 비활성으로 바꿨습니다.':'✅ 다시 활성화했습니다.');}
+// 목록 줄 표시 — 목록이 다시 그려질 때마다 맞춘다
+function decorateDisabledH163(){
+  const d=loadDisabledH163();
+  document.querySelectorAll('[id^="home-zone-item-"],[id^="rte-zone-item-"],[id^="admin-zone-item-"]').forEach(el=>{
+    const id=el.id.replace(/^(home-zone-item-|rte-zone-item-|admin-zone-item-)/,'');
+    el.classList.toggle('dis-h163',!!d.zones[id]);
+  });
+  document.querySelectorAll('[id^="home-apt-card-item-"],[id^="rte-apt-item-"],[id^="apt-card-item-"]').forEach(el=>{
+    const id=el.id.replace(/^(home-apt-card-item-|rte-apt-item-|apt-card-item-)/,'');
+    const card=S.apartmentCards.find(c=>String(c.id)===id);
+    const full=isCardDisabledH163(card);
+    el.classList.toggle('dis-h163',full);
+    el.classList.toggle('part-dis-h163',!full&&!!card&&cardDisabledDongCountH163(card)>0);
+  });
+}
+let _disDecoRafH163=0;
+(function watchListsH163(){
+  function setup(){
+    new MutationObserver(()=>{if(_disDecoRafH163)return;_disDecoRafH163=requestAnimationFrame(()=>{_disDecoRafH163=0;try{decorateDisabledH163();}catch(e){}});}).observe(document.body,{childList:true,subtree:true});
+    try{decorateDisabledH163();}catch(e){}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
+})();
+// 지도: 비활성 구역은 빨간 경계
+(function wrapZoneColorsH163(){
+  const sc=window.zoneStrokeColor,fc=window.zoneFillColor;
+  if(typeof sc==='function')window.zoneStrokeColor=function(z,a){return z&&isZoneDisabledH163(z.id)?'#E5333F':sc(z,a);};
+  if(typeof fc==='function')window.zoneFillColor=function(z,a){return z&&isZoneDisabledH163(z.id)?'#E5333F':fc(z,a);};
+})();
+function refreshDisabledViewsH163(){
+  try{if(typeof renderAdmGrid==='function'&&S.role==='admin')renderAdmGrid();}catch(e){}
+  try{if(typeof renderApartmentCardList==='function'&&S.role==='admin')renderApartmentCardList();}catch(e){}
+  try{renderHomeZoneList(document.getElementById('home-zone-search')?.value||'');}catch(e){}
+  try{if(!S.mainDeferredH155&&typeof renderRouteGrid==='function')renderRouteGrid(document.getElementById('rte-search')?.value||'');}catch(e){}
+  try{if(homeMapInst)redrawHomeFocusH156();}catch(e){}
+  try{if(S.mainMap&&!S.mainDeferredH155)drawAllZones(S.panelZone||null);}catch(e){}
+  try{if(S.aptSession&&S.aptSession.active)renderAptSvcChecklist();}catch(e){}
+  try{if(document.getElementById('dis-setup-modal')?.classList.contains('on'))renderDisabledSetupH163();}catch(e){}
+  try{decorateDisabledH163();}catch(e){}
+}
+// 관리자 구역관리 → "비활성 구역 설정하기"
+let disSetupTabH163='apt';
+function openDisabledSetupH163(){
+  if(S.role!=='admin'){toast('관리자만 설정할 수 있습니다.');return;}
+  document.getElementById('dis-setup-modal').classList.add('on');
+  renderDisabledSetupH163();
+}
+function closeDisabledSetupH163(){document.getElementById('dis-setup-modal').classList.remove('on');}
+function setDisSetupTabH163(t){disSetupTabH163=t;renderDisabledSetupH163();}
+function aptDongTreeH163(){
+  const tree=new Map(); // 단지 → 동 → 카드
+  S.apartmentCards.forEach(c=>(c.points||[]).forEach(p=>{
+    const cn=String(p.complexName||'').trim(),dn=String(p.dong||'').trim();if(!cn)return;
+    if(!tree.has(cn))tree.set(cn,new Map());
+    const m=tree.get(cn);if(!m.has(dn))m.set(dn,new Set());m.get(dn).add(c.id);
+  }));
+  return [...tree.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ko',{numeric:true})).map(([cn,m])=>({cn,dongs:[...m.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ko',{numeric:true})).map(([dn,set])=>({dn,cards:set.size}))}));
+}
+function _attrJsonH163(v){return JSON.stringify(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;');}
+function renderDisabledSetupH163(){
+  const d=loadDisabledH163();
+  document.querySelectorAll('.dis-tab-h163').forEach(b=>b.classList.toggle('on',b.dataset.t===disSetupTabH163));
+  const body=document.getElementById('dis-setup-body');
+  if(disSetupTabH163==='apt'){
+    body.innerHTML=aptDongTreeH163().map(g=>{
+      const all=g.dongs.length>0&&g.dongs.every(x=>d.dongs[dongKeyH163(g.cn,x.dn)]);
+      const some=g.dongs.some(x=>d.dongs[dongKeyH163(g.cn,x.dn)]);
+      return `<div class="dis-group-h163${some?' has-dis':''}">
+        <label class="dis-row-h163 dis-head-h163"><input type="checkbox" ${all?'checked':''} onchange="setComplexDisabledH163(${_attrJsonH163(g.cn)},this.checked)"> 🏢 ${esc(g.cn)} <span class="dis-sub-h163">${g.dongs.length}개 동 · 단지 전체</span></label>
+        <div class="dis-dongs-h163">${g.dongs.map(x=>`<label class="dis-row-h163"><input type="checkbox" ${d.dongs[dongKeyH163(g.cn,x.dn)]?'checked':''} onchange="setDisabledH163('dongs',${_attrJsonH163(dongKeyH163(g.cn,x.dn))},this.checked)"> ${esc(x.dn||'(동 없음)')} <span class="dis-sub-h163">카드 ${x.cards}장</span></label>`).join('')}</div>
+      </div>`;}).join('')||'<p class="dis-empty-h163">아파트 카드가 없습니다.</p>';
+  }else{
+    const type=disSetupTabH163==='res'?'residential':'commercial';
+    const zones=S.zones.filter(z=>z.type===type).sort((a,b)=>(Number(a.id)||0)-(Number(b.id)||0));
+    body.innerHTML=zones.map(z=>`<label class="dis-row-h163"><input type="checkbox" ${d.zones[String(z.id)]?'checked':''} onchange="setDisabledH163('zones',${_attrJsonH163(String(z.id))},this.checked)"> <span class="zno">${zoneDisplayLabel(z.id)}</span> ${esc(displayZoneNameCleaned(z.name))}</label>`).join('')||'<p class="dis-empty-h163">구역이 없습니다.</p>';
+  }
+  const cnt=document.getElementById('dis-setup-count');
+  if(cnt)cnt.textContent=`비활성: 구역 ${Object.keys(d.zones).length} · 카드 ${Object.keys(d.cards).length} · 아파트 동 ${Object.keys(d.dongs).length}`;
+}
+function setComplexDisabledH163(cn,on){
+  if(S.role!=='admin')return;
+  const d=loadDisabledH163();
+  const g=aptDongTreeH163().find(x=>x.cn===cn);if(!g)return;
+  g.dongs.forEach(x=>{const k=dongKeyH163(cn,x.dn);if(on)d.dongs[k]=1;else delete d.dongs[k];});
+  persistDisabledH163(d);refreshDisabledViewsH163();
+}
+
+// ================================================================
+// H163: 봉사진행순서 상자 — 관리자는 목록의 아파트를 길게 눌러(0.4초) 끌어 옮겨 순서를 바꾼다
+// ================================================================
+(function orderDragH163(){
+  function setup(){
+    const list=document.getElementById('apt-order-list');
+    if(!list||list.__dragH163)return;list.__dragH163=true;
+    let timer=null,drag=null;
+    const pt=e=>e.touches&&e.touches[0]?e.touches[0]:e;
+    function start(e){
+      if(S.role!=='admin')return;
+      const li=e.target.closest('li[data-idx]');if(!li)return;
+      const p=pt(e);const y0=p.clientY,x0=p.clientX;
+      clearTimeout(timer);
+      timer=setTimeout(()=>{drag={li,y0};li.classList.add('dragging-h163');list.classList.add('is-dragging-h163');try{navigator.vibrate&&navigator.vibrate(30);}catch(_){}},400);
+      list.__startXY=[x0,y0];
+    }
+    function move(e){
+      const p=pt(e);
+      if(!drag){ // 길게 누르기 전에 움직이면 그냥 스크롤
+        if(timer&&list.__startXY&&Math.hypot(p.clientX-list.__startXY[0],p.clientY-list.__startXY[1])>8){clearTimeout(timer);timer=null;}
+        return;
+      }
+      e.preventDefault();
+      const others=[...list.querySelectorAll('li[data-idx]')].filter(x=>x!==drag.li);
+      let before=null;
+      for(const o of others){const r=o.getBoundingClientRect();if(p.clientY<r.top+r.height/2){before=o;break;}}
+      if(before)list.insertBefore(drag.li,before);else list.appendChild(drag.li);
+    }
+    function end(){
+      clearTimeout(timer);timer=null;
+      if(!drag)return;
+      drag.li.classList.remove('dragging-h163');list.classList.remove('is-dragging-h163');drag=null;
+      const order=[...list.querySelectorAll('li[data-idx]')].map(li=>+li.dataset.idx);
+      if(order.every((v,i)=>v===i))return;
+      const card=S.apartmentCards.find(c=>c.id===S.aptOrderCardH163);
+      if(!card||order.length!==card.points.length)return;
+      card.points=order.map(i=>card.points[i]);
+      persistApartmentCards();
+      try{renderApartmentCardList(card.id);}catch(_){}
+      showApartmentCardLine(card.id); // 지도·목록을 새 순서로 다시 그림
+      toast('봉사 진행 순서를 바꿨습니다.');
+    }
+    list.addEventListener('touchstart',start,{passive:true});
+    list.addEventListener('touchmove',move,{passive:false});
+    list.addEventListener('touchend',end);list.addEventListener('touchcancel',end);
+    list.addEventListener('mousedown',start);
+    document.addEventListener('mousemove',e=>{if(drag||timer)move(e);});
+    document.addEventListener('mouseup',end);
+    list.addEventListener('contextmenu',e=>e.preventDefault());
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
 })();

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"><!-- H150: 가독성 좋은 한글 글꼴 -->
-<link rel="stylesheet" href="styles.css?v=20261116-h162-leader-svc">
+<link rel="stylesheet" href="styles.css?v=20261116-h163-disabled">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -594,6 +594,7 @@
           </div>
           <div class="adm-sec" data-admgroup="zones">
             <div class="adm-title">구역관리</div>
+            <button class="btn btn-sm btn-dk dis-open-btn-h163" onclick="openDisabledSetupH163()">🚫 비활성 구역 설정하기</button><!-- H163 -->
             <div class="route-list-controls admin-zone-controls">
               <div class="route-search">
                 <input type="text" id="adm-zone-search" placeholder="🔍 구역 찾기" oninput="searchAdminZones(this.value)">
@@ -1003,6 +1004,22 @@
     <ol id="apt-order-list" class="apt-order-list"></ol>
   </div>
 </div>
+<!-- H163: 비활성 구역 설정 창 -->
+<div id="dis-setup-modal" class="dis-modal-h163">
+  <div class="dis-card-h163">
+    <div class="dis-head-bar-h163">
+      <div><div class="dis-title-h163">🚫 비활성 구역 설정</div><div class="dis-count-h163" id="dis-setup-count"></div></div>
+      <button type="button" class="apt-order-close" onclick="closeDisabledSetupH163()">✕ 나오기</button>
+    </div>
+    <div class="dis-tabs-h163">
+      <button type="button" class="dis-tab-h163" data-t="apt" onclick="setDisSetupTabH163('apt')">🏢 아파트(단지·동)</button>
+      <button type="button" class="dis-tab-h163" data-t="res" onclick="setDisSetupTabH163('res')">🏠 주택</button>
+      <button type="button" class="dis-tab-h163" data-t="com" onclick="setDisSetupTabH163('com')">🏪 상가</button>
+    </div>
+    <div class="dis-help-h163">체크하면 그 구역(동)이 들어간 모든 카드가 모든 화면에서 비활성(빨강)으로 바뀝니다.</div>
+    <div class="dis-body-h163" id="dis-setup-body"></div>
+  </div>
+</div>
 <!-- H148: 관리자 원형 버튼 묶음(오른쪽 아래) -->
 <div id="adm-fab-stack" class="adm-fab-stack collapsed">
   <div class="adm-fab-items" id="adm-fab-items"></div>
@@ -1024,6 +1041,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261116-h162-leader-svc"></script>
+<script src="app.js?v=20261116-h163-disabled"></script>
 </body>
 </html>

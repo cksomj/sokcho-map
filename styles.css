@@ -1838,3 +1838,40 @@ input,textarea,select,[contenteditable="true"]{-webkit-user-select:text;user-sel
 }
 #apt-svc-fullscreen{background:#f4f6f8!important;}
 #apt-svc-note-banner{margin:8px 16px 0!important;}
+
+/* H163: 비활성 구역·카드 표시(모든 모드) */
+.dis-h163{position:relative;border:2px solid #E5333F!important;background:#FFF1F2!important;box-shadow:none!important;}
+.dis-h163::before{content:"⛔ 비활성";position:absolute;top:-10px;right:12px;z-index:2;background:#E5333F;color:#fff;font-size:12px;font-weight:800;padding:2px 9px;border-radius:999px;}
+.part-dis-h163{position:relative;border:2px dashed #F59AA2!important;}
+.part-dis-h163::before{content:"⛔ 일부 동 비활성";position:absolute;top:-10px;right:12px;z-index:2;background:#FDE2E4;color:#C0262F;font-size:12px;font-weight:800;padding:2px 9px;border-radius:999px;}
+.apt-svc-point-nav-btn.dis-h163{background:#FFF1F2!important;color:#E5333F!important;border:2px solid #E5333F!important;}
+.apt-svc-point-nav-btn.dis-h163::before,.apt-svc-point-card.dis-h163::before{content:none;}
+.dis-note-h163{margin-top:10px;padding:14px;border-radius:12px;background:#FDE2E4;color:#B4232C;font-weight:800;font-size:15px;}
+.dis-open-btn-h163{margin:0 0 12px;}
+.dis-modal-h163{display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,12,30,.45);align-items:center;justify-content:center;padding:14px;}
+.dis-modal-h163.on{display:flex;}
+.dis-card-h163{width:100%;max-width:640px;max-height:92dvh;background:#fff;border-radius:24px;box-shadow:0 24px 60px rgba(0,23,51,.22);display:flex;flex-direction:column;overflow:hidden;}
+.dis-head-bar-h163{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 16px 8px;}
+.dis-title-h163{font-size:18px;font-weight:800;}
+.dis-count-h163{font-size:13px;color:var(--txm);font-weight:700;margin-top:2px;}
+.dis-tabs-h163{display:flex;gap:6px;padding:4px 16px 8px;flex-wrap:wrap;}
+.dis-tab-h163{border:none;border-radius:999px;background:var(--bg2);color:var(--tx2);font-weight:800;font-size:14px;padding:9px 14px;cursor:pointer;}
+.dis-tab-h163.on{background:var(--p);color:#fff;}
+.dis-help-h163{font-size:12.5px;color:var(--txm);padding:0 16px 8px;}
+.dis-body-h163{overflow-y:auto;padding:4px 12px 16px;display:flex;flex-direction:column;gap:6px;}
+.dis-group-h163{border:1px solid var(--bd);border-radius:14px;padding:6px 8px;}
+.dis-group-h163.has-dis{border-color:#F59AA2;background:#FFF7F8;}
+.dis-dongs-h163{display:flex;flex-wrap:wrap;gap:6px;padding:4px 0 4px 28px;}
+.dis-row-h163{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:var(--bg2);font-size:14.5px;font-weight:700;cursor:pointer;}
+.dis-row-h163:has(input:checked){background:#FDE2E4;color:#B4232C;}
+.dis-head-h163{background:transparent;font-size:15.5px;font-weight:800;}
+.dis-row-h163 input{width:20px;height:20px;accent-color:#E5333F;flex-shrink:0;}
+.dis-sub-h163{font-size:12px;color:var(--txm);font-weight:600;}
+.dis-empty-h163{text-align:center;color:var(--txm);padding:20px;}
+/* H163: 봉사진행순서 상자 — 관리자 길게 눌러 옮기기 */
+.apt-order-list.can-drag-h163 li{cursor:grab;}
+.apt-order-list.can-drag-h163 li::after{content:"⠿";margin-left:6px;color:var(--txm);font-size:18px;}
+.apt-order-list li.dragging-h163{background:var(--pbg)!important;box-shadow:0 8px 20px rgba(49,130,246,.3);transform:scale(1.02);}
+.apt-order-list.is-dragging-h163{touch-action:none;}
+/* H163: 나오기·닫기 버튼은 모두 청색 */
+.apt-order-close,button[onclick^="closeS12Viewer"],button[onclick^="closeS13Viewer"],button[onclick^="closeSheet"],button[onclick^="closeSideDetail"],button[onclick^="closeZoneNumberModal"],.back-btn{background:var(--p)!important;color:#fff!important;box-shadow:0 4px 12px rgba(49,130,246,.3)!important;}
