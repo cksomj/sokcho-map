@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
-<link rel="stylesheet" href="styles.css?v=20261116-h148-admin-fab">
+<link rel="stylesheet" href="styles.css?v=20261116-h149-admin-pick">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -987,6 +987,7 @@
   <div class="adm-fab-items" id="adm-fab-items"></div>
   <button class="adm-fab-toggle" id="adm-fab-toggle" onclick="toggleAdmFabH148()" aria-label="관리 메뉴" title="관리 메뉴">⚙</button>
 </div>
+<div id="adm-pick-banner" class="adm-pick-banner hide"><span id="adm-pick-text"></span><button type="button" onclick="stopAdminPickH149(true)">취소</button></div>
 <button id="admin-return-fab" class="admin-return-fab hide" onclick="returnToAdminH147()">◀ 관리자 페이지로</button>
 <div id="toast"></div>
 
@@ -1002,6 +1003,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261116-h148-admin-fab"></script>
+<script src="app.js?v=20261116-h149-admin-pick"></script>
 </body>
 </html>

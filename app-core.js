@@ -3537,6 +3537,7 @@ function requestLoginGps(){
 }
 
 function doLogout(){
+  try{stopAdminPickH149();}catch(e){} // H149
   document.documentElement.classList.remove('role-admin','adm-fab-open');S.adminFocusH148=null; // H148: 로그인 화면에 관리자 버튼이 남지 않게
   _ssSetH141(LAST_TAB_KEY_H141,'');_ssSetH141(RESEARCH_Q_KEY_H141,''); // H141
   const logoutRole=S.role, logoutUser=S.user;
@@ -3589,6 +3590,7 @@ function tryAutoLogin(){
 // 탭 전환
 // ================================================================
 function goTab(name){
+  if(S.adminPickH149&&name!=='map')stopAdminPickH149(); // H149
   if(document.documentElement.classList.contains('role-admin'))setAdmFabOpenH148(name==='admin'); // H148: 관리자 페이지에서만 펼침(지도 등은 접어서 가리지 않게)
   if(S.adminReturnH147&&name!=='map'&&name!=='route'){S.adminReturnH147=null;updateAdminReturnFabH147();} // H147: 다른 화면으로 가면 돌아가기 버튼 정리
   if(S.role)_ssSetH141(LAST_TAB_KEY_H141,name); // H141
@@ -3681,6 +3683,8 @@ const ADM_GROUPS_H148=[
   {k:'monthly',icon:'📈',label:'월별현황',title:'📈 전체 통계 · 월별 현황'},
   {k:'zonestat',icon:'📊',label:'구역별',title:'📊 구역별 봉사현황',autoOpen:true},
   {k:'zones',icon:'🗺',label:'구역관리',title:'🗺 구역관리'},
+  {k:'pickzone',icon:'✏️',label:'구역수정',title:'✏️ 지도에서 구역 골라 경계 수정',act:()=>startAdminPickH149('zone')}, // H149
+  {k:'pickroute',icon:'🧭',label:'경로그리기',title:'🧭 지도에서 구역 골라 경로 그리기',act:()=>startAdminPickH149('route')}, // H149
   {k:'apt',icon:'🏢',label:'단지등록',title:'🏢 아파트 단지 등록 · 카드 자동/수동 생성'},
   {k:'leaders',icon:'🧭',label:'인도자',title:'🧭 인도자 명단',autoOpen:true},
   {k:'vols',icon:'👥',label:'봉사자',title:'👥 봉사자 명단',autoOpen:true},
@@ -3740,6 +3744,8 @@ function setAdminReturnH147(){
 }
 function updateAdminReturnFabH147(){document.getElementById('admin-return-fab')?.classList.toggle('hide',!S.adminReturnH147);}
 function returnToAdminH147(){
+  if(S.rteDraw&&Array.isArray(S.rtePts)&&S.rtePts.length>=2&&!confirm('그리던 경로를 저장하지 않고 관리자 페이지로 갈까요?'))return; // H149
+  if(S.rteDraw){try{clearRteCurrent();}catch(e){}try{stopRteDraw();}catch(e){}} // H149: 그리던 경로 정리(저장 안 함)
   const ctx=S.adminReturnH147;
   S.adminReturnH147=null;updateAdminReturnFabH147();
   try{if(S.drawMode)cancelDraw();}catch(e){}
@@ -3754,9 +3760,32 @@ function returnToAdminH147(){
 }
 function goAdminRouteDraw(zoneId){ // H147: 관리자 구역관리 → 경로그리기
   if(S.role!=='admin')return;
-  setAdminReturnH147();
+  if(!S.adminReturnH147)setAdminReturnH147();
   goTab('route');
-  setTimeout(()=>{try{openRd(zoneId);}catch(e){console.error('경로그리기 열기 실패',e);}},250);
+  setTimeout(()=>{
+    try{openRd(zoneId);}catch(e){console.error('경로그리기 열기 실패',e);return;}
+    // H149: 경로 화면에서 "경로그리기" → "그리기 시작"을 또 누르지 않게 바로 그리기 시작
+    setTimeout(()=>{
+      try{const panel=document.getElementById('rd-side-panel');if(panel&&!panel.classList.contains('show-draw'))toggleMobileDraw();}catch(e){}
+      try{if(!S.rteDraw)startRteDraw();}catch(e){console.error('경로 그리기 시작 실패',e);}
+    },350);
+  },250);
+}
+// H149: 관리자 원형 버튼 "구역수정"/"경로그리기" — 목록에서 고르지 않고 지도에서 구역을 바로 누른다
+function startAdminPickH149(kind){
+  if(S.role!=='admin')return;
+  setAdminReturnH147();
+  goTab('map');
+  S.adminPickH149=kind;
+  const t=document.getElementById('adm-pick-text');
+  if(t)t.textContent=kind==='zone'?'✏️ 경계를 고칠 구역을 지도에서 누르세요':'🧭 경로를 그릴 구역을 지도에서 누르세요';
+  document.getElementById('adm-pick-banner')?.classList.remove('hide');
+  setTimeout(()=>{try{if(S.mainMap)S.mainMap.invalidateSize();}catch(e){}},200);
+}
+function stopAdminPickH149(byUser){
+  S.adminPickH149=null;
+  document.getElementById('adm-pick-banner')?.classList.add('hide');
+  if(byUser)toast('구역 고르기를 취소했습니다.');
 }
 function goAdminZoneDraw(zoneId){
   if(S.role!=='admin')return;
@@ -3922,6 +3951,11 @@ function drawAllZones(activeId){
 // 구역 시트
 // ================================================================
 function openSheet(id){
+  if(S.adminPickH149&&S.role==='admin'){ // H149: 지도에서 고른 구역으로 바로 구역수정/경로그리기
+    const k=S.adminPickH149;stopAdminPickH149();
+    if(k==='zone')goAdminZoneDraw(id);else goAdminRouteDraw(id);
+    return;
+  }
   const z=S.zones.find(z=>z.id===id);
   if(!z)return;
   S.panelZone=id;
