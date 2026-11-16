@@ -1512,3 +1512,16 @@ html.role-volunteer #menu-toggle-btn{display:none!important;}
 .s12-body.int .s12-apt{column-count:1;}
 .s12-int-map{width:52mm;height:100%;flex-shrink:0;position:relative;border-left:1px solid #000;background:#f3f4f6;overflow:hidden;}
 .s12-int-cap{position:absolute;left:0;right:0;bottom:0;background:rgba(255,255,255,.9);font-size:7pt;font-weight:800;padding:.5mm 1mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:2;}
+
+/* V2 H145: 미완료 메모 배너(봉사 시작 시), 카드 앞 봉사 날짜, 날짜순 칩, 지도에서 고른 카드 깜빡임 */
+.svc-note-banner{display:flex;align-items:flex-start;gap:10px;background:#FFF7E6;border:1px solid #F5C26B;color:#6B4200;padding:10px 12px;border-radius:10px;font-size:14px;line-height:1.45;margin:8px 16px 0;box-shadow:0 2px 8px rgba(0,0,0,.12);}
+.svc-note-banner.hide{display:none;}
+.svc-note-float{position:absolute;top:8px;left:8px;right:8px;margin:0;z-index:650;}
+.svc-note-text{flex:1;min-width:0;word-break:break-all;}
+.svc-note-text b{font-weight:900;}
+.svc-note-x{flex-shrink:0;width:34px;height:34px;border-radius:50%;border:none;background:#6B4200;color:#fff;font-size:16px;font-weight:900;cursor:pointer;}
+.svc-date{font-weight:800;color:var(--tx);margin-right:2px;}
+.svc-date.none{color:var(--txm);font-weight:600;}
+.date-sort-chip.ds-on{background:#7F3FBF!important;border-color:#7F3FBF!important;color:#fff!important;}
+@keyframes flashH145{0%,100%{box-shadow:0 0 0 0 rgba(216,90,48,0)}50%{box-shadow:0 0 0 4px rgba(216,90,48,.55)}}
+.flash-h145{animation:flashH145 .8s ease-in-out 2;}

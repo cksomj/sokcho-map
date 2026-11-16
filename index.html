@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
-<link rel="stylesheet" href="styles.css?v=20261115-h144-keep-shops">
+<link rel="stylesheet" href="styles.css?v=20261116-h145-draw-memo-date">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -142,6 +142,7 @@
             <div class="chip" onclick="filterMap('residential',this)">주택</div>
             <div class="chip" onclick="filterMap('commercial',this)">상가</div>
             <div class="chip" onclick="filterMap('undone',this)">미완료</div>
+            <div class="chip" onclick="filterMap('done',this)">완료</div>
             <div class="chip" onclick="filterMap('standby',this)">봉사대기</div>
             <div class="chip" onclick="toggleMobileSearch()" id="mobile-search-chip">🔍 찾기</div>
           </div>
@@ -185,6 +186,7 @@
           <div class="draw-bar" id="draw-bar">
             <div style="font-size:13px;font-weight:700;color:var(--p);margin-bottom:6px;" id="draw-title">✏️ 새 구역 그리기</div>
             <div style="font-size:12px;color:var(--txm);margin-bottom:8px;">지도를 클릭해 꼭짓점을 찍으세요 (3개 이상)</div>
+            <input type="number" id="draw-no" inputmode="numeric" placeholder="구역 번호" title="구역 번호" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg2);font-size:13px;margin-bottom:6px;outline:none;">
             <input type="text" id="draw-name" placeholder="구역 이름" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg2);font-size:13px;margin-bottom:6px;outline:none;">
             <select id="draw-type" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg2);font-size:13px;margin-bottom:6px;outline:none;">
               <option value="residential">주택구역</option>
@@ -227,6 +229,7 @@
             </div>
             <div id="side-draw-panel">
               <div style="font-size:13px;font-weight:700;color:var(--p);margin-bottom:8px;" id="draw-title2">✏️ 새 구역 그리기</div>
+              <input type="number" id="draw-no2" inputmode="numeric" placeholder="구역 번호" title="구역 번호" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg2);font-size:13px;margin-bottom:6px;outline:none;">
               <input type="text" id="draw-name2" placeholder="구역 이름" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg2);font-size:13px;margin-bottom:6px;outline:none;">
               <select id="draw-type2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg2);font-size:13px;margin-bottom:6px;outline:none;">
                 <option value="residential">주택구역</option>
@@ -269,6 +272,7 @@
                 <button class="btn btn-sm btn-out" id="rte-filter-done" onclick="setRouteListFilter('done',this)">완료</button>
                 <button class="btn btn-sm btn-out" id="rte-filter-undone" onclick="setRouteListFilter('undone',this)">미완료</button>
                 <button class="btn btn-sm btn-out" id="rte-filter-standby" onclick="setRouteListFilter('standby',this)">봉사대기</button>
+                <button class="btn btn-sm btn-out date-sort-chip" onclick="toggleDateSortH145('rte',this)">📅 날짜순</button>
               </div>
             </div>
             <div class="zone-grid" id="rte-grid"></div>
@@ -398,6 +402,7 @@
               <div class="chip" onclick="filterHomeMap('residential',this)">주택</div>
               <div class="chip" onclick="filterHomeMap('commercial',this)">상가</div>
               <div class="chip" onclick="filterHomeMap('undone',this)">미완료</div>
+              <div class="chip" onclick="filterHomeMap('done',this)">완료</div>
               <div class="chip" onclick="filterHomeMap('standby',this)">봉사대기</div>
             </div>
             <!-- 범례 -->
@@ -434,6 +439,7 @@
                   <div class="chip on" onclick="setHomeResFilter('all',this)">전체</div>
                   <div class="chip" onclick="setHomeResFilter('undone',this)">미완료</div>
                   <div class="chip" onclick="setHomeResFilter('done',this)">완료</div>
+                  <div class="chip date-sort-chip" onclick="toggleDateSortH145('res',this)">📅 날짜순</div>
                 </div>
                 <div style="overflow-y:auto;padding:0 14px 14px;" id="home-zone-list"></div>
               </div>
@@ -448,6 +454,7 @@
                   <div class="chip on" onclick="setHomeComFilter('all',this)">전체</div>
                   <div class="chip" onclick="setHomeComFilter('undone',this)">미완료</div>
                   <div class="chip" onclick="setHomeComFilter('done',this)">완료</div>
+                  <div class="chip date-sort-chip" onclick="toggleDateSortH145('com',this)">📅 날짜순</div>
                 </div>
                 <div style="padding:0 14px 14px;" id="home-com-list"></div>
               </div>
@@ -462,6 +469,7 @@
                   <div class="chip on" onclick="setHomeAptFilter('all',this)">전체</div>
                   <div class="chip" onclick="setHomeAptFilter('undone',this)">미완료</div>
                   <div class="chip" onclick="setHomeAptFilter('done',this)">완료</div>
+                  <div class="chip date-sort-chip" onclick="toggleDateSortH145('apt',this)">📅 날짜순</div>
                 </div>
                 <div style="padding:0 14px 14px;" id="home-apt-card-list"></div>
               </div>
@@ -477,6 +485,7 @@
                   <div class="chip on" onclick="setHomeIntFilter('all',this)">전체</div>
                   <div class="chip" onclick="setHomeIntFilter('undone',this)">미완료</div>
                   <div class="chip" onclick="setHomeIntFilter('done',this)">완료</div>
+                  <div class="chip date-sort-chip" onclick="toggleDateSortH145('int',this)">📅 날짜순</div>
                 </div>
                 <div style="padding:0 14px 14px;" id="home-int-card-list"></div>
               </div>
@@ -586,6 +595,7 @@
                 <button class="btn btn-sm btn-out" id="adm-filter-done" onclick="setAdminZoneFilter('done',this)">완료</button>
                 <button class="btn btn-sm btn-out" id="adm-filter-undone" onclick="setAdminZoneFilter('undone',this)">미완료</button>
                 <button class="btn btn-sm btn-out" id="adm-filter-standby" onclick="setAdminZoneFilter('standby',this)">대기</button>
+                <button class="btn btn-sm btn-out date-sort-chip" onclick="toggleDateSortH145('adm',this)">📅 날짜순</button>
                 <button class="btn btn-sm btn-dk" onclick="resetDoneZones()">전체 초기화</button>
                 <button class="btn btn-sm btn-out" onclick="goTab('map');setTimeout(()=>startDraw(),200)">그리기</button>
               </div>
@@ -622,6 +632,12 @@
                 <span id="adm-aptcards-toggle-icon">▸</span>
               </div>
               <div class="home-apt-body hide" id="adm-aptcards-body">
+                <div style="display:flex;gap:5px;padding:0 0 8px;flex-wrap:wrap;">
+                  <div class="chip on" onclick="setAdmCardFilterH145('apt','all',this)">전체</div>
+                  <div class="chip" onclick="setAdmCardFilterH145('apt','undone',this)">미완료</div>
+                  <div class="chip" onclick="setAdmCardFilterH145('apt','done',this)">완료</div>
+                  <div class="chip date-sort-chip" onclick="toggleDateSortH145('admapt',this)">📅 날짜순</div>
+                </div>
                 <div id="apt-card-list"></div>
               </div>
             </div>
@@ -634,6 +650,12 @@
                 <span id="adm-intcards-toggle-icon">▸</span>
               </div>
               <div class="home-apt-body hide" id="adm-intcards-body">
+                <div style="display:flex;gap:5px;padding:0 0 8px;flex-wrap:wrap;">
+                  <div class="chip on" onclick="setAdmCardFilterH145('int','all',this)">전체</div>
+                  <div class="chip" onclick="setAdmCardFilterH145('int','undone',this)">미완료</div>
+                  <div class="chip" onclick="setAdmCardFilterH145('int','done',this)">완료</div>
+                  <div class="chip date-sort-chip" onclick="toggleDateSortH145('admint',this)">📅 날짜순</div>
+                </div>
                 <div id="int-card-list"></div>
               </div>
             </div>
@@ -754,6 +776,7 @@
       <div id="svc-fullscreen" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:8000;flex-direction:column;background:#111;">
         <div style="position:relative;flex:1;width:100%;min-height:0;">
           <div id="svc-map-kakao-bg" class="kakao-bg"></div><div id="svc-map" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;"></div>
+          <div id="svc-note-banner" class="svc-note-banner svc-note-float hide"></div>
           <div class="svc-map-tools">
             <button class="svc-locate-btn" onclick="zoomSvcMap(1)">＋ 확대</button>
             <button class="svc-locate-btn" onclick="zoomSvcMap(-1)">－ 축소</button>
@@ -819,6 +842,7 @@
             <button class="svc-locate-btn" onclick="openApartmentCardKakaoStart(S.aptSession.cardId)">카카오맵</button>
           </div>
         </div>
+        <div id="apt-svc-note-banner" class="svc-note-banner hide"></div>
         <div style="flex:1;min-height:0;overflow-y:auto;background:#f4f6f8;padding:12px 16px;" id="apt-svc-checklist"></div>
         <div class="svc-panel" style="padding:10px 16px 22px;flex-shrink:0;">
           <div style="display:flex;gap:8px;margin-bottom:8px;">
@@ -958,6 +982,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261115-h144-keep-shops"></script>
+<script src="app.js?v=20261116-h145-draw-memo-date"></script>
 </body>
 </html>
