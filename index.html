@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"><!-- H150: 가독성 좋은 한글 글꼴 -->
-<link rel="stylesheet" href="styles.css?v=20261116-h151-order-label">
+<link rel="stylesheet" href="styles.css?v=20261116-h153-route-jump">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -269,6 +269,12 @@
                 <button onclick="clearRteSearch()" id="rte-search-clear">✕</button>
               </div>
               <div class="admin-zone-toolbar route-list-toolbar">
+                <span class="rte-jump-h153"><!-- H153: 관리자 바로가기 -->
+                  <button type="button" class="btn btn-sm rte-jump-btn" onclick="jumpRouteSectionH153('res')">🏠 주택</button>
+                  <button type="button" class="btn btn-sm rte-jump-btn" onclick="jumpRouteSectionH153('apt')">🏢 아파트</button>
+                  <button type="button" class="btn btn-sm rte-jump-btn" onclick="jumpRouteSectionH153('int')">📞 인터폰</button>
+                  <button type="button" class="btn btn-sm rte-jump-btn" onclick="jumpRouteSectionH153('com')">🏪 상가</button>
+                </span>
                 <button class="btn btn-sm btn-out on" id="rte-filter-all" onclick="setRouteListFilter('all',this)">전체</button>
                 <button class="btn btn-sm btn-out" id="rte-filter-done" onclick="setRouteListFilter('done',this)">완료</button>
                 <button class="btn btn-sm btn-out" id="rte-filter-undone" onclick="setRouteListFilter('undone',this)">미완료</button>
@@ -983,6 +989,17 @@
   </div>
   <div class="s12-list" id="s12-list"></div>
 </div>
+<!-- H152: 봉사진행순서보기 — 지도를 떠나지 않고 상자로 순서 경로를 보여줌 -->
+<div id="apt-order-modal" class="apt-order-modal" onclick="if(event.target===this)closeAptOrderBoxH152()">
+  <div class="apt-order-card">
+    <div class="apt-order-head">
+      <div style="min-width:0;"><div class="apt-order-kicker">봉사진행순서</div><div class="apt-order-title" id="apt-order-title"></div></div>
+      <button type="button" class="apt-order-close" onclick="closeAptOrderBoxH152()">✕ 나오기</button>
+    </div>
+    <div class="apt-order-map"><div style="position:relative;width:100%;height:100%;"><div id="apt-order-map-kakao-bg" class="kakao-bg"></div><div id="apt-order-map" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;"></div></div></div>
+    <ol id="apt-order-list" class="apt-order-list"></ol>
+  </div>
+</div>
 <!-- H148: 관리자 원형 버튼 묶음(오른쪽 아래) -->
 <div id="adm-fab-stack" class="adm-fab-stack collapsed">
   <div class="adm-fab-items" id="adm-fab-items"></div>
@@ -1004,6 +1021,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261116-h151-order-label"></script>
+<script src="app.js?v=20261116-h153-route-jump"></script>
 </body>
 </html>

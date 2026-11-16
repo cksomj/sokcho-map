@@ -1902,38 +1902,46 @@ function createCardBuilderCard(){
 // 파란색 route 색상)를 그대로 재사용하고 새 스타일을 만들지 않는다.
 // ================================================================
 let cardLineLayers=[];
-function clearApartmentCardLine(){
-  if(S.mainMap)cardLineLayers.forEach(l=>S.mainMap.removeLayer(l));
-  cardLineLayers=[];
-}
+// H152: "봉사진행순서보기" — 전체 지도로 넘어가지 않고, 지금 화면 위에 상자(창)로
+// 카드 지점의 순서 경로를 보여준다. "나오기"로 닫으면 보던 화면 그대로 남는다.
+let aptOrderMapH152=null,aptOrderLayersH152=[];
 function showApartmentCardLine(cardId){
   const card=S.apartmentCards.find(c=>c.id===cardId);
   if(!card){toast('카드를 먼저 선택하세요.');return;}
-  // H120: card.points[].lat/lng를 직접 읽으면(H63 카드는 항상 null) 좌표가
-  // 하나도 안 잡혀서 "라인 연결 보기"가 매번 "좌표 없음"으로 실패했다
-  // (H117/H118과 같은 원인). apartmentCardPointCoord()로 동/단지
-  // 레지스트리에서 실제 좌표를 조회해야 한다.
-  const pts=card.points.map((p,idx)=>apartmentCardPointCoord(card,idx)).filter(Boolean);
+  // H120: 좌표는 apartmentCardPointCoord()로 동/단지 레지스트리에서 조회(points[].lat/lng는 비어 있음)
+  const items=card.points.map((p,idx)=>({p,c:apartmentCardPointCoord(card,idx)}));
+  const pts=items.map(x=>x.c).filter(Boolean);
   if(!pts.length){toast('이 카드에는 좌표가 등록된 지점이 없습니다. 관리자 화면에서 동 좌표를 먼저 등록하세요.');return;}
-  goTab('map');
-  setTimeout(()=>{
-    if(!S.mainMap)return;
-    clearApartmentCardLine();
-    pts.forEach((p,i)=>{
-      const icon=L.divIcon({
-        html:`<div style="width:24px;height:24px;border-radius:50%;background:#378ADD;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);">${i+1}</div>`,
-        className:'',iconAnchor:[12,12]
-      });
-      cardLineLayers.push(L.marker(p,{icon,zIndexOffset:730}).addTo(S.mainMap));
+  const modal=document.getElementById('apt-order-modal');
+  if(!modal)return;
+  document.getElementById('apt-order-title').textContent=`${card.number?('#'+card.number+' '):''}${aptCardDisplayName(card.name)}`;
+  document.getElementById('apt-order-list').innerHTML=items.map((x,i)=>`<li><span class="n">${i+1}</span><span class="t">${esc(x.p.complexName||'')} ${esc(x.p.dong||'')}</span><span class="u">${(x.p.units||[]).length}호${x.c?'':' · 좌표 없음'}</span></li>`).join('');
+  modal.classList.add('on');
+  if(!aptOrderMapH152){
+    aptOrderMapH152=L.map('apt-order-map',stableMapOptions({center:pts[0],zoom:17,zoomControl:true,attributionControl:false}));
+    addBaseTiles(aptOrderMapH152);
+  }
+  const map=aptOrderMapH152;
+  aptOrderLayersH152.forEach(l=>map.removeLayer(l));aptOrderLayersH152=[];
+  pts.forEach((p,i)=>{
+    const icon=L.divIcon({
+      html:`<div style="width:26px;height:26px;border-radius:50%;background:#378ADD;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);">${i+1}</div>`,
+      className:'',iconAnchor:[13,13]
     });
-    if(pts.length>=2){
-      cardLineLayers.push(L.polyline(pts,{color:'#378ADD',weight:4,opacity:.88}).addTo(S.mainMap));
-      cardLineLayers.push(...addRouteArrowMarkers(S.mainMap,pts,'#378ADD',720));
-    }
-    fitMapBounds(S.mainMap,L.latLngBounds(pts),{padding:[52,52],maxZoom:18});
-    toast(`"${aptCardDisplayName(card.name)}" 카드의 ${pts.length}개 지점을 지도에 표시했습니다.`);
-  },350);
+    aptOrderLayersH152.push(L.marker(p,{icon,zIndexOffset:730}).addTo(map));
+  });
+  if(pts.length>=2){
+    aptOrderLayersH152.push(L.polyline(pts,{color:'#378ADD',weight:4,opacity:.88}).addTo(map));
+    aptOrderLayersH152.push(...addRouteArrowMarkers(map,pts,'#378ADD',720));
+  }
+  let fitted=0;
+  refreshMapAfterLayout(map,()=>{if(fitted++<3)fitMapBounds(map,L.latLngBounds(pts),{padding:[40,40],maxZoom:18});});
 }
+function closeAptOrderBoxH152(){
+  const modal=document.getElementById('apt-order-modal');
+  if(modal)modal.classList.remove('on');
+}
+function clearApartmentCardLine(){} // H152: 전체 지도에는 더 이상 그리지 않음(이전 호출 호환용)
 let apartmentCardOpenId=null;
 function toggleApartmentCardOpen(id){
   apartmentCardOpenId=apartmentCardOpenId===id?null:id;
@@ -2082,7 +2090,8 @@ function renderApartmentCardList(keepOpenId){
         ${card.points.map((p,pIdx)=>`<div class="apt-building-row">
           <div class="apt-building-head">
             <div style="font-size:13px;font-weight:700;">${pIdx+1}. ${esc(p.complexName)} ${esc(p.dong)} <span style="font-weight:400;color:var(--txm);">${p.units.length}호</span></div>
-            <div style="display:flex;gap:4px;">
+            <div style="display:flex;gap:4px;align-items:center;">
+              <span class="apt-order-move-label">(순서바꾸기)</span><!-- H152: ▲▼가 무슨 버튼인지 알 수 있게 -->
               <button class="btn btn-sm btn-out" onclick="moveApartmentCardPoint(${card.id},${pIdx},-1)" ${pIdx===0?'disabled':''}>▲</button>
               <button class="btn btn-sm btn-out" onclick="moveApartmentCardPoint(${card.id},${pIdx},1)" ${pIdx===card.points.length-1?'disabled':''}>▼</button>
               <button class="btn btn-sm btn-dk" onclick="deleteApartmentCardPoint(${card.id},${pIdx})">지점 삭제</button>
@@ -4382,6 +4391,13 @@ function setRouteListFilter(filter,el){
   if(el)el.classList.add('on');
   renderRouteGrid(document.getElementById('rte-search')?.value||'');
 }
+// H153: 관리자 구역 목록 위 "주택·아파트·인터폰·상가" 바로가기 — 그 묶음 머리로 바로 이동
+function jumpRouteSectionH153(k){
+  const label={res:'주택',apt:'아파트',int:'인터폰',com:'상가'}[k]||'';
+  const el=document.getElementById('rte-sec-'+k);
+  if(!el){toast(`지금 목록에 ${label} 구역이 없습니다.`);return;}
+  el.scrollIntoView({behavior:'auto',block:'start'});
+}
 function renderRouteGrid(keyword){
   let zones=[...S.zones];
   if(routeListFilter==='done')zones=zones.filter(z=>isDone(z.id));
@@ -4448,7 +4464,8 @@ function renderRouteGrid(keyword){
   const comZones=zones.filter(z=>z.type==='commercial'); // H144
   const resTotal=S.zones.filter(z=>z.type==='residential').length;
   const comTotal=S.zones.filter(z=>z.type==='commercial').length;
-  const sectionHeader=(icon,label,count)=>`<div class="zc-section-header" style="grid-column:1/-1;font-size:13px;font-weight:800;padding:10px 2px 2px;">${icon} ${label} (${count})</div>`;
+  const _secIdH153={'주택':'res','상가':'com','아파트':'apt','인터폰 아파트':'int'}; // H153: 바로가기 버튼이 찾아갈 자리
+  const sectionHeader=(icon,label,count)=>`<div class="zc-section-header" id="rte-sec-${_secIdH153[label]||'x'}" style=""grid-column:1/-1;font-size:13px;font-weight:800;padding:10px 2px 2px;">${icon} ${label} (${count})</div>`;
   const resHtml=resZones.length?sectionHeader('🏠','주택',resTotal)+resZones.map(renderZoneItem).join(''):'';
   const comHtml=comZones.length?sectionHeader('🏪','상가',comTotal)+comZones.map(renderZoneItem).join(''):'';
   const zoneHtml=resHtml+comHtml;
