@@ -3199,8 +3199,11 @@ function boundsForZoneSet(zones){
   let bounds=null;
   (zones||[]).forEach(z=>{
     (z.polygon||[]).forEach(pt=>{bounds=extendBoundsWithPoint(bounds,pt);});
-    if(z.startPoint)bounds=extendBoundsWithPoint(bounds,z.startPoint);
-    if(z.progress?.pts?.length)bounds=extendBoundsWithPoint(bounds,z.progress.pts[z.progress.pts.length-1]);
+    // H157: 시작점·마지막 위치가 구역에서 멀면(예: 다른 지역 GPS) 지도 범위에 넣지 않음 — "크게 보기"가 횡성군으로 가던 원인
+    const sp=validMapPoint(z.startPoint);
+    if(sp&&resumePointNearZoneH146(z,sp,500))bounds=extendBoundsWithPoint(bounds,z.startPoint);
+    const lp=z.progress?.pts?.length?validMapPoint(z.progress.pts[z.progress.pts.length-1]):null;
+    if(lp&&resumePointNearZoneH146(z,lp,500))bounds=extendBoundsWithPoint(bounds,z.progress.pts[z.progress.pts.length-1]);
   });
   return bounds&&bounds.isValid()?bounds:null;
 }
@@ -5482,8 +5485,21 @@ function toggleHomeWide(){
   if(btn)btn.textContent=wide?'▣ 기본 보기':'⛶ 크게 보기';
   const leaderBtn=document.getElementById('leader-zone-btn');
   if(leaderBtn)leaderBtn.classList.toggle('on',wide);
-  setTimeout(()=>{if(homeMapInst){homeMapInst.invalidateSize();if(wide)fitHomeMapToVisible();}},120);
-  setTimeout(()=>{if(wide)fitHomeMapToVisible();},320);
+  setTimeout(()=>{if(homeMapInst){homeMapInst.invalidateSize();if(wide)fitHomeMapToVisible();else homeBasicViewH157();}},120);
+  setTimeout(()=>{if(wide)fitHomeMapToVisible();else homeBasicViewH157();},320);
+}
+// H157: "기본 보기" — 지도 최대 확대에서 두 칸 축소한 크기로 속초 구역을 보여줌(고른 구역이 있으면 그 구역 가운데)
+function homeBasicViewH157(){
+  if(!homeMapInst)return;
+  const z=S.homeSelectedZone!=null&&S.zones.find(x=>x.id===S.homeSelectedZone);
+  let center=null;
+  if(z){const b=boundsForZoneSet([z]);if(b)center=b.getCenter();}
+  if(!center){ // 구역들이 모여 있는 한가운데(중앙값) — 범위 가운데는 설악산 쪽 산이 되어 쓸모없음
+    const cs=S.zones.map(x=>{try{return zoneCenter(x);}catch(e){return null;}}).filter(c=>c&&Number.isFinite(+c[0])&&Number.isFinite(+c[1]));
+    const med=a=>{const s=a.slice().sort((x,y)=>x-y);return s[Math.floor(s.length/2)];};
+    center=cs.length?L.latLng(med(cs.map(c=>+c[0])),med(cs.map(c=>+c[1]))):L.latLng(38.20138,128.59350);
+  }
+  homeMapInst.setView(center,clampMapZoom(homeMapInst,MAP_MAX_ZOOM-2),{animate:false});
 }
 
 function locateHomeMap(){
@@ -7838,5 +7854,11 @@ tryAutoLogin();
     if(!inp||inp.__h156)return;inp.__h156=true;
     inp.addEventListener('focus',()=>{if(Date.now()-(S.homeListMovedAtH156||0)<700)inp.blur();});
   }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
+})();
+
+// H157: 손잡이에 click 처리기를 달아 크롬이 '누를 수 있는 버튼'으로 인식하게 함(탭하여 검색 패널이 따라 올라오던 문제)
+(function markHandleClickableH157(){
+  function setup(){const h=document.getElementById('home-list-handle');if(h&&!h.__h157){h.__h157=true;h.addEventListener('click',e=>{e.preventDefault();});h.addEventListener('contextmenu',e=>e.preventDefault());}}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
 })();

@@ -1792,3 +1792,13 @@ html.role-volunteer #home-map-ctrls{right:auto!important;left:8px!important;alig
 #tabbar{bottom:calc(76px + env(safe-area-inset-bottom) + var(--nav-gap,0px))!important;}
 .adm-fab-stack{bottom:calc(80px + env(safe-area-inset-bottom) + var(--nav-gap,0px))!important;}
 .admin-return-fab{bottom:calc(16px + env(safe-area-inset-bottom) + var(--nav-gap,0px))!important;}
+
+/* H157: 버튼 글자를 꾹 눌러도 글자 선택(검게 칠해짐)·구글지도 같은 바로가기 팝업이 뜨지 않게 — 입력칸은 그대로 */
+button,.btn,.chip,.mbtn,.tab,.home-list-handle,.home-list-handle *,.home-apt-header,.home-apt-header *,.home-zone-row,.zc,.adm-fab-item,.role-card,[onclick]{
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;}
+input,textarea,select,[contenteditable="true"]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default;}
+#home-list-handle-icon{color:#fff!important;-webkit-text-fill-color:#fff;}
+#home-list-handle{touch-action:none;} /* H157: 손잡이를 끌 때 화면·시스템 동작과 겹치지 않게 */
+/* H157: 앱 화면 전체에서 글자 꾹 누름 선택 막기(구글 '탭하여 검색' 패널이 따라 올라오던 문제) — 입력칸·연구자료 본문은 선택 가능 */
+#scr-app,#scr-app *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+#scr-app input,#scr-app textarea,#scr-app select,#p-research .pb,#p-research .pb *{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default;}
