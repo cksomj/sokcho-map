@@ -1759,3 +1759,7 @@ html.role-admin .rte-jump-h153{display:contents;}
 #rte-grid .zc-section-header{scroll-margin-top:12px;}
 .route-list-toolbar{flex-wrap:wrap!important;gap:6px!important;overflow:visible!important;}
 .route-list-toolbar > button,.rte-jump-btn{white-space:nowrap!important;flex:0 0 auto!important;width:auto!important;}
+/* H154: 전도인 지도 왼쪽 위 필터 버튼(전체·주택·상가·미완료·완료·봉사대기) 숨김 — 지도는 늘 전체 표시 */
+html.role-volunteer #home-filter-chips{display:none!important;}
+/* H154: 전도인 지도 — 홈·확대·축소·내 위치·크게 보기 버튼을 왼쪽으로(필터 버튼 자리) */
+html.role-volunteer #home-map-ctrls{right:auto!important;left:8px!important;align-items:flex-start;}

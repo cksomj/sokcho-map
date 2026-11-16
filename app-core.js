@@ -1471,10 +1471,29 @@ function fmtServiceDateH145(t){
   return `<span class="svc-date">📅 ${y}${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}</span>`;
 }
 const dateSortH145={};
+// H154: 목록은 항상 미완료 → 봉사대기(미시작) → 완료 순(날짜순으로 바꿔도 이 묶음 순서는 유지)
+function zonePrioH154(id){const s=getZoneState(id);return s==='progress'?0:s==='done'?2:1;}
+function cardPrioH154(c){return (c.status==='진행중'||c.status==='미완료')?0:c.status==='완료'?2:1;}
+function itemPrioH154(x){return Array.isArray(x&&x.points)&&x.number!=null?cardPrioH154(x):zonePrioH154(x.id);}
+const KEEP_ORDER_KEYS_H154=['adm','admapt','admint']; // 관리자 구역관리 목록은 번호순 그대로
+function kickMainMapH154(){
+  const map=S.mainMap;if(!map)return;
+  const run=()=>{
+    try{
+      map.invalidateSize();
+      const k=_kakaoInstances['main-map'];
+      if(k){const c=map.getCenter();k.relayout();k.setCenter(new kakao.maps.LatLng(c.lat,c.lng));k.setLevel(Math.max(1,Math.min(14,20-map.getZoom())));}
+      map.fire('move');
+    }catch(e){}
+  };
+  if(window.requestAnimationFrame)requestAnimationFrame(()=>requestAnimationFrame(run));
+  [60,200,400,800,1500].forEach(ms=>setTimeout(run,ms));
+}
 function sortByDateH145(key,list,tsFn){
   const m=dateSortH145[key]||0;
   if(!m)return list;
-  return list.slice().sort((a,b)=>m===1?tsFn(a)-tsFn(b):tsFn(b)-tsFn(a));
+  const grp=KEEP_ORDER_KEYS_H154.includes(key)?(()=>0):itemPrioH154;
+  return list.slice().sort((a,b)=>grp(a)-grp(b)||(m===1?tsFn(a)-tsFn(b):tsFn(b)-tsFn(a)));
 }
 function toggleDateSortH145(key,el){
   const m=((dateSortH145[key]||0)+1)%3;
@@ -2275,7 +2294,7 @@ function renderHomeApartmentCardList(){
   const countEl=document.getElementById('home-apt-count');
   if(countEl)countEl.textContent=S.apartmentCards.filter(c=>!isInterphoneCard(c)).length; // H143
   // V2 H67: 미완료(진행중/미완료 포함) 우선, 완료는 뒤로(구역/상가와 동일 규칙)
-  let cards=[...S.apartmentCards].filter(c=>!isInterphoneCard(c)).sort((a,b)=>(a.status==='완료'?1:0)-(b.status==='완료'?1:0)||(Number(a.number)||0)-(Number(b.number)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
+  let cards=[...S.apartmentCards].filter(c=>!isInterphoneCard(c)).sort((a,b)=>cardPrioH154(a)-cardPrioH154(b)||(Number(a.number)||0)-(Number(b.number)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
   // H131: 미완료=진행중/미완료만(미시작 제외) — 지도/목록 탭과 같은 기준
   cards=cards.filter(c=>homeAptFilter==='all'||(homeAptFilter==='undone'&&(c.status==='진행중'||c.status==='미완료'))||(homeAptFilter==='done'&&c.status==='완료'));
   cards=sortByDateH145('apt',cards,cardLastServiceTsH145); // H145
@@ -2333,7 +2352,7 @@ function renderHomeInterphoneList(){
   const countEl=document.getElementById('home-int-count');
   if(countEl)countEl.textContent=all.length;
   if(!wrap)return;
-  let cards=all.sort((a,b)=>(a.status==='완료'?1:0)-(b.status==='완료'?1:0)||(Number(a.number)||0)-(Number(b.number)||0));
+  let cards=all.sort((a,b)=>cardPrioH154(a)-cardPrioH154(b)||(Number(a.number)||0)-(Number(b.number)||0));
   cards=cards.filter(c=>homeIntFilter==='all'||(homeIntFilter==='undone'&&(c.status==='진행중'||c.status==='미완료'))||(homeIntFilter==='done'&&c.status==='완료'));
   cards=sortByDateH145('int',cards,cardLastServiceTsH145); // H145
   if(!cards.length){wrap.innerHTML='<p style="font-size:13px;color:var(--txm);text-align:center;padding:14px 0;">인터폰 카드가 없습니다.</p>';return;}
@@ -3621,7 +3640,7 @@ function goTab(name){
   if(name==='route'){showRouteList();renderRouteGrid();}
   if(name==='monitor') initMonitor();
   if(name==='home'){renderHome();renderHomeApartmentCardList();}
-  if(name==='map'&&S.mainMap) setTimeout(()=>{S.mainMap.invalidateSize();},300);
+  if(name==='map'&&S.mainMap) kickMainMapH154(); // H154: 처음 열 때 빈 지도(터치해야 보임) 방지
   if(name==='route'&&S.rdMap) refreshMapAfterLayout(S.rdMap);
   if(name==='home'&&homeMapInst) refreshMapAfterLayout(homeMapInst);
   if(name==='monitor'&&S.monMap) refreshMapAfterLayout(S.monMap);
@@ -3706,9 +3725,18 @@ function renderAdmFabH148(){
   if(!w)return;
   w.innerHTML=ADM_GROUPS_H148.map(g=>`<button type="button" class="adm-fab-item${S.adminFocusH148===g.k?' on':''}" onclick="openAdminGroupH148('${g.k}')" title="${esc(g.title)}" aria-label="${esc(g.title)}"><span class="i">${g.icon}</span><span class="t">${esc(g.label)}</span></button>`).join('');
 }
+// H154: 관리자 원형 버튼은 펼친 뒤 10초 동안 손대지 않으면 저절로 접힌다(버튼을 만지면 10초 다시 셈)
+const ADM_FAB_AUTOCLOSE_MS_H154=10000;
+let admFabTimerH154=null;
+function armAdmFabAutoCloseH154(){
+  clearTimeout(admFabTimerH154);
+  admFabTimerH154=setTimeout(()=>{const s=document.getElementById('adm-fab-stack');if(s&&!s.classList.contains('collapsed'))setAdmFabOpenH148(false);},ADM_FAB_AUTOCLOSE_MS_H154);
+}
 function setAdmFabOpenH148(open){
   const s=document.getElementById('adm-fab-stack');
   if(!s)return;
+  if(!s.__autoH154){s.__autoH154=true;['pointerdown','touchstart','wheel','scroll'].forEach(ev=>s.addEventListener(ev,()=>{if(!s.classList.contains('collapsed'))armAdmFabAutoCloseH154();},{passive:true,capture:true}));}
+  if(open)armAdmFabAutoCloseH154();else clearTimeout(admFabTimerH154);
   s.classList.toggle('collapsed',!open);
   document.documentElement.classList.toggle('adm-fab-open',!!open&&document.querySelector('.page.on')?.id==='p-admin');
 }
@@ -4412,7 +4440,7 @@ function renderRouteGrid(keyword){
     );
   }
   // V2 H68: H67과 동일한 규칙 — 미완료(진행중/미완료 포함) 우선, 완료는 뒤로
-  zones.sort((a,b)=>(isDone(a.id)?1:0)-(isDone(b.id)?1:0)||(Number(a.id)||0)-(Number(b.id)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
+  zones.sort((a,b)=>zonePrioH154(a.id)-zonePrioH154(b.id)||(Number(a.id)||0)-(Number(b.id)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
   zones=sortByDateH145('rte',zones,z=>zoneLastServiceTsH145(z.id)); // H145
   const grid=document.getElementById('rte-grid');
   if(!grid)return;
@@ -4430,7 +4458,7 @@ function renderRouteGrid(keyword){
     const kw=keyword.trim().toLowerCase();
     aptCards=aptCards.filter(c=>c.name.toLowerCase().includes(kw)||String(c.number).includes(kw));
   }
-  aptCards.sort((a,b)=>(a.status==='완료'?1:0)-(b.status==='완료'?1:0)||(Number(a.number)||0)-(Number(b.number)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
+  aptCards.sort((a,b)=>cardPrioH154(a)-cardPrioH154(b)||(Number(a.number)||0)-(Number(b.number)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
   aptCards=sortByDateH145('rte',aptCards,cardLastServiceTsH145); // H145
 
   if(zones.length===0&&aptCards.length===0){grid.innerHTML='<p style="font-size:12px;color:var(--txm);padding:20px 0;text-align:center;grid-column:1/-1;">검색 결과가 없습니다.</p>';return;}
@@ -4440,7 +4468,7 @@ function renderRouteGrid(keyword){
     const statusClass=meta.cls;
     const statusText=meta.text;
     const statusIcon=meta.icon;
-    const click=S.role==='admin'?`toast('경로그리기는 관리자 페이지 구역관리의 경로그리기 버튼에서 합니다.')`:!done?`openRd(${z.id})`:`toast('완료된 구역입니다. 관리자가 초기화한 뒤 다시 봉사할 수 있습니다.')`; // H147
+    const click=S.role==='admin'?`toast('수정·경로그리기는 관리자 페이지 구역관리에서 합니다.')`:!done?`openRd(${z.id})`:`toast('완료된 구역입니다. 관리자가 초기화한 뒤 다시 봉사할 수 있습니다.')`; // H147
     const selected=String(activeZoneId())===String(z.id);
     return `<div id="rte-zone-item-${z.id}" class="zc ${isRes?'res':'com'} ${selected?'selected':''}" onclick="${click}">
       <div class="zc-dot" style="background:${done?'#3B6D11':inProg?'#D85A30':'#d1d5db'};"></div>
@@ -4450,7 +4478,6 @@ function renderRouteGrid(keyword){
       <div class="zc-status-row">
         <span class="zc-status ${statusClass}">${statusIcon} ${statusText}</span>
       </div>
-      ${S.role==='admin'?`<div class="zc-admin-row"><button class="zc-edit-id" onclick="event.stopPropagation();editZoneNumber(${z.id})">번호 수정</button></div>`:''}
     </div>`;
   };
   // V2 H104: 인도자의 기본 화면인 "목록" 탭(#rte-grid)에는 홈 화면(renderHomeZoneList)/
@@ -4477,7 +4504,7 @@ function renderRouteGrid(keyword){
     const statusIcon=done?'✓':inProg?'!':'○';
     const total=apartmentCardCheckableUnits(card);
     const doneCnt=apartmentCardCompletedUnits(card);
-    const click=done?`toast('완료된 카드입니다. 관리자가 초기화해야 다시 시작할 수 있습니다.')`:`startApartmentCardAndGo(${card.id},${inProg})`;
+    const click=S.role==='admin'?`toast('카드 수정은 관리자 페이지 구역관리에서 합니다.')`:done?`toast('완료된 카드입니다. 관리자가 초기화해야 다시 시작할 수 있습니다.')`:`startApartmentCardAndGo(${card.id},${inProg})`; // H154: 관리자는 목록에서 카드로 들어가지 않음
     return `<div id="rte-apt-item-${card.id}" class="zc" style="border-left:3px solid #7F3FBF;" onclick="${click}">
       <div class="zc-dot" style="background:${done?'#3B6D11':inProg?'#D85A30':'#d1d5db'};"></div>
       <div class="zc-badge"><span class="badge" style="background:#F1E9FA;color:#7F3FBF;">${isInterphoneCard(card)?'인터폰':'아파트'}</span></div>
@@ -5137,7 +5164,7 @@ function renderHomeZoneList(kw){
   renderHomeApartmentCardList(); // V2 H67: 아파트도 함께 새로고침(주택 목록이 갱신되는 모든 지점에서 아파트도 같이 최신 상태 유지)
   const resCountEl=document.getElementById('home-res-count');
   // V2 H67: 미완료(진행중/미완료 포함) 우선, 완료는 뒤로 — 구역/상가/아파트 전부 통일
-  let zones=S.zones.filter(z=>z.type==='residential').sort((a,b)=>(isDone(a.id)?1:0)-(isDone(b.id)?1:0)||(Number(a.id)||0)-(Number(b.id)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
+  let zones=S.zones.filter(z=>z.type==='residential').sort((a,b)=>zonePrioH154(a.id)-zonePrioH154(b.id)||(Number(a.id)||0)-(Number(b.id)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
   if(resCountEl)resCountEl.textContent=zones.length;
   zones=zones.filter(z=>homeMapFilter==='all'||
     (homeMapFilter==='residential'&&z.type==='residential')||
@@ -5307,7 +5334,7 @@ function renderHomeCommercialList(){
   const countEl=document.getElementById('home-com-count');
   if(countEl)countEl.textContent=all.length;
   // V2 H67: 미완료 우선, 완료는 뒤로(구역/아파트와 동일 규칙)
-  let zones=[...all].sort((a,b)=>(isDone(a.id)?1:0)-(isDone(b.id)?1:0)||(Number(a.id)||0)-(Number(b.id)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
+  let zones=[...all].sort((a,b)=>zonePrioH154(a.id)-zonePrioH154(b.id)||(Number(a.id)||0)-(Number(b.id)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
   // H131: 미완료=진행 중 구역만(봉사대기 제외) — 지도/목록 탭과 같은 기준
   zones=zones.filter(z=>homeComFilter==='all'||(homeComFilter==='undone'&&getZoneState(z.id)==='progress')||(homeComFilter==='done'&&getZoneState(z.id)==='done'));
   zones=sortByDateH145('com',zones,z=>zoneLastServiceTsH145(z.id)); // H145

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"><!-- H150: 가독성 좋은 한글 글꼴 -->
-<link rel="stylesheet" href="styles.css?v=20261116-h153-route-jump">
+<link rel="stylesheet" href="styles.css?v=20261116-h154-map-undone">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -120,7 +120,7 @@
     <!-- 탭바(기본 접힘, .menu-open일 때만 펼쳐짐) -->
     <div id="tabbar">
       <button class="tab hide" id="t-home" onclick="goTab('home')"><span class="ti">🏠</span>홈</button>
-      <button class="tab on" id="t-map" onclick="goTab('map')"><span class="ti">🗺</span>구역</button>
+      <button class="tab on" id="t-map" onclick="goTab('map')"><span class="ti">🗺</span>구역지도</button>
       <button class="tab hide" id="t-route" onclick="goTab('route')"><span class="ti">🧭</span><span id="t-route-label">목록</span></button>
       <button class="tab hide" id="t-record" onclick="goTab('record')"><span class="ti">📋</span>기록</button>
       <button class="tab hide" id="t-research" onclick="goTab('research')"><span class="ti">📚</span>연구자료</button>
@@ -1021,6 +1021,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261116-h153-route-jump"></script>
+<script src="app.js?v=20261116-h154-map-undone"></script>
 </body>
 </html>
