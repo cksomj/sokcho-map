@@ -2486,7 +2486,7 @@ function startAptSvcSession(cardId,resume){
   persistApartmentCards();
 }
 function startApartmentCardAndGo(cardId,resume){
-  {const c=S.apartmentCards.find(x=>x.id===cardId);if(c&&isCardDisabledH163(c)){toast('⛔ 비활성 카드입니다. 관리자에게 문의하세요.');return;}} // H163
+  {const c=S.apartmentCards.find(x=>x.id===cardId);if(c&&isCardDisabledH163(c)){toast('⛔ 관리자가 활성화 될때까지 이 구역은 봉사하지 않습니다.');return;}} // H163
   startAptSvcSession(cardId,resume);
   openAptSvcFullscreen(cardId);
 }
@@ -2595,7 +2595,7 @@ function renderAptSvcChecklist(){
   const p=card.points[pIdx];
   if(!p){wrap.innerHTML='';return;}
   if(isDongDisabledH163(p.complexName,p.dong)){ // H163: 관리자가 비활성으로 정한 동
-    wrap.innerHTML=aptSvcPointNavHtml(card,pIdx)+`<div class="apt-svc-point-card dis-h163"><div class="apt-svc-point-head">${pIdx+1}/${card.points.length}. ${esc(p.complexName)} ${esc(p.dong)}</div><div class="dis-note-h163">⛔ 비활성 동입니다. 이번에는 봉사하지 않습니다.</div>${card.points[pIdx+1]||interphoneShopIdx(card)>=0?'<button class="btn btn-p" style="width:100%;margin-top:10px;" onclick="goToNextAptSvcPoint()">▶ 다음 포인트</button>':''}</div>`;
+    wrap.innerHTML=aptSvcPointNavHtml(card,pIdx)+`<div class="apt-svc-point-card dis-h163"><div class="apt-svc-point-head">${pIdx+1}/${card.points.length}. ${esc(p.complexName)} ${esc(p.dong)}</div><div class="dis-note-h163">⛔ 관리자가 활성화 될때까지 이 동은 봉사하지 않습니다.</div>${card.points[pIdx+1]||interphoneShopIdx(card)>=0?'<button class="btn btn-p" style="width:100%;margin-top:10px;" onclick="goToNextAptSvcPoint()">▶ 다음 포인트</button>':''}</div>`;
     return;
   }
   const checkableUnits=p.units.filter(u=>!u.forbidden);
@@ -5539,7 +5539,7 @@ function updateHomeSessionUI(){
 // ================================================================
 // 봉사자/인도자: 구역 선택 → 경로 화면으로 이동 (세션은 "봉사 시작" 버튼에서)
 function startSessionAndRoute(zoneId, resume){
-  if(isZoneDisabledH163(zoneId)){toast('⛔ 비활성 구역입니다. 관리자에게 문의하세요.');return;} // H163
+  if(isZoneDisabledH163(zoneId)){toast('⛔ 관리자가 활성화 될때까지 이 구역은 봉사하지 않습니다.');return;} // H163
   if(isDone(zoneId)){
     toast('완료된 구역입니다. 관리자가 초기화한 뒤 다시 봉사할 수 있습니다.');
     return;
