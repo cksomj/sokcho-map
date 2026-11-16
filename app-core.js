@@ -3360,8 +3360,8 @@ function selectLeaderMode(mode){
   const bothBtn=document.getElementById('leader-mode-both');
   const guideBtn=document.getElementById('leader-mode-guide');
   const desc=document.getElementById('leader-mode-desc');
-  if(bothBtn) bothBtn.style.opacity=mode==='both'?'1':'0.45';
-  if(guideBtn) guideBtn.style.opacity=mode==='guide'?'1':'0.45';
+  if(bothBtn){bothBtn.style.opacity='';bothBtn.classList.toggle('on',mode==='both');} // H164: 흐리게(투명도) 대신 선택 표시
+  if(guideBtn){guideBtn.style.opacity='';guideBtn.classList.toggle('on',mode==='guide');}
   if(desc) desc.textContent=mode==='both'
     ?'본인도 봉사자 현황에 포함됩니다.'
     :'인도 역할만 합니다. 봉사자 현황에 포함되지 않습니다.';

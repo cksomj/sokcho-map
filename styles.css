@@ -1875,3 +1875,60 @@ input,textarea,select,[contenteditable="true"]{-webkit-user-select:text;user-sel
 .apt-order-list.is-dragging-h163{touch-action:none;}
 /* H163: 나오기·닫기 버튼은 모두 청색 */
 .apt-order-close,button[onclick^="closeS12Viewer"],button[onclick^="closeS13Viewer"],button[onclick^="closeSheet"],button[onclick^="closeSideDetail"],button[onclick^="closeZoneNumberModal"],.back-btn{background:var(--p)!important;color:#fff!important;box-shadow:0 4px 12px rgba(49,130,246,.3)!important;}
+
+/* =====================================================================
+   H164: 첫 화면(전도인·인도자·관리자 출입) 새 디자인 — 선명하게
+   흐림 원인 제거: 화면 이동 효과(transform)·투명도(opacity)·연한 테두리/글자
+   ===================================================================== */
+#scr-login{background:#0B1530!important;padding:0!important;justify-content:flex-start!important;align-items:stretch!important;overflow-y:auto;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+#scr-login .login-box,#scr-login .login-box *{transform:none!important;filter:none!important;}
+#scr-login .login-box{max-width:480px!important;width:100%;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:0!important;}
+#scr-login .login-logo{text-align:left!important;margin:0!important;padding:calc(44px + env(safe-area-inset-top)) 26px 30px;
+  background:radial-gradient(120% 90% at 85% 0%,rgba(49,130,246,.55) 0%,rgba(49,130,246,0) 55%),radial-gradient(90% 70% at 0% 100%,rgba(112,72,232,.35) 0%,rgba(112,72,232,0) 60%),#0B1530;}
+#scr-login .login-logo .ico{width:58px!important;height:58px!important;border-radius:18px!important;margin:0 0 20px!important;background:linear-gradient(140deg,#4C9AFF 0%,#1B64DA 100%)!important;box-shadow:0 10px 26px rgba(49,130,246,.45),inset 0 1px 0 rgba(255,255,255,.35)!important;}
+#scr-login .login-logo .ico svg{width:38px!important;height:38px!important;}
+#scr-login .login-logo h1{font-size:30px!important;font-weight:800!important;color:#fff!important;letter-spacing:-.8px!important;line-height:1.2;white-space:normal!important;}
+#scr-login .login-logo p{font-size:15.5px!important;color:rgba(255,255,255,.74)!important;margin-top:8px!important;font-weight:500;letter-spacing:-.2px;}
+.login-sheet{flex:1;background:#fff;border-radius:28px 28px 0 0;padding:26px 20px calc(30px + env(safe-area-inset-bottom));box-shadow:0 -10px 30px rgba(0,0,0,.18);}
+.login-sheet-title{font-size:19px;font-weight:800;color:#191F28;letter-spacing:-.5px;margin:0 2px 14px;}
+#scr-login .role-card-wrap{gap:10px!important;margin-bottom:16px!important;}
+#scr-login .role-card{position:relative;display:flex;align-items:center;gap:14px;padding:15px 44px 15px 15px!important;border:1.5px solid #E5E8EB!important;border-radius:18px!important;background:#fff!important;box-shadow:0 1px 2px rgba(0,23,51,.04)!important;opacity:1!important;transition:border-color .15s,background .15s,box-shadow .15s;}
+#scr-login .role-card::after{content:"";position:absolute;right:18px;top:50%;width:9px;height:9px;border-right:2.2px solid #B0B8C1;border-top:2.2px solid #B0B8C1;transform:translateY(-50%) rotate(45deg)!important;}
+#scr-login .role-card-icon{width:48px!important;height:48px!important;border-radius:14px!important;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+#scr-login .role-card-icon svg{width:25px;height:25px;}
+#scr-login .role-card[data-accent="vol"] .role-card-icon{background:#E8F3FF!important;color:#3182F6;}
+#scr-login .role-card[data-accent="leader"] .role-card-icon{background:#E6FCF5!important;color:#0CA678;}
+#scr-login .role-card[data-accent="admin"] .role-card-icon{background:#F3F0FF!important;color:#7048E8;}
+#scr-login .role-card-title{font-size:17px!important;font-weight:800!important;color:#191F28!important;letter-spacing:-.4px;}
+#scr-login .role-card-desc{font-size:13.5px!important;color:#4E5968!important;line-height:1.4!important;margin-top:2px;}
+#scr-login .role-card.on::after{border:none;width:22px;height:22px;right:14px;border-radius:50%;transform:translateY(-50%)!important;background:var(--acc) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4 8-8.5'/%3E%3C/svg%3E") center/14px no-repeat;}
+#scr-login .role-card[data-accent="vol"]{--acc:#3182F6;}
+#scr-login .role-card[data-accent="leader"]{--acc:#0CA678;}
+#scr-login .role-card[data-accent="admin"]{--acc:#7048E8;}
+#scr-login .role-card.on{border-color:var(--acc)!important;background:#fff!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 18%,transparent)!important;}
+#scr-login .role-card.on .role-card-title{color:var(--acc)!important;}
+#scr-login .login-sheet .card{background:#F9FAFB!important;border:none!important;border-radius:20px!important;box-shadow:none!important;padding:18px 16px!important;margin:0!important;}
+#scr-login .field label{font-size:14px!important;font-weight:700!important;color:#333D4B!important;margin-bottom:8px;display:block;}
+#scr-login input[type="text"],#scr-login input[type="password"],#scr-login input[type="email"]{height:54px;border-radius:14px!important;background:#fff!important;border:1.5px solid #E5E8EB!important;font-size:16px!important;padding:0 16px!important;color:#191F28!important;}
+#scr-login .name-search-input{padding-left:46px!important;}
+#scr-login input:focus{border-color:#3182F6!important;box-shadow:0 0 0 3px rgba(49,130,246,.18)!important;}
+#scr-login .name-search-icon{display:flex;align-items:center;color:#8B95A1;}
+#scr-login .name-search-icon svg{width:20px;height:20px;}
+#scr-login .btn.btn-p{height:56px;border-radius:16px!important;font-size:17px!important;font-weight:800!important;letter-spacing:-.3px;width:100%;box-shadow:none!important;}
+#panel-volunteer .btn-p{background:#3182F6!important;}
+#panel-leader .btn-p{background:#0CA678!important;}
+#panel-admin .btn-p{background:#7048E8!important;}
+#leader-mode-both,#leader-mode-guide{opacity:1!important;background:#fff!important;color:#333D4B!important;border:1.5px solid #E5E8EB!important;border-radius:14px!important;font-size:14px!important;font-weight:800!important;padding:14px 6px!important;display:flex;flex-direction:column;align-items:center;gap:6px;}
+#leader-mode-both.on,#leader-mode-guide.on{background:#E6FCF5!important;color:#087F5B!important;border-color:#0CA678!important;box-shadow:0 0 0 3px rgba(12,166,120,.15)!important;}
+.lm-ico svg{width:24px;height:24px;}
+#leader-mode-desc{color:#4E5968!important;font-size:13px!important;}
+.admin-hero-ico{width:52px;height:52px;margin:0 auto 10px;border-radius:16px;background:#F3F0FF;color:#7048E8;display:flex;align-items:center;justify-content:center;}
+.admin-hero-ico svg{width:28px;height:28px;}
+#panel-admin .btn-out{height:46px;border-radius:14px!important;}
+@media(min-width:768px){
+  #scr-login .login-box{margin:40px auto;min-height:auto;border-radius:28px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.35);}
+  .login-sheet{border-radius:28px 28px 0 0;}
+}
+#scr-login .name-search-inputwrap{position:relative;}
+#scr-login .name-search-icon{position:absolute!important;left:16px;top:0;bottom:0;height:auto!important;display:flex;align-items:center;pointer-events:none;}
+#scr-login input[type="text"].name-search-input{padding-left:48px!important;}
