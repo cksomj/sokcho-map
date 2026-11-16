@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"><!-- H150: 가독성 좋은 한글 글꼴 -->
-<link rel="stylesheet" href="styles.css?v=20261116-h174-icons-ds">
+<link rel="stylesheet" href="styles.css?v=20261116-h175-pin-ask">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -834,9 +834,10 @@
 
           <div class="resume-pin-box">
             <div class="resume-pin-text">다음 봉사를 위해 <b class="pin-hl">마지막 집앞</b>에서 핀버튼을 눌러주세요.</div>
-            <button onclick="pinResumePoint()" class="svc-pin-btn">📍 이어하기 핀 찍기</button>
-            <!-- H172: 미완료는 핀과 함께 쓰는 버튼이라 주황 상자 안에 넣어 강조 -->
-            <button onclick="pauseSession()" class="svc-main-btn pause">📍 미완료</button>
+            <div class="resume-pin-row-h175"><!-- H175: 핀 찍기와 미완료를 한 줄로 -->
+              <button onclick="pinResumePoint()" class="svc-pin-btn">📍 이어하기 핀 찍기</button>
+              <button onclick="pauseWithPinCheckH175()" class="svc-main-btn pause">📍 미완료</button>
+            </div>
           </div>
 
           <!-- 2행: 주요 버튼 -->
@@ -1002,6 +1003,17 @@
     <ol id="apt-order-list" class="apt-order-list"></ol>
   </div>
 </div>
+<!-- H175: 핀 없이 미완료를 누르면 화면 가운데 확인 상자 -->
+<div id="pin-ask-modal" class="pin-ask-modal-h175" onclick="if(event.target===this)closePinAskH175()">
+  <div class="pin-ask-card-h175">
+    <div class="pin-ask-title-h175">혹시 핀을 찍으셨나요?</div>
+    <div class="pin-ask-text-h175">다음 봉사를 위해 <b>마지막 집앞</b>에서 핀을 찍어 주세요.<br>혹시 위치를 벗어나셨으면 그냥 <b>"미완료"</b>를 누르세요.</div>
+    <div class="pin-ask-btns-h175">
+      <button type="button" class="svc-pin-btn" onclick="closePinAskH175();pinResumePoint()">📍 핀 찍기</button>
+      <button type="button" class="svc-main-btn pause" onclick="closePinAskH175();S.session.pinCheckedH175=true;pauseSession()">미완료</button>
+    </div>
+  </div>
+</div>
 <!-- H163: 비활성 구역 설정 창 -->
 <div id="dis-setup-modal" class="dis-modal-h163">
   <div class="dis-card-h163">
@@ -1039,6 +1051,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261116-h174-icons-ds"></script>
+<script src="app.js?v=20261116-h175-pin-ask"></script>
 </body>
 </html>

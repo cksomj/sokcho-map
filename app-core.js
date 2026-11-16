@@ -5859,6 +5859,7 @@ function startSession(zoneId, resume, opts={}){
   }
   clearZoneReset(zoneId);
   S.session.active=true;
+  S.session.pinnedH175=false;S.session.pinCheckedH175=false; // H175
   S.session.zoneId=zoneId;
   S.session.startTime=Date.now();
   S.session.companions=[];
@@ -5960,7 +5961,7 @@ function saveResumePinPoint(lat,lng,opts={}){
     svcResumeMarker=addResumeMarkerToMap(svcMapInst,pt,svcLayers);
     svcMapInst.setView(pt,18,{animate:true});
   }
-  if(!opts.silent)toast('📍 이어하기 핀을 저장했습니다.');
+  if(!opts.silent){toast('📍 이어하기 핀을 저장했습니다.');S.session.pinnedH175=true;} // H175: 이번 봉사에서 핀을 찍음
   return true;
 }
 
@@ -8324,3 +8325,11 @@ window.zoneFillColor=function(z,isActive){
   if(isZoneDisabledH163(z.id))return '#E5333F';
   return ZONE_TYPE_FILL_H169[z.type]||'#378ADD';
 };
+
+// H175: 미완료 — 이번 봉사에서 이어하기 핀을 안 찍었으면 먼저 화면 가운데 상자로 물어본다
+function pauseWithPinCheckH175(){
+  if(!S.session.active)return;
+  if(S.session.pinnedH175||S.session.pinCheckedH175){pauseSession();return;}
+  document.getElementById('pin-ask-modal')?.classList.add('on');
+}
+function closePinAskH175(){document.getElementById('pin-ask-modal')?.classList.remove('on');}

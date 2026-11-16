@@ -2082,3 +2082,18 @@ button[onclick^="clearAdminFocusH148"]{background:var(--g-blue)!important;border
 .dis-note-h163 .ui-ico-wrap,.dis-open-btn-h163 .ui-ico-wrap,button[onclick^="clearAdminFocusH148"] .ui-ico-wrap,#panel-volunteer .btn-p .ui-ico-wrap{color:inherit;}
 .tab .ti .ui-ico-wrap{color:#2B78EE;}
 .tab.on .ti .ui-ico-wrap{color:inherit;}
+
+/* H175: 이어하기 핀 찍기 / 미완료 한 줄, 핀 확인 상자 */
+.resume-pin-row-h175{display:flex;gap:8px;}
+#svc-fullscreen .resume-pin-row-h175 .svc-pin-btn{flex:1.25;height:39px!important;padding:0 6px!important;font-size:16px!important;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;}
+#svc-fullscreen .resume-pin-row-h175 .svc-main-btn.pause{flex:1;width:auto!important;}
+.pin-ask-modal-h175{display:none;position:fixed;inset:0;z-index:9300;background:rgba(0,12,30,.5);align-items:center;justify-content:center;padding:20px;}
+.pin-ask-modal-h175.on{display:flex;}
+.pin-ask-card-h175{width:100%;max-width:400px;background:#fff;border-radius:24px;padding:24px 20px 20px;box-shadow:0 24px 60px rgba(0,23,51,.3);border:2.5px solid #F08C00;text-align:center;}
+.pin-ask-title-h175{font-size:21px;font-weight:900;color:#191F28;letter-spacing:-.5px;margin-bottom:10px;}
+.pin-ask-text-h175{font-size:15.5px;color:#333D4B;line-height:1.6;margin-bottom:18px;word-break:keep-all;}
+.pin-ask-text-h175 b{color:#E03100;}
+.pin-ask-btns-h175{display:flex;gap:8px;}
+.pin-ask-btns-h175 button{flex:1;height:50px!important;font-size:17px!important;display:flex;align-items:center;justify-content:center;gap:4px;border-radius:14px!important;}
+/* H175: 봉사 화면에서는 알림을 위쪽에 띄워 아래 버튼(핀·미완료·완료)을 가리지 않게 */
+body:has(#svc-fullscreen[style*="flex"]) #toast,body:has(#apt-svc-fullscreen[style*="flex"]) #toast{top:calc(14px + env(safe-area-inset-top))!important;bottom:auto!important;z-index:9400!important;}
