@@ -1807,3 +1807,7 @@ input,textarea,select,[contenteditable="true"]{-webkit-user-select:text;user-sel
 .zone-card-btn-h158{position:absolute;left:0;top:18px;transform:translateX(-50%);border:none;border-radius:999px;background:var(--p);color:#fff;font-size:13.5px;font-weight:800;padding:8px 14px;white-space:nowrap;box-shadow:0 4px 12px rgba(49,130,246,.35);cursor:pointer;pointer-events:auto;}
 /* H158: 펼쳐진 칸의 "접기" 버튼은 빨간색(열기는 파랑) */
 [id$="-toggle-icon"].is-open{background:#E5333F!important;color:#fff!important;box-shadow:0 3px 10px rgba(229,51,63,.3)!important;}
+/* H159: 폰·태블릿(터치)에서는 두 손가락 확대·축소를 쓰므로 확대/축소 버튼을 숨김(PC는 그대로) */
+@media (hover:none) and (pointer:coarse){
+  button[onclick^="zoomMap("],button[onclick^="zoomRouteMap("],button[onclick^="zoomHomeMap("],button[onclick^="zoomMonitorMap("],button[onclick^="zoomSvcMap("],.leaflet-control-zoom{display:none!important;}
+}

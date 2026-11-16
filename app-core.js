@@ -519,7 +519,7 @@ function kakaoStartAppUrlForZone(z){
   const pt=zoneStartPoint(z);
   // V2 H24: 카카오맵 공식 딥링크 스킴(kakaomap://route?sp=&ep=위도,경도&by=이동수단).
   // sp를 비워두면 현재 위치가 출발지로 채워진다. by는 기존 FOOT을 그대로 유지.
-  return `kakaomap://route?sp=&ep=${pt[0]},${pt[1]}&by=FOOT`;
+  return `kakaomap://route?sp=&ep=${pt[0]},${pt[1]}&by=CAR`;
 }
 // ================================================================
 // H132: 카카오맵 도착지를 "가장 가까운 실제 건물"로 맞춘다.
@@ -574,7 +574,7 @@ function openZoneKakaoStart(zoneId){
   _snapToBuildingH132(pt,z,snap=>{
     const p=snap?snap.pt:pt;
     const notice=snap?`📍 ${snap.road}`:'📍 저장된 시작핀이 없어 근처 위치로 안내합니다';
-    openExternalApp(`kakaomap://route?sp=&ep=${p[0]},${p[1]}&by=FOOT`,`https://map.kakao.com/link/map/${p[0]},${p[1]}`,'카카오맵',{notice});
+    openExternalApp(`kakaomap://route?sp=&ep=${p[0]},${p[1]}&by=CAR`,`https://map.kakao.com/link/map/${p[0]},${p[1]}`,'카카오맵',{notice});
   });
 }
 function startPinIcon(label='출발지'){
@@ -2224,7 +2224,7 @@ function openApartmentCardKakaoStart(cardId){
   if(!pt){
     toast('이 지점에 좌표가 없습니다. 관리자 화면에서 동(또는 단지) 좌표를 먼저 등록하세요.');return;
   }
-  const appUrl=`kakaomap://route?sp=&ep=${pt[0]},${pt[1]}&by=FOOT`; // V2 H24: 공식 딥링크 형식(sp= 명시)
+  const appUrl=`kakaomap://route?sp=&ep=${pt[0]},${pt[1]}&by=CAR`; // V2 H24: 공식 딥링크 형식(sp= 명시)
   const webUrl=`https://map.kakao.com/link/map/${pt[0]},${pt[1]}`;
   openExternalApp(appUrl,webUrl,'카카오맵');
 }
@@ -2563,7 +2563,7 @@ function openAptCardPointMapView(lat,lng){
 }
 function openAptCardPointNavi(lat,lng){
   if(!Number.isFinite(lat)||!Number.isFinite(lng)){toast('다음 지점의 좌표가 없습니다.');return;}
-  openExternalApp(`kakaomap://route?sp=&ep=${lat},${lng}&by=FOOT`,`https://map.kakao.com/link/map/${lat},${lng}`,'카카오맵'); // V2 H24: 공식 딥링크 형식(sp= 명시)
+  openExternalApp(`kakaomap://route?sp=&ep=${lat},${lng}&by=CAR`,`https://map.kakao.com/link/map/${lat},${lng}`,'카카오맵'); // V2 H24: 공식 딥링크 형식(sp= 명시)
 }
 function renderAptSvcChecklist(){
   const card=S.apartmentCards.find(c=>c.id===S.aptSession.cardId);
@@ -7878,4 +7878,63 @@ tryAutoLogin();
     });
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
+})();
+
+// ================================================================
+// H159: 두 손가락 확대·축소(모든 지도) — "통째로 미리보기 + 손 떼면 단계 맞춤"
+// 카카오 바탕은 16.5 같은 중간 단계를 못 그려서(빈 지도·경계 어긋남) Leaflet 기본 핀치는 꺼 둔다.
+// 대신 손가락을 움직이는 동안에는 바탕지도·경계·이름표를 한 장의 그림처럼 함께 늘리고 줄여
+// 서로 어긋날 일이 없게 하고, 손을 떼는 순간 가장 가까운 단계로 딱 맞춘다(손가락 가운데 기준).
+// ================================================================
+(function snapPinchH159(){
+  if(!window.L||!L.Map||!L.Map.addInitHook)return;
+  function attach(map){
+    const el=map.getContainer();
+    if(!el||el.__pinchH159)return;el.__pinchH159=true;
+    const bg=document.getElementById(el.id+'-kakao-bg');
+    const layers=[el,bg].filter(Boolean);
+    let st=null,raf=0;
+    const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+    const mid=t=>({x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2});
+    function apply(){
+      raf=0;if(!st)return;
+      const tf=`translate(${st.tx}px,${st.ty}px) scale(${st.r})`;
+      layers.forEach(l=>{l.style.transformOrigin=`${st.ox}px ${st.oy}px`;l.style.transform=tf;});
+    }
+    function clear(){layers.forEach(l=>{l.style.transform='';l.style.transformOrigin='';});if(st&&st.parent)st.parent.style.overflow=st.prevOverflow;}
+    el.addEventListener('touchstart',e=>{
+      if(e.touches.length!==2)return;
+      e.preventDefault();
+      const rect=el.getBoundingClientRect(),m=mid(e.touches);
+      const z=map.getZoom();
+      st={d0:dist(e.touches),m0:m,ox:m.x-rect.left,oy:m.y-rect.top,tx:0,ty:0,r:1,z,
+          rMin:Math.pow(2,map.getMinZoom()-z),rMax:Math.pow(2,map.getMaxZoom()-z),parent:el.parentElement,prevOverflow:el.parentElement?el.parentElement.style.overflow:''};
+      if(st.parent)st.parent.style.overflow='hidden';
+      if(map.dragging)map.dragging.disable();
+    },{passive:false});
+    el.addEventListener('touchmove',e=>{
+      if(!st||e.touches.length<2)return;
+      e.preventDefault();
+      const m=mid(e.touches);
+      st.r=Math.max(st.rMin,Math.min(st.rMax,dist(e.touches)/st.d0));
+      st.tx=m.x-st.m0.x;st.ty=m.y-st.m0.y;
+      if(!raf)raf=requestAnimationFrame(apply);
+    },{passive:false});
+    function end(e){
+      if(!st||(e.touches&&e.touches.length>=2))return;
+      const s=st;st=null;if(raf){cancelAnimationFrame(raf);raf=0;}
+      clear();
+      if(map.dragging)map.dragging.enable();
+      const lr=Math.log2(s.r);
+      const dz=lr>0?Math.floor(lr+0.7):-Math.floor(-lr+0.7); // 약 1.25배 이상 벌리면 한 단계, 2.5배면 두 단계
+      const z1=clampMapZoom(map,s.z+dz);
+      try{
+        if(z1!==s.z)map.setZoomAround(L.point(s.ox,s.oy),z1,{animate:false});
+        if(Math.abs(s.tx)>2||Math.abs(s.ty)>2)map.panBy([-s.tx,-s.ty],{animate:false}); // 손가락이 옮긴 만큼 지도도 따라 이동
+      }catch(err){}
+    }
+    el.addEventListener('touchend',end);
+    el.addEventListener('touchcancel',end);
+  }
+  L.Map.addInitHook(function(){try{attach(this);}catch(e){}});
 })();
