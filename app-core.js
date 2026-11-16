@@ -3606,6 +3606,7 @@ function requestLoginGps(){
 }
 
 function doLogout(){
+  try{['main','home','monitor'].forEach(k=>{if(LOC_H168[k].watch!=null)toggleLocateH168(k,true);});}catch(e){} // H168: 위치 표시 끄기
   try{stopAdminPickH149();}catch(e){} // H149
   document.documentElement.classList.remove('role-admin','adm-fab-open','role-leader');S.adminFocusH148=null; // H148: 로그인 화면에 관리자 버튼이 남지 않게
   _ssSetH141(LAST_TAB_KEY_H141,'');_ssSetH141(RESEARCH_Q_KEY_H141,''); // H141
@@ -5015,7 +5016,7 @@ function startGPS(){
   if(!navigator.geolocation){toast('GPS 미지원 기기입니다.');return;}
   S.rdGpsOn=true;
   const btn=document.getElementById('rd-gps-btn');const st=document.getElementById('gps-status');
-  btn.textContent='📍 위치 켜짐';btn.style.background='#185FA5';btn.style.color='#fff';
+  btn.textContent='📍 위치끄기';btn.classList.add('on');btn.style.background='';btn.style.color=''; // H168: 켜지면 '위치끄기'
   st.style.display='block';st.textContent='📡 GPS 신호 찾는 중...';
   S.rdGpsWatch=navigator.geolocation.watchPosition(pos=>{
     const lat=pos.coords.latitude,lng=pos.coords.longitude,acc=Math.round(pos.coords.accuracy);
@@ -5033,7 +5034,7 @@ function stopGPS(){
   if(S.gpsMk){S.rdMap.removeLayer(S.gpsMk);S.gpsMk=null;}
   if(S.gpsCircle){S.rdMap.removeLayer(S.gpsCircle);S.gpsCircle=null;}
   const btn=document.getElementById('rd-gps-btn');const st=document.getElementById('gps-status');
-  if(btn){btn.textContent='📍 내 위치 보기';btn.style.background='';btn.style.color='';}
+  if(btn){btn.textContent='📍 내 위치';btn.classList.remove('on');btn.style.background='';btn.style.color='';} // H168
   if(st)st.style.display='none';
 }
 // ================================================================
@@ -8268,3 +8269,33 @@ function setComplexDisabledH163(cn,on){
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
 })();
+
+// ================================================================
+// H168: "내 위치" 켜기/끄기 — 누르면 내 위치를 계속 보여 주고 버튼이 "위치끄기"로 바뀜, 다시 누르면 끔
+// (홈 지도·전체 지도·실시간 지도. 봉사 화면의 "내 위치"는 봉사 위치 기록과 묶여 있어 그대로 '가운데로'만)
+// ================================================================
+const LOC_H168={main:{watch:null,mk:null,circle:null,first:true},home:{watch:null,mk:null,circle:null,first:true},monitor:{watch:null,mk:null,circle:null,first:true}};
+function _locMapH168(k){return k==='main'?S.mainMap:k==='home'?homeMapInst:S.monMap;}
+function _locBtnH168(k,on){const b=document.getElementById('loc-btn-'+k);if(!b)return;b.textContent=on?'📍 위치끄기':'📍 내 위치';b.classList.toggle('on',on);}
+function toggleLocateH168(k,silent){
+  const st=LOC_H168[k];const map=_locMapH168(k);
+  if(st.watch!=null){ // 끄기
+    try{navigator.geolocation.clearWatch(st.watch);}catch(e){}
+    st.watch=null;
+    [st.mk,st.circle].forEach(l=>{if(l&&map){try{map.removeLayer(l);}catch(e){}}});st.mk=st.circle=null;
+    _locBtnH168(k,false);
+    if(!silent)toast('내 위치 표시를 껐습니다.');
+    return;
+  }
+  if(!map||!navigator.geolocation){toast('위치를 사용할 수 없습니다.');return;}
+  st.first=true;_locBtnH168(k,true);
+  toast('내 위치를 확인하는 중입니다.');
+  st.watch=navigator.geolocation.watchPosition(pos=>{
+    const m=_locMapH168(k);if(!m||!m._mapPane)return;
+    const ll=[pos.coords.latitude,pos.coords.longitude];
+    const acc=Math.max(8,Math.round(pos.coords.accuracy||20));
+    if(!st.mk){st.mk=L.marker(ll,{icon:locationIcon(),zIndexOffset:1200}).addTo(m);st.circle=L.circle(ll,{radius:acc,color:'#2B78EE',weight:1.5,fillColor:'#2B78EE',fillOpacity:.08}).addTo(m);}
+    else{st.mk.setLatLng(ll);st.circle.setLatLng(ll);st.circle.setRadius(acc);}
+    if(st.first){st.first=false;m.setView(ll,18);}
+  },()=>{toast('위치 권한을 허용해주세요.');toggleLocateH168(k,true);},{enableHighAccuracy:true,maximumAge:3000,timeout:15000});
+}

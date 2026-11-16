@@ -2017,3 +2017,25 @@ input,textarea,select,[contenteditable="true"]{-webkit-user-select:text;user-sel
 button[onclick^="clearAdminFocusH148"]{background:var(--g-blue)!important;border:1.5px solid var(--g-blue-bd)!important;color:#fff!important;}
 /* H167: 위치공유 관련 알림 — 청색 바탕, 작은 글씨 */
 #toast.toast-loc{background:linear-gradient(180deg,#4C97FF 0%,#2B78EE 100%)!important;color:#fff!important;font-size:12.5px!important;font-weight:700!important;padding:8px 14px!important;border:1px solid #1A5FCF;box-shadow:0 6px 16px rgba(43,120,238,.35)!important;}
+/* H168: 그라데이션을 조금 더 주어 살짝 입체감(위 밝게·아래 얇은 그늘) — 과하지 않게 */
+:root{
+  --b-raise:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -2px 0 rgba(0,23,51,.07),0 1px 2px rgba(0,23,51,.12),0 4px 10px rgba(0,23,51,.08);
+  --b-raise-dark:inset 0 1px 0 rgba(255,255,255,.38),inset 0 -2px 0 rgba(0,0,0,.14),0 2px 3px rgba(0,23,51,.16),0 6px 14px rgba(0,23,51,.12);
+  --g-blue:linear-gradient(180deg,#62AAFF 0%,#3A86F6 45%,#2266DC 100%);
+}
+.btn-out,.mbtn,.svc-secondary-btn,.svc-locate-btn,.home-zone-action:not([style*="background"]),.apt-svc-point-nav-btn,.adm-fab-item:not(.on),.dis-tab-h163:not(.on),.rd-btn,.chip:not(.on){
+  background:linear-gradient(180deg,#FFFFFF 0%,#F4F6F9 55%,#E6EAF0 100%)!important;}
+.btn-p,.apt-order-close,.home-focus-clear,#home-list-handle-icon,[id$="-toggle-icon"]:not(.is-open),.rte-totop-h161,.zone-card-btn-h158,
+.btn-out.on,.btn.on,.chip.on,.adm-fab-item.on,.date-sort-chip.ds-on,#rte-filter-standby.on,.dis-tab-h163.on,.s12-type.on,.tab.on,
+.menu-toggle-btn,.adm-fab-toggle,#panel-volunteer .btn-p,#panel-leader .btn-p,#panel-admin .btn-p,.apt-svc-point-nav-btn.active,button[onclick^="clearAdminFocusH148"]{
+  background:var(--g-blue)!important;}
+[id$="-toggle-icon"].is-open{background:linear-gradient(180deg,#FF6B77 0%,#EC3E4B 45%,#CF2533 100%)!important;}
+.btn-dk{background:linear-gradient(180deg,#FFF8F8 0%,#FFEBED 55%,#FFD9DD 100%)!important;}
+.btn-ok{background:linear-gradient(180deg,#F6FDF9 0%,#E4F7EC 55%,#CDEFDB 100%)!important;}
+.svc-main-btn.done,.apt-svc-point-nav-btn.done{background:linear-gradient(180deg,#34C985 0%,#16A463 45%,#0B8650 100%)!important;}
+.svc-main-btn.pause{background:linear-gradient(180deg,#FFB257 0%,#FB8C12 45%,#E57400 100%)!important;}
+.svc-note-btn-h162{background:linear-gradient(180deg,#FFFAF1 0%,#FFEFD6 55%,#FFE1B3 100%)!important;}
+.rte-jump-btn{background:linear-gradient(180deg,#F6FAFF 0%,#E6F0FF 55%,#D3E5FF 100%)!important;}
+/* H168: 위치 켜짐("위치끄기") 상태는 파랑으로 */
+.mbtn.on,.rd-btn.on{background:var(--g-blue)!important;border:1.5px solid var(--g-blue-bd)!important;color:#fff!important;box-shadow:var(--b-raise-dark)!important;}
+.mbtn.on .ui-ico,.rd-btn.on .ui-ico{color:#fff!important;}

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"><!-- H150: 가독성 좋은 한글 글꼴 -->
-<link rel="stylesheet" href="styles.css?v=20261116-h167-buttons">
+<link rel="stylesheet" href="styles.css?v=20261116-h168-btn3d">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -160,7 +160,7 @@
           <div class="map-right">
             <button class="mbtn" onclick="zoomMap(1)">＋ 지도 확대</button>
             <button class="mbtn" onclick="zoomMap(-1)">－ 지도 축소</button>
-            <button class="mbtn" onclick="centerMap()">⌖ 내 위치</button>
+            <button class="mbtn" id="loc-btn-main" onclick="toggleLocateH168('main')">📍 내 위치</button>
             <button class="mbtn" id="draw-toggle-btn" onclick="toggleDraw()" style="display:none;background:var(--pbg);color:var(--p);">✏️</button>
           </div>
           <div class="draw-ind" id="draw-ind">✏️ 지도를 클릭해 꼭짓점을 찍으세요</div>
@@ -402,7 +402,7 @@
               <button class="mbtn home-mobile-overlay-btn" onclick="doLogout()">↩ 나가기</button>
               <button class="mbtn" onclick="zoomHomeMap(1)">＋ 지도 확대</button>
               <button class="mbtn" onclick="zoomHomeMap(-1)">－ 지도 축소</button>
-              <button class="mbtn" onclick="locateHomeMap()">📍 내 위치</button>
+              <button class="mbtn" id="loc-btn-home" onclick="toggleLocateH168('home')">📍 내 위치</button>
               <button class="mbtn" onclick="toggleHomeWide()" id="home-wide-btn">⛶ 크게 보기</button>
             </div>
             <!-- 필터 칩 -->
@@ -549,7 +549,7 @@
               <button class="mbtn" onclick="zoomMonitorMap(1)">＋ 지도 확대</button>
               <button class="mbtn" onclick="zoomMonitorMap(-1)">－ 지도 축소</button>
               <button class="mbtn" onclick="showAllVols()">⛶ 전체 보기</button>
-              <button class="mbtn" onclick="centerMonitorOnMe()">⌖ 내 위치</button>
+              <button class="mbtn" id="loc-btn-monitor" onclick="toggleLocateH168('monitor')">📍 내 위치</button>
             </div>
             <button class="monitor-toggle-btn" id="monitor-toggle-btn" onclick="toggleMonitorSheet()">봉사자 현황 보기</button>
             <div class="monitor-sheet" id="monitor-sheet">
@@ -1042,6 +1042,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261116-h167-buttons"></script>
+<script src="app.js?v=20261116-h168-btn3d"></script>
 </body>
 </html>
