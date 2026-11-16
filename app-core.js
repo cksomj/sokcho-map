@@ -2070,7 +2070,7 @@ function renderApartmentCardList(keepOpenId){
           </div>
         </div>
         <div style="display:flex;gap:6px;">
-          <button class="btn btn-sm btn-out" onclick="event.stopPropagation();showApartmentCardLine(${card.id})">라인 연결 보기</button>
+          <button class="btn btn-sm btn-out" onclick="event.stopPropagation();showApartmentCardLine(${card.id})">봉사진행순서보기</button>
           <button class="btn btn-sm btn-dk" onclick="event.stopPropagation();deleteApartmentCard(${card.id})">삭제</button>
         </div>
       </div>
