@@ -1763,3 +1763,10 @@ html.role-admin .rte-jump-h153{display:contents;}
 html.role-volunteer #home-filter-chips{display:none!important;}
 /* H154: 전도인 지도 — 홈·확대·축소·내 위치·크게 보기 버튼을 왼쪽으로(필터 버튼 자리) */
 html.role-volunteer #home-map-ctrls{right:auto!important;left:8px!important;align-items:flex-start;}
+
+/* H155: 원형 삼각형 접기 버튼 → "열기/접기" 글자 버튼(항상 글자 오른쪽) */
+#home-list-handle-icon,[id$="-toggle-icon"]{width:auto!important;min-width:56px;height:34px!important;padding:0 14px!important;border-radius:999px!important;background:var(--tx)!important;color:#fff!important;font-size:14px!important;font-weight:800!important;letter-spacing:-.2px;box-shadow:0 2px 8px rgba(25,31,40,.18)!important;margin-left:auto;white-space:nowrap;}
+.home-list-handle{gap:10px;}
+
+/* H155: 긴 목록은 화면 밖 줄의 그리기를 미뤄 펼치기·스크롤을 가볍게 */
+.home-zone-row,#rte-grid > .zc{content-visibility:auto;contain-intrinsic-size:auto 118px;}

@@ -229,9 +229,9 @@ function _reloadAfterRemoteChangeH105(key){
   try{
     if(key==='sokcho_zones'){
       try{const z=JSON.parse(storageGet('sokcho_zones')||'[]');S.zones=Array.isArray(z)?z:[];}catch(e){}
-      if(typeof drawAllZones==='function')drawAllZones(null);
-      if(typeof renderSideList==='function')renderSideList();
-      if(typeof renderRouteGrid==='function')renderRouteGrid();
+      if(!S.mainDeferredH155&&typeof drawAllZones==='function')drawAllZones(null);
+      if(!S.mainDeferredH155&&typeof renderSideList==='function')renderSideList();
+      if(!S.mainDeferredH155&&typeof renderRouteGrid==='function')renderRouteGrid();
       if(typeof renderHomeZoneList==='function')renderHomeZoneList(document.getElementById('home-zone-search')?.value||'');
       if(typeof renderAdmGrid==='function')renderAdmGrid();
       if(typeof renderZoneChart==='function')renderZoneChart();
@@ -241,16 +241,16 @@ function _reloadAfterRemoteChangeH105(key){
       if(typeof renderMonChart==='function')renderMonChart();
       if(typeof renderZoneChart==='function')renderZoneChart();
       if(typeof renderAdmGrid==='function')renderAdmGrid();
-      if(typeof renderRouteGrid==='function')renderRouteGrid();
+      if(!S.mainDeferredH155&&typeof renderRouteGrid==='function')renderRouteGrid();
       if(typeof renderHomeZoneList==='function')renderHomeZoneList(document.getElementById('home-zone-search')?.value||'');
-      if(typeof drawAllZones==='function')drawAllZones(null);
+      if(!S.mainDeferredH155&&typeof drawAllZones==='function')drawAllZones(null);
     }else if(key==='sokcho_progress'){
       try{
         const progress=JSON.parse(storageGet('sokcho_progress')||'{}');
         S.zones.forEach(z=>{if(progress&&progress[z.id])z.progress=progress[z.id];});
       }catch(e){}
-      if(typeof drawAllZones==='function')drawAllZones(null);
-      if(typeof renderRouteGrid==='function')renderRouteGrid();
+      if(!S.mainDeferredH155&&typeof drawAllZones==='function')drawAllZones(null);
+      if(!S.mainDeferredH155&&typeof renderRouteGrid==='function')renderRouteGrid();
       if(typeof renderHomeZoneList==='function')renderHomeZoneList(document.getElementById('home-zone-search')?.value||'');
     }else if(key==='sokcho_apartment_registry_v1'){
       S._apartmentRegistryLoaded=false;loadApartmentRegistry();
@@ -260,8 +260,8 @@ function _reloadAfterRemoteChangeH105(key){
       S._apartmentCardsLoaded=false;loadApartmentCards();
       if(typeof renderApartmentCardList==='function')renderApartmentCardList();
       if(typeof renderHomeApartmentCardList==='function')renderHomeApartmentCardList();
-      if(typeof renderRouteGrid==='function')renderRouteGrid();
-      if(typeof renderSideList==='function')renderSideList();
+      if(!S.mainDeferredH155&&typeof renderRouteGrid==='function')renderRouteGrid();
+      if(!S.mainDeferredH155&&typeof renderSideList==='function')renderSideList();
     }else if(key==='sokcho_volunteers'){
       S._volunteersLoaded=false;loadVolunteers();
       if(typeof renderVolList==='function')renderVolList();
@@ -280,7 +280,7 @@ function _reloadAfterRemoteChangeH105(key){
     }else if(key==='sokcho_routes'){
       loadRteLines(); // 가드 플래그 없음 — 매번 다시 불러도 안전
       if(typeof drawSavedRteLines==='function')drawSavedRteLines();
-      if(typeof renderRouteGrid==='function')renderRouteGrid();
+      if(!S.mainDeferredH155&&typeof renderRouteGrid==='function')renderRouteGrid();
     }else if(key==='sokcho_research_links'){
       S._researchLinksLoaded=false;
       if(typeof renderResearchList==='function')renderResearchList();
@@ -1354,7 +1354,7 @@ function toggleAdminTrashSectionH147(){
   if(!body)return;
   const open=body.classList.contains('hide');
   body.classList.toggle('hide',!open);
-  if(icon)icon.textContent=open?'▾':'▸';
+  if(icon)icon.textContent=open?'접기':'열기';
   if(open)renderTrashH147();
   admSectionFullH140(body,open);
 }
@@ -2144,7 +2144,7 @@ function toggleAdminIntCardsSection(){ // H143
   if(!body)return;
   const open=body.classList.contains('hide');
   body.classList.toggle('hide',!open);
-  if(icon)icon.textContent=open?'▾':'▸';
+  if(icon)icon.textContent=open?'접기':'열기';
   if(open)renderApartmentCardList();
   admSectionFullH140(body,open);
 }
@@ -2236,7 +2236,7 @@ function toggleHomeApartmentSection(){
   if(!body)return;
   const willShow=body.classList.contains('hide');
   body.classList.toggle('hide',!willShow);
-  if(icon)icon.textContent=willShow?'▾':'▸';
+  if(icon)icon.textContent=willShow?'접기':'열기';
   if(willShow)renderHomeApartmentCardList();
   updateHomeListTallH129(willShow?body.closest('.home-apt-section'):null);
 }
@@ -2293,6 +2293,7 @@ function renderHomeApartmentCardList(){
   if(!wrap)return;
   const countEl=document.getElementById('home-apt-count');
   if(countEl)countEl.textContent=S.apartmentCards.filter(c=>!isInterphoneCard(c)).length; // H143
+  if(document.getElementById('home-apt-body')?.classList.contains('hide'))return; // H155: 접힌 칸은 열 때 그림(아파트)
   // V2 H67: 미완료(진행중/미완료 포함) 우선, 완료는 뒤로(구역/상가와 동일 규칙)
   let cards=[...S.apartmentCards].filter(c=>!isInterphoneCard(c)).sort((a,b)=>cardPrioH154(a)-cardPrioH154(b)||(Number(a.number)||0)-(Number(b.number)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
   // H131: 미완료=진행중/미완료만(미시작 제외) — 지도/목록 탭과 같은 기준
@@ -2342,7 +2343,7 @@ function toggleHomeInterphoneSection(){
   if(!body)return;
   const willShow=body.classList.contains('hide');
   body.classList.toggle('hide',!willShow);
-  if(icon)icon.textContent=willShow?'▾':'▸';
+  if(icon)icon.textContent=willShow?'접기':'열기';
   if(willShow)renderHomeInterphoneList();
   updateHomeListTallH129(willShow?body.closest('.home-apt-section'):null);
 }
@@ -2352,6 +2353,7 @@ function renderHomeInterphoneList(){
   const countEl=document.getElementById('home-int-count');
   if(countEl)countEl.textContent=all.length;
   if(!wrap)return;
+  if(document.getElementById('home-int-body')?.classList.contains('hide'))return; // H155: 접힌 칸은 열 때 그림(인터폰)
   let cards=all.sort((a,b)=>cardPrioH154(a)-cardPrioH154(b)||(Number(a.number)||0)-(Number(b.number)||0));
   cards=cards.filter(c=>homeIntFilter==='all'||(homeIntFilter==='undone'&&(c.status==='진행중'||c.status==='미완료'))||(homeIntFilter==='done'&&c.status==='완료'));
   cards=sortByDateH145('int',cards,cardLastServiceTsH145); // H145
@@ -3248,7 +3250,7 @@ function addBaseTiles(map){
       _kakaoInstances[containerId] = kakaoInst;
       map.getContainer().classList.add('kakao-layer');
 
-      if(containerId==='main-map')drawAllZones(S.panelZone||null);
+      if(containerId==='main-map'){if(!S.mainDeferredH155)drawAllZones(S.panelZone||null);}
       else if(containerId==='monitor-map')drawMonitorZones();
       else if(containerId==='home-map')drawHomeZones(S.homeSelectedZone||null);
       else if(containerId==='svc-map'&&S.session&&S.session.zoneId!=null){
@@ -3633,6 +3635,7 @@ function goTab(name){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   document.getElementById('p-'+name).classList.add('on');
+  if(name==='map'||name==='route')ensureMainDrawnH155(); // H155
   document.getElementById('t-'+name).classList.add('on');
   if(name==='record') renderRecords();
   if(name==='research') renderResearchList(); // V2 H41
@@ -3890,6 +3893,7 @@ function initApp(){
   // _kakaoInstances에 이전 로그인의 Kakao 인스턴스가 남아있으면 addBaseTiles()가
   // "이미 있다"고 판단해 새 Leaflet 지도에 Kakao 배경/동기화를 아예 안 붙인다.
   // 지도를 실제로 재생성하는 이 두 컨테이너만 캐시도 함께 지워 재초기화되게 한다.
+  S.mainDeferredH155=S.role==='volunteer'; // H155: 전도인은 전체지도·목록탭을 보지 않으므로 로그인 때 그리지 않음(처음 열 때 그림)
   if(S.mainMap){S.mainMap.remove();S.mainMap=null;S.mainLayers=[];delete _kakaoInstances['main-map'];}
   if(S.rdMap){S.rdMap.remove();S.rdMap=null;S.rdLayers=[];S.rdRteLayers=[];delete _kakaoInstances['rd-map'];}
   // 메인 지도
@@ -3899,7 +3903,7 @@ function initApp(){
   S.mainMap.on('click',onMapClick);
   S.mainMap.on('zoomend',()=>drawAllZones(S.panelZone||null));
   // 지도 크기 강제 갱신 (탭 전환 후 타일 로딩 보장)
-  setTimeout(()=>{S.mainMap.invalidateSize();drawAllZones(null);renderSideList();},300);
+  setTimeout(()=>{S.mainMap.invalidateSize();if(S.mainDeferredH155)return;drawAllZones(null);renderSideList();},300);
   // 경로 지도
   S.rdMap=L.map('rd-map',stableMapOptions({center:[38.20138,128.59350],zoom:18,zoomControl:false,attributionControl:false}));
   keepMapDraggable(S.rdMap);
@@ -3907,9 +3911,14 @@ function initApp(){
   stabilizeZoneLabelsOnMove(S.rdMap);
   S.rdMap.on('click',onRdMapClick);
   S.rdMap.on('zoomend',()=>{drawRoute();drawSavedRteLines();});
-  renderRouteGrid();
+  if(!S.mainDeferredH155)renderRouteGrid();
   renderRecords();
   if(S.role==='admin') renderAdmin();
+}
+function ensureMainDrawnH155(){ // H155: 미뤄 둔 전체지도·목록탭 그리기
+  if(!S.mainDeferredH155)return;
+  S.mainDeferredH155=false;
+  try{drawAllZones(S.panelZone||null);renderSideList();renderRouteGrid();}catch(e){}
 }
 
 // ================================================================
@@ -4993,6 +5002,7 @@ function stopGPS(){
 // ================================================================
 let homeMapInst=null;
 let homeMapLayers=[];
+const homeHitCacheH155=new Map(); // H155: 홈 지도 누름 영역·이름표 재사용
 let homeMapFilter='all';
 let homeComFilter='all'; // V2 H21: 상가 섹션 전용 필터(전체/미완료/완료), 지도 필터칩(homeMapFilter)과 무관
 const homeKakaoPolygons=new Map();
@@ -5067,43 +5077,47 @@ function drawHomeZones(activeId){
     });
     bindStrokeZoomH133(kakaoMap,homeKakaoPolygons);
   }
+  // H155: 누름 영역(투명 폴리곤)·이름표는 구역마다 한 번만 만들고, 이후에는 색·투명도만 바꾼다
+  // (예전엔 누를 때마다 350개씩 지우고 새로 만들어 0.2~0.3초 멈췄음)
   const showLabels=zoneLabelsVisible(homeMapInst);
+  const liveIds=new Set(S.zones.map(z=>String(z.id)));
+  homeHitCacheH155.forEach((it,id)=>{if(!liveIds.has(id)){if(it.hit)homeMapInst.removeLayer(it.hit);if(it.mk)homeMapInst.removeLayer(it.mk);homeHitCacheH155.delete(id);}});
   S.zones.forEach(z=>{
+    const key=String(z.id);
+    let it=homeHitCacheH155.get(key);
+    if(!it){it={};homeHitCacheH155.set(key,it);}
     const show=homeMapFilter==='all'||
       (homeMapFilter==='residential'&&z.type==='residential')||
       (homeMapFilter==='commercial'&&z.type==='commercial')||
       (homeMapFilter==='undone'&&getZoneState(z.id)==='progress')||(homeMapFilter==='done'&&getZoneState(z.id)==='done')||
       (homeMapFilter==='standby'&&getZoneState(z.id)==='standby');
-    if(!show)return;
-    const done=isDone(z.id);
-    const isRes=z.type==='residential';
     const isActive=activeId===z.id;
+    if(isActive&&show)addStartPinMarker(homeMapInst,z,homeMapLayers,{label:'시작점'});
+    // 누름 영역(V2 H23: Kakao 폴리곤은 클릭을 못 받으므로 투명 Leaflet 폴리곤이 대신 받음)
+    const polyKey=Array.isArray(z.polygon)?z.polygon.length+':'+JSON.stringify(z.polygon[0])+JSON.stringify(z.polygon[z.polygon.length-1]):'';
+    if(it.hit&&it.polyKey!==polyKey){homeMapInst.removeLayer(it.hit);it.hit=null;}
+    if(!it.hit&&Array.isArray(z.polygon)&&z.polygon.length>=3){
+      it.hit=L.polygon(z.polygon,{stroke:false,fill:true,fillOpacity:0,interactive:true,bubblingMouseEvents:false});
+      it.hit.on('click',()=>selectHomeZone(z.id));it.polyKey=polyKey;it.hitOn=false;
+    }
+    if(it.hit){if(show&&!it.hitOn){it.hit.addTo(homeMapInst);it.hitOn=true;}else if(!show&&it.hitOn){homeMapInst.removeLayer(it.hit);it.hitOn=false;}}
+    // 이름표
+    if(!show||!showLabels){if(it.mk&&it.mkOn){homeMapInst.removeLayer(it.mk);it.mkOn=false;}return;}
+    const done=isDone(z.id);
     const dimmed=activeId!==null&&!isActive;
     const inProg=isInProgress(z.id);
     const sc=zoneStrokeColor(z,isActive);
-    if(isActive)addStartPinMarker(homeMapInst,z,homeMapLayers,{label:'시작점'});
-    // V2 H23: Kakao 폴리곤은 배경 전용 렌더러라 pointer-events:none이 걸려
-    // 있어(styles.css .kakao-bg) 실제 클릭이 전혀 닿지 않는다(1탭 무반응의
-    // 원인). 시각적으로는 아무것도 그리지 않는 투명(opacity 0) Leaflet
-    // 폴리곤을 같은 좌표에 겹쳐 클릭만 받아내고 기존 selectHomeZone을
-    // 그대로 호출한다 — Kakao의 폴리곤 "모양" 자체는 그대로 두므로 drift
-    // 재발과 무관하다.
-    if(Array.isArray(z.polygon)&&z.polygon.length>=3){
-      const hitPoly=L.polygon(z.polygon,{stroke:false,fill:true,fillOpacity:0,interactive:true,bubblingMouseEvents:false});
-      hitPoly.on('click',()=>selectHomeZone(z.id));
-      hitPoly.addTo(homeMapInst);
-      homeMapLayers.push(hitPoly);
-    }
-    if(!showLabels)return;
-    const ctr=zoneCenter(z);
-    const labelColor2='#111827';
     const labelPre=done?'✅ ':inProg?'⏸ ':'○ ';
-    const mk=L.marker(ctr,{icon:L.divIcon({
-        html:`<div class="zone-map-label" style="opacity:${dimmed?.3:1};border:${isActive?'2px':'1.5px'} solid ${sc};color:${labelColor2};">${labelPre}${zoneMapLabel(z)}</div>`,
-      className:'zone-label-anchor',iconAnchor:[0,0],iconSize:[1,1]
-    })}).addTo(homeMapInst);
-    mk.on('click',()=>selectHomeZone(z.id));
-    homeMapLayers.push(mk);
+    const html=`<div class="zone-map-label" style="border:${isActive?'2px':'1.5px'} solid ${sc};color:#111827;">${labelPre}${zoneMapLabel(z)}</div>`;
+    const ctr=zoneCenter(z);const ctrKey=ctr?ctr[0]+','+ctr[1]:'';
+    if(it.mk&&it.ctrKey!==ctrKey){if(it.mkOn)homeMapInst.removeLayer(it.mk);it.mk=null;it.mkOn=false;}
+    if(!it.mk){
+      it.mk=L.marker(ctr,{icon:L.divIcon({html,className:'zone-label-anchor',iconAnchor:[0,0],iconSize:[1,1]})});
+      it.mk.on('click',()=>selectHomeZone(z.id));it.html=html;it.ctrKey=ctrKey;
+    }else if(it.html!==html){it.mk.setIcon(L.divIcon({html,className:'zone-label-anchor',iconAnchor:[0,0],iconSize:[1,1]}));it.html=html;}
+    if(!it.mkOn){it.mk.addTo(homeMapInst);it.mkOn=true;}
+    const el=it.mk.getElement&&it.mk.getElement();const lab=el&&el.firstElementChild;
+    if(lab)lab.style.opacity=dimmed?'.3':'1';
   });
 }
 
@@ -5166,6 +5180,7 @@ function renderHomeZoneList(kw){
   // V2 H67: 미완료(진행중/미완료 포함) 우선, 완료는 뒤로 — 구역/상가/아파트 전부 통일
   let zones=S.zones.filter(z=>z.type==='residential').sort((a,b)=>zonePrioH154(a.id)-zonePrioH154(b.id)||(Number(a.id)||0)-(Number(b.id)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
   if(resCountEl)resCountEl.textContent=zones.length;
+  if(document.getElementById('home-res-body')?.classList.contains('hide'))return; // H155: 접힌 칸은 열 때 그림(주택)
   zones=zones.filter(z=>homeMapFilter==='all'||
     (homeMapFilter==='residential'&&z.type==='residential')||
     (homeMapFilter==='commercial'&&z.type==='commercial')||
@@ -5224,8 +5239,16 @@ function toggleHomeListPanel(){
   if(!panel)return;
   const willExpand=panel.classList.contains('home-list-collapsed');
   panel.classList.toggle('home-list-collapsed',!willExpand);
-  if(icon)icon.textContent=willExpand?'▾':'▸';
+  if(icon)icon.textContent=willExpand?'접기':'열기';
+  if(willExpand)resetHomeListSectionsH155();
   updateHomeListTallH129();
+}
+// H155: 구역 목록을 열면 항상 맨 위(검색칸)부터, 주택·상가·아파트·인터폰 칸은 접힌 채로 — 버튼이 모두 보이게
+function resetHomeListSectionsH155(){
+  [['home-res-body','home-res-toggle-icon'],['home-com-body','home-com-toggle-icon'],['home-apt-body','home-apt-toggle-icon'],['home-int-body','home-int-toggle-icon']].forEach(([b,i])=>{
+    const body=document.getElementById(b);if(body&&!body.classList.contains('hide')){body.classList.add('hide');const ic=document.getElementById(i);if(ic)ic.textContent='열기';}
+  });
+  const panel=document.getElementById('home-list-panel');if(panel)panel.scrollTop=0;
 }
 // V2 H124: 목록 패널(#home-list-panel) 전체를 손잡이(#home-list-handle)로
 // 드래그해서 접고 펼 수 있게 함 — 기존 탭 토글(toggleHomeListPanel)은
@@ -5279,8 +5302,9 @@ function toggleHomeListPanel(){
         return;
       }
       const shouldExpand=lastDy<0;
+      if(shouldExpand&&wasCollapsed)resetHomeListSectionsH155(); // H155
       panel.classList.toggle('home-list-collapsed',!shouldExpand);
-      if(icon)icon.textContent=shouldExpand?'▾':'▸';
+      if(icon)icon.textContent=shouldExpand?'접기':'열기';
       updateHomeListTallH129();
     }
     handle.style.touchAction='none';
@@ -5301,7 +5325,7 @@ function toggleHomeResSection(){
   if(!body)return;
   const willShow=body.classList.contains('hide');
   body.classList.toggle('hide',!willShow);
-  if(icon)icon.textContent=willShow?'▾':'▸';
+  if(icon)icon.textContent=willShow?'접기':'열기';
   if(willShow)renderHomeZoneList(document.getElementById('home-zone-search')?.value||'');
   updateHomeListTallH129(willShow?body.closest('.home-apt-section'):null);
 }
@@ -5311,7 +5335,7 @@ function toggleHomeCommercialSection(){
   if(!body)return;
   const willShow=body.classList.contains('hide');
   body.classList.toggle('hide',!willShow);
-  if(icon)icon.textContent=willShow?'▾':'▸';
+  if(icon)icon.textContent=willShow?'접기':'열기';
   if(willShow)renderHomeCommercialList();
   updateHomeListTallH129(willShow?body.closest('.home-apt-section'):null);
 }
@@ -5334,6 +5358,7 @@ function renderHomeCommercialList(){
   const countEl=document.getElementById('home-com-count');
   if(countEl)countEl.textContent=all.length;
   // V2 H67: 미완료 우선, 완료는 뒤로(구역/아파트와 동일 규칙)
+  if(document.getElementById('home-com-body')?.classList.contains('hide'))return; // H155: 접힌 칸은 열 때 그림(상가)
   let zones=[...all].sort((a,b)=>zonePrioH154(a.id)-zonePrioH154(b.id)||(Number(a.id)||0)-(Number(b.id)||0)||a.name.localeCompare(b.name,'ko',{numeric:true}));
   // H131: 미완료=진행 중 구역만(봉사대기 제외) — 지도/목록 탭과 같은 기준
   zones=zones.filter(z=>homeComFilter==='all'||(homeComFilter==='undone'&&getZoneState(z.id)==='progress')||(homeComFilter==='done'&&getZoneState(z.id)==='done'));
@@ -5406,7 +5431,7 @@ function updateHomeListTallH129(openedSection){
   // 섹션을 새로 열었으면 접혀 있던 목록 패널도 같이 펼친다.
   if(openedSection&&mobile&&panel.classList.contains('home-list-collapsed')){
     panel.classList.remove('home-list-collapsed');
-    if(icon)icon.textContent='▾';
+    if(icon)icon.textContent='접기';
   }
   const anyOpen=['home-res-body','home-com-body','home-apt-body','home-int-body'].some(id=>{const el=document.getElementById(id);return el&&!el.classList.contains('hide');});
   const tall=mobile&&anyOpen&&!panel.classList.contains('home-list-collapsed');
@@ -6457,7 +6482,7 @@ function toggleAdminZoneStatSection(){
   if(!body)return;
   const open=body.classList.contains('hide');
   body.classList.toggle('hide',!open);
-  if(icon)icon.textContent=open?'▾':'▸';
+  if(icon)icon.textContent=open?'접기':'열기';
   if(open)renderZoneChart();
   admSectionFullH140(body,open);
 }
@@ -6657,7 +6682,7 @@ function toggleAdminResSection(){
   if(!body)return;
   adminResSectionOpen=body.classList.contains('hide');
   body.classList.toggle('hide',!adminResSectionOpen);
-  if(icon)icon.textContent=adminResSectionOpen?'▾':'▸';
+  if(icon)icon.textContent=adminResSectionOpen?'접기':'열기';
   if(adminResSectionOpen)renderAdmResidentialGrid();
   admSectionFullH140(body,adminResSectionOpen); // H140
 }
@@ -6672,7 +6697,7 @@ function toggleAdminComSection(){
   if(!body)return;
   adminComSectionOpen=body.classList.contains('hide');
   body.classList.toggle('hide',!adminComSectionOpen);
-  if(icon)icon.textContent=adminComSectionOpen?'▾':'▸';
+  if(icon)icon.textContent=adminComSectionOpen?'접기':'열기';
   if(adminComSectionOpen)renderAdmCommercialGrid();
   admSectionFullH140(body,adminComSectionOpen); // H140
 }
@@ -6687,7 +6712,7 @@ function toggleAdminAptCardsSection(){
   if(!body)return;
   adminAptCardsSectionOpen=body.classList.contains('hide');
   body.classList.toggle('hide',!adminAptCardsSectionOpen);
-  if(icon)icon.textContent=adminAptCardsSectionOpen?'▾':'▸';
+  if(icon)icon.textContent=adminAptCardsSectionOpen?'접기':'열기';
   if(adminAptCardsSectionOpen)renderApartmentCardList();
   admSectionFullH140(body,adminAptCardsSectionOpen); // H140
 }
@@ -6699,7 +6724,7 @@ function toggleAdminLeaderSection(){
   if(!body)return;
   adminLeaderSectionOpen=body.classList.contains('hide');
   body.classList.toggle('hide',!adminLeaderSectionOpen);
-  if(icon)icon.textContent=adminLeaderSectionOpen?'▾':'▸';
+  if(icon)icon.textContent=adminLeaderSectionOpen?'접기':'열기';
   if(adminLeaderSectionOpen)renderLeaderList();
 }
 let adminVolSectionOpen=false;
@@ -6709,7 +6734,7 @@ function toggleAdminVolSection(){
   if(!body)return;
   adminVolSectionOpen=body.classList.contains('hide');
   body.classList.toggle('hide',!adminVolSectionOpen);
-  if(icon)icon.textContent=adminVolSectionOpen?'▾':'▸';
+  if(icon)icon.textContent=adminVolSectionOpen?'접기':'열기';
   if(adminVolSectionOpen)renderVolList();
 }
 function renderAdmCommercialGrid(){
