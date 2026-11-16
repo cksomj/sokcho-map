@@ -665,6 +665,7 @@ function markSelectedCards(id=activeZoneId()){
 function syncRoleUi(){
   document.documentElement.classList.toggle('role-volunteer',S.role==='volunteer'); // V2 H129: 전도인 화면 ☰ 숨김
   document.documentElement.classList.toggle('role-admin',S.role==='admin'); // H148: 관리자 원형 버튼 묶음
+  document.documentElement.classList.toggle('role-leader',S.role==='leader'); // H158: 인도자도 전도인과 같은 홈 화면 규칙
   if(S.role==='admin')renderAdmFabH148();
   const isAdmin=S.role==='admin';
   const isLeader=S.role==='leader';
@@ -3583,7 +3584,7 @@ function requestLoginGps(){
 
 function doLogout(){
   try{stopAdminPickH149();}catch(e){} // H149
-  document.documentElement.classList.remove('role-admin','adm-fab-open');S.adminFocusH148=null; // H148: 로그인 화면에 관리자 버튼이 남지 않게
+  document.documentElement.classList.remove('role-admin','adm-fab-open','role-leader');S.adminFocusH148=null; // H148: 로그인 화면에 관리자 버튼이 남지 않게
   _ssSetH141(LAST_TAB_KEY_H141,'');_ssSetH141(RESEARCH_Q_KEY_H141,''); // H141
   const logoutRole=S.role, logoutUser=S.user;
   clearAutoLogin();
@@ -5073,7 +5074,7 @@ function drawHomeZones(activeId){
       if(!item){
         const path=(z.polygon||[]).map(pt=>new kakao.maps.LatLng(Number(pt[0]),Number(pt[1])));
         const polygon=new kakao.maps.Polygon({path,strokeWeight:3.5,strokeColor:'#185FA5',strokeOpacity:1,fillColor:'#185FA5',fillOpacity:.05});
-        kakao.maps.event.addListener(polygon,'click',()=>selectHomeZone(z.id));
+        kakao.maps.event.addListener(polygon,'click',()=>selectHomeZone(z.id,true));
         item={polygon};
         homeKakaoPolygons.set(String(z.id),item);
       }
@@ -5116,22 +5117,22 @@ function drawHomeZones(activeId){
     if(it.hit&&it.polyKey!==polyKey){homeMapInst.removeLayer(it.hit);it.hit=null;}
     if(!it.hit&&Array.isArray(z.polygon)&&z.polygon.length>=3){
       it.hit=L.polygon(z.polygon,{stroke:false,fill:true,fillOpacity:0,interactive:true,bubblingMouseEvents:false});
-      it.hit.on('click',()=>selectHomeZone(z.id));it.polyKey=polyKey;it.hitOn=false;
+      it.hit.on('click',()=>selectHomeZone(z.id,true));it.polyKey=polyKey;it.hitOn=false;
     }
     if(it.hit){if(show&&!it.hitOn){it.hit.addTo(homeMapInst);it.hitOn=true;}else if(!show&&it.hitOn){homeMapInst.removeLayer(it.hit);it.hitOn=false;}}
     // 이름표
-    if(!show||!showLabels){if(it.mk&&it.mkOn){homeMapInst.removeLayer(it.mk);it.mkOn=false;}return;}
+    if(!show||(!showLabels&&!isActive)){ /* H158: 고른 구역 이름(카드보기)은 축소해도 보이게 */ if(it.mk&&it.mkOn){homeMapInst.removeLayer(it.mk);it.mkOn=false;}return;}
     const done=isDone(z.id);
     const dimmed=activeId!==null&&!isActive;
     const inProg=isInProgress(z.id);
     const sc=zoneStrokeColor(z,isActive);
     const labelPre=done?'✅ ':inProg?'⏸ ':'○ ';
-    const html=`<div class="zone-map-label" style="border:${isActive?'2px':'1.5px'} solid ${sc};color:#111827;">${labelPre}${zoneMapLabel(z)}</div>`;
+    const html=`<div class="zone-map-label" style="border:${isActive?'2px':'1.5px'} solid ${sc};color:#111827;">${labelPre}${zoneMapLabel(z)}</div>`+(isActive?`<button type="button" class="zone-card-btn-h158" onclick="event.stopPropagation();openHomeZoneCardH158(${JSON.stringify(z.id)})">카드보기</button>`:''); // H158
     const ctr=zoneCenter(z);const ctrKey=ctr?ctr[0]+','+ctr[1]:'';
     if(it.mk&&it.ctrKey!==ctrKey){if(it.mkOn)homeMapInst.removeLayer(it.mk);it.mk=null;it.mkOn=false;}
     if(!it.mk){
       it.mk=L.marker(ctr,{icon:L.divIcon({html,className:'zone-label-anchor',iconAnchor:[0,0],iconSize:[1,1]})});
-      it.mk.on('click',()=>selectHomeZone(z.id));it.html=html;it.ctrKey=ctrKey;
+      it.mk.on('click',()=>selectHomeZone(z.id,true));it.html=html;it.ctrKey=ctrKey;
     }else if(it.html!==html){it.mk.setIcon(L.divIcon({html,className:'zone-label-anchor',iconAnchor:[0,0],iconSize:[1,1]}));it.html=html;}
     if(!it.mkOn){it.mk.addTo(homeMapInst);it.mkOn=true;}
     const el=it.mk.getElement&&it.mk.getElement();const lab=el&&el.firstElementChild;
@@ -5151,7 +5152,7 @@ function filterHomeMap(type,el){
   }
 }
 
-function selectHomeZone(id){
+function selectHomeZone(id,fromMap){ // H158: fromMap=지도에서 누름(구역만 강조 + '카드보기' 버튼)
   // 지도에서 구역 선택 시 목록에서 하이라이트 + 스크롤
   S.homeSelectedZone=id;
   S.homeSelectedAptCard=null; // V2 K2: 아파트 카드 강조 상태와 상호 배타적으로 유지
@@ -5164,21 +5165,25 @@ function selectHomeZone(id){
     // 있어서, 주택과 달리 지도에서 선택해도 강조/스크롤이 화면에 보이지
     // 않았다(섹션 자체가 display:none). 상가 구역을 선택하면 그 섹션을
     // 자동으로 펼친다 — 주택 목록은 항상 펼쳐져 있어 이 처리가 필요 없다.
-    if(z.type==='commercial'){
+    if(!fromMap&&z.type==='commercial'){
       const body=document.getElementById('home-com-body');
       if(body&&body.classList.contains('hide'))toggleHomeCommercialSection();
     }
   }
   // 목록에서 해당 구역 스크롤
   const el=document.getElementById('home-zone-item-'+id);
-  if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});
-  // H145: 미완료 구역을 지도에서 누르면 그 구역 카드로 바로(섹션·목록을 펼치고 카드를 화면 가운데로)
-  if(z&&getZoneState(z.id)==='progress'){
+  if(el&&!fromMap)el.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+// H158: 지도 구역 이름 밑 '카드보기' → 목록에서 그 카드를 펼쳐 화면 가운데로
+function openHomeZoneCardH158(id){
+  const z=S.zones.find(x=>x.id===id);
+  // H145→H158: 지도에서 구역을 누르면(상태와 상관없이) 그 구역 카드를 목록에서 펼쳐 화면 가운데로
+  if(z){
     const isCom=z.type==='commercial';
+    const panel=document.getElementById('home-list-panel'); // H158: 목록을 먼저 연 뒤(열 때 칸이 모두 접히므로) 그 칸을 펼친다
+    if(panel&&panel.classList.contains('home-list-collapsed'))toggleHomeListPanel();
     const body=document.getElementById(isCom?'home-com-body':'home-res-body');
     if(body&&body.classList.contains('hide')){if(isCom)toggleHomeCommercialSection();else toggleHomeResSection();}
-    const panel=document.getElementById('home-list-panel');
-    if(panel&&panel.classList.contains('home-list-collapsed'))toggleHomeListPanel();
     setTimeout(()=>{
       let card=document.getElementById('home-zone-item-'+id);
       if(!card){ // 섹션 필터(완료 등)로 숨어 있으면 전체로 바꿔서 보이게
@@ -7860,5 +7865,17 @@ tryAutoLogin();
 // H157: 손잡이에 click 처리기를 달아 크롬이 '누를 수 있는 버튼'으로 인식하게 함(탭하여 검색 패널이 따라 올라오던 문제)
 (function markHandleClickableH157(){
   function setup(){const h=document.getElementById('home-list-handle');if(h&&!h.__h157){h.__h157=true;h.addEventListener('click',e=>{e.preventDefault();});h.addEventListener('contextmenu',e=>e.preventDefault());}}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
+})();
+
+// H158: "접기" 상태인 열기/접기 버튼은 빨간색 — 글자가 바뀔 때마다 is-open 표시를 맞춘다
+(function markToggleOpenH158(){
+  function sync(el){el.classList.toggle('is-open',el.textContent.trim()==='접기');}
+  function setup(){
+    document.querySelectorAll('[id$="-toggle-icon"]').forEach(el=>{
+      if(el.__h158)return;el.__h158=true;sync(el);
+      new MutationObserver(()=>sync(el)).observe(el,{childList:true,characterData:true,subtree:true});
+    });
+  }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
 })();

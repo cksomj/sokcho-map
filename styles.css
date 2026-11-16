@@ -1754,15 +1754,15 @@ input[type="checkbox"]{accent-color:var(--p);}
 
 /* H153: 관리자 구역 목록 바로가기(전체 버튼 왼쪽) */
 .rte-jump-h153{display:none;}
-html.role-admin .rte-jump-h153{display:contents;}
+html.role-admin .rte-jump-h153,html.role-leader .rte-jump-h153{display:contents;} /* H158: 인도자 목록에도 바로가기 */
 .rte-jump-btn{background:var(--pbg)!important;color:var(--pdk)!important;border:none!important;font-weight:800!important;}
 #rte-grid .zc-section-header{scroll-margin-top:12px;}
 .route-list-toolbar{flex-wrap:wrap!important;gap:6px!important;overflow:visible!important;}
 .route-list-toolbar > button,.rte-jump-btn{white-space:nowrap!important;flex:0 0 auto!important;width:auto!important;}
 /* H154: 전도인 지도 왼쪽 위 필터 버튼(전체·주택·상가·미완료·완료·봉사대기) 숨김 — 지도는 늘 전체 표시 */
-html.role-volunteer #home-filter-chips{display:none!important;}
+html.role-volunteer #home-filter-chips,html.role-leader #home-filter-chips{display:none!important;} /* H158: 인도자도 같게 */
 /* H154: 전도인 지도 — 홈·확대·축소·내 위치·크게 보기 버튼을 왼쪽으로(필터 버튼 자리) */
-html.role-volunteer #home-map-ctrls{right:auto!important;left:8px!important;align-items:flex-start;}
+html.role-volunteer #home-map-ctrls,html.role-leader #home-map-ctrls{right:auto!important;left:8px!important;align-items:flex-start;} /* H158: 인도자도 같게 */
 
 /* H155: 원형 삼각형 접기 버튼 → "열기/접기" 글자 버튼(항상 글자 오른쪽) */
 #home-list-handle-icon,[id$="-toggle-icon"]{width:auto!important;min-width:56px;height:34px!important;padding:0 14px!important;border-radius:999px!important;background:var(--tx)!important;color:#fff!important;font-size:14px!important;font-weight:800!important;letter-spacing:-.2px;box-shadow:0 2px 8px rgba(25,31,40,.18)!important;margin-left:auto;white-space:nowrap;}
@@ -1802,3 +1802,8 @@ input,textarea,select,[contenteditable="true"]{-webkit-user-select:text;user-sel
 /* H157: 앱 화면 전체에서 글자 꾹 누름 선택 막기(구글 '탭하여 검색' 패널이 따라 올라오던 문제) — 입력칸·연구자료 본문은 선택 가능 */
 #scr-app,#scr-app *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 #scr-app input,#scr-app textarea,#scr-app select,#p-research .pb,#p-research .pb *{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default;}
+
+/* H158: 지도에서 고른 구역 이름 밑 "카드보기" 버튼 */
+.zone-card-btn-h158{position:absolute;left:0;top:18px;transform:translateX(-50%);border:none;border-radius:999px;background:var(--p);color:#fff;font-size:13.5px;font-weight:800;padding:8px 14px;white-space:nowrap;box-shadow:0 4px 12px rgba(49,130,246,.35);cursor:pointer;pointer-events:auto;}
+/* H158: 펼쳐진 칸의 "접기" 버튼은 빨간색(열기는 파랑) */
+[id$="-toggle-icon"].is-open{background:#E5333F!important;color:#fff!important;box-shadow:0 3px 10px rgba(229,51,63,.3)!important;}
