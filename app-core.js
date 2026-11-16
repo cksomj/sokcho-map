@@ -2324,6 +2324,7 @@ function clearHomeFocusH156(){
 }
 function renderHomeApartmentCardList(){
   loadApartmentCards();
+  try{renderUndoneH178();}catch(e){} // H178: 카드 상태가 바뀌면 미완료 모음도 맞춤
   renderHomeInterphoneList(); // H143
   const wrap=document.getElementById('home-apt-card-list');
   if(!wrap)return;
@@ -5228,6 +5229,7 @@ function openHomeZoneCardH158(id){
 }
 
 function renderHomeZoneList(kw){
+  try{renderUndoneH178();}catch(e){} // H178
   renderHomeCommercialList(); // V2 H21: 상가는 별도 섹션에서 렌더 — 이 함수가 호출되는 모든 지점에서 함께 새로고침
   renderHomeApartmentCardList(); // V2 H67: 아파트도 함께 새로고침(주택 목록이 갱신되는 모든 지점에서 아파트도 같이 최신 상태 유지)
   const resCountEl=document.getElementById('home-res-count');
@@ -5300,6 +5302,7 @@ function toggleHomeListPanel(){
 }
 // H155: 구역 목록을 열면 항상 맨 위(검색칸)부터, 주택·상가·아파트·인터폰 칸은 접힌 채로 — 버튼이 모두 보이게
 function resetHomeListSectionsH155(){
+  if(!S.openingUndoneH178)setUndoneModeH178(false); // H178: 손잡이로 열면 평소 목록
   [['home-res-body','home-res-toggle-icon'],['home-com-body','home-com-toggle-icon'],['home-apt-body','home-apt-toggle-icon'],['home-int-body','home-int-toggle-icon']].forEach(([b,i])=>{
     const body=document.getElementById(b);if(body&&!body.classList.contains('hide')){body.classList.add('hide');const ic=document.getElementById(i);if(ic)ic.textContent='열기';}
   });
@@ -8333,3 +8336,56 @@ function pauseWithPinCheckH175(){
   document.getElementById('pin-ask-modal')?.classList.add('on');
 }
 function closePinAskH175(){document.getElementById('pin-ask-modal')?.classList.remove('on');}
+
+// ================================================================
+// H178: "먼저 미완료 봉사하기" — 지도보기/구역 목록 버튼 오른쪽 주황 버튼.
+// 주택·상가·아파트·인터폰 가운데 미완료(진행중 포함)만 모아 보여 준다(비활성 제외).
+// 완료되면 목록에서 빠지고 개수도 줄어든다. 전도인·인도자 홈 공통.
+// ================================================================
+function undoneItemsH178(){
+  const zones=S.zones.filter(z=>getZoneState(z.id)==='progress'&&!isZoneDisabledH163(z.id))
+    .sort((a,b)=>(a.type===b.type?0:a.type==='residential'?-1:1)||(Number(a.id)||0)-(Number(b.id)||0));
+  const cards=S.apartmentCards.filter(c=>(c.status==='진행중'||c.status==='미완료')&&!isCardDisabledH163(c))
+    .sort((a,b)=>(isInterphoneCard(a)===isInterphoneCard(b)?0:isInterphoneCard(a)?1:-1)||(Number(a.number)||0)-(Number(b.number)||0));
+  return {zones,cards,total:zones.length+cards.length};
+}
+function setUndoneModeH178(on){
+  S.undoneModeH178=!!on;
+  const panel=document.getElementById('home-list-panel');
+  if(panel)panel.classList.toggle('undone-mode-h178',!!on);
+  const sec=document.getElementById('home-undone-section-h178');
+  if(sec)sec.style.display=on?'':'none';
+}
+function openUndoneH178(){
+  const panel=document.getElementById('home-list-panel');
+  if(panel&&panel.classList.contains('home-list-collapsed')){S.openingUndoneH178=true;try{toggleHomeListPanel();}finally{S.openingUndoneH178=false;}}
+  setUndoneModeH178(true);
+  renderUndoneH178();
+  updateHomeListTallH129(document.getElementById('home-undone-section-h178'));
+  if(panel)panel.scrollTop=0;
+}
+function closeUndoneH178(){setUndoneModeH178(false);updateHomeListTallH129();const panel=document.getElementById('home-list-panel');if(panel)panel.scrollTop=0;}
+function renderUndoneH178(){
+  const it=undoneItemsH178();
+  const btn=document.getElementById('home-undone-btn-h178'),bc=document.getElementById('home-undone-btn-count'),hc=document.getElementById('home-undone-count-h178');
+  if(bc)bc.textContent=it.total;if(hc)hc.textContent=it.total;
+  if(btn)btn.classList.toggle('hide',it.total===0);
+  if(!S.undoneModeH178)return;
+  const wrap=document.getElementById('home-undone-list-h178');if(!wrap)return;
+  if(!it.total){wrap.innerHTML='<p style="font-size:14px;color:var(--txm);text-align:center;padding:20px 0;">미완료 구역이 없습니다. 수고하셨습니다!</p>';return;}
+  const zoneRow=z=>{const isRes=z.type==='residential';return `<div id="undone-zone-item-${z.id}" class="home-zone-row home-zone-row-kakao ${isRes?'res':'com'}" onclick="selectHomeZone(${JSON.stringify(z.id)})">
+      <div style="min-width:0;"><div class="home-zone-title"><span>${zoneDisplayLabel(z.id)} </span>${esc(displayZoneNameCleaned(z.name))}</div>
+      <div class="home-zone-meta">${fmtServiceDateH145(zoneLastServiceTsH145(z.id))} · ${isRes?'주택':'상가'} · ${z.streets.length}개 거리</div></div>
+      <span class="zc-status progress">미완료</span>
+      <button class="btn btn-sm btn-out home-zone-action" onclick="event.stopPropagation();openZoneKakaoStart(${JSON.stringify(z.id)})" style="flex-shrink:0;">카카오맵</button>
+      <button onclick="event.stopPropagation();startSessionAndRoute(${JSON.stringify(z.id)},true)" class="btn btn-sm home-zone-action" style="background:#FAEEDA;color:var(--warn);border:1px solid #FAC775;">이어하기</button>
+    </div>`;};
+  const cardRow=c=>{const total=apartmentCardCheckableUnits(c),done=apartmentCardCompletedUnits(c);return `<div id="undone-card-item-${c.id}" class="home-zone-row home-apt-card-row" onclick="selectHomeApartmentCard(${JSON.stringify(c.id)})">
+      <div style="min-width:0;"><div class="home-zone-title"><span>#${c.number} </span>${esc(aptCardDisplayName(c.name))}</div>
+      <div class="home-zone-meta">${fmtServiceDateH145(cardLastServiceTsH145(c))} · ${isInterphoneCard(c)?'인터폰':'아파트'} · ${done}/${total}호</div></div>
+      <span class="zc-status progress">${esc(c.status)}</span>
+      <button class="btn btn-sm btn-out home-zone-action" onclick="event.stopPropagation();openApartmentCardKakaoStart(${JSON.stringify(c.id)})" style="flex-shrink:0;">카카오맵</button>
+      <button onclick="event.stopPropagation();startApartmentCardAndGo(${JSON.stringify(c.id)},true)" class="btn btn-sm home-zone-action" style="background:#FAEEDA;color:var(--warn);border:1px solid #FAC775;">이어하기</button>
+    </div>`;};
+  wrap.innerHTML=it.zones.map(zoneRow).join('')+it.cards.map(cardRow).join('');
+}

@@ -2099,3 +2099,13 @@ button[onclick^="clearAdminFocusH148"]{background:var(--g-blue)!important;border
 body:has(#svc-fullscreen[style*="flex"]) #toast,body:has(#apt-svc-fullscreen[style*="flex"]) #toast{top:calc(14px + env(safe-area-inset-top))!important;bottom:auto!important;z-index:9400!important;}
 /* H176: 핀 확인 상자 문구 — 해야 할 일(핀 찍기 → 미완료) 먼저, 예외 안내는 한 줄 띄워 작게 */
 .pin-ask-sub-h175{display:block;margin-top:8px;font-size:14px;color:#4E5968;}
+
+/* H178: 먼저 미완료 봉사하기 */
+.home-list-handle{gap:8px!important;}
+.home-undone-btn-h178{border:1.5px solid #9A4600;border-radius:999px;height:42px;padding:0 14px;font-size:15px;font-weight:800;color:#fff;cursor:pointer;white-space:nowrap;
+  background:linear-gradient(180deg,#FFA23A 0%,#F07F00 50%,#C96500 100%);box-shadow:var(--b-raise-dark);text-shadow:0 1px 1px rgba(0,0,0,.25);display:inline-flex;align-items:center;gap:6px;}
+.home-undone-btn-h178 b{background:#fff;color:#C96500;border-radius:999px;min-width:24px;height:24px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;text-shadow:none;}
+.home-undone-btn-h178.hide{display:none!important;}
+#home-list-panel.undone-mode-h178 > .home-apt-section:not(#home-undone-section-h178){display:none!important;}
+.home-undone-head-h178{background:#FFF4E6!important;border-bottom:2px solid #F7B267;}
+.home-undone-head-h178 > span{color:#B35400;font-weight:900;}
