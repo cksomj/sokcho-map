@@ -1556,3 +1556,172 @@ html.adm-fab-open #p-admin .pb{padding-right:78px;}
 .adm-pick-banner.hide{display:none;}
 .adm-pick-banner button{border:none;background:#fff;color:#7F3FBF;font-weight:900;border-radius:999px;padding:6px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
 .adm-pick-banner span{min-width:0;line-height:1.3;}
+
+/* =====================================================================
+   V2 H150: 디자인 시스템 v2 — 깔끔·가독성 중심(전도인·인도자·관리자 전체)
+   기능 코드는 그대로 두고 이 블록만으로 모양을 바꾼다(지우면 이전 모양으로 복귀).
+   - 글꼴 Pretendard, 차분한 회색 배경 + 또렷한 글자 대비
+   - 버튼: 둥근 모서리, 넉넉한 터치 크기, 주(파랑)/보조(연회색)/위험(연빨강)
+   - 닫기·뒤로 버튼은 진한 색으로 눈에 띄게
+   ===================================================================== */
+:root{
+  --p:#3182F6;--pl:#4A94F8;--pbg:#E8F3FF;--pdk:#1B64DA;
+  --ok:#0E9F5B;--okbg:#E5F7EE;
+  --warn:#B86E00;--warnbg:#FFF3E0;
+  --dan:#E5333F;--danbg:#FFEBEC;
+  --tx:#191F28;--tx2:#333D4B;--txm:#6B7684;
+  --bg:#fff;--bg2:#F2F4F6;--bd:#E5E8EB;
+  --r:12px;--rl:16px;
+  --shadow-sm:0 1px 2px rgba(0,23,51,.04),0 2px 8px rgba(0,23,51,.05);
+  --shadow-md:0 8px 24px rgba(0,23,51,.10),0 2px 6px rgba(0,23,51,.05);
+  --ring:0 0 0 3px rgba(49,130,246,.22);
+}
+html,body,button,input,select,textarea{font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;}
+html,body{background:#F2F4F6;color:var(--tx);letter-spacing:-.2px;}
+body{font-size:15px;}
+
+/* ---- 머리말 / 페이지 ---- */
+.ph{background:rgba(255,255,255,.96);backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid #EEF0F2!important;box-shadow:none!important;padding:12px 16px!important;}
+.ph h2{font-size:21px!important;font-weight:800;letter-spacing:-.5px;color:var(--tx);}
+.pb{background:#F2F4F6;}
+.adm-sec{background:#fff;border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:var(--shadow-sm);}
+.adm-sec:has(> .home-apt-section){padding:4px 6px;}
+.adm-title{font-size:16px!important;font-weight:800!important;color:var(--tx)!important;letter-spacing:-.3px!important;text-transform:none!important;margin-bottom:12px!important;}
+.adm-focus-title{font-size:20px;letter-spacing:-.5px;}
+
+/* ---- 버튼 ---- */
+.btn{border-radius:14px!important;font-weight:700;letter-spacing:-.2px;min-height:50px;transition:background .15s,transform .08s,box-shadow .15s;}
+.btn:active{transform:scale(.98);}
+.btn-sm{min-height:40px;padding:8px 14px!important;font-size:14px!important;border-radius:12px!important;}
+.btn-p{background:var(--p)!important;color:#fff!important;border:none!important;box-shadow:0 4px 12px rgba(49,130,246,.28)!important;}
+.btn-p:active{background:var(--pdk)!important;}
+.btn-out{background:var(--bg2)!important;color:var(--tx2)!important;border:1px solid transparent!important;box-shadow:none!important;}
+.btn-out:active{background:#E5E8EB!important;}
+.btn-out.on,.btn.on{background:var(--tx)!important;color:#fff!important;border-color:var(--tx)!important;}
+.btn-dk{background:var(--danbg)!important;color:var(--dan)!important;border:1px solid transparent!important;}
+.btn-ok{background:var(--okbg)!important;color:var(--ok)!important;border:1px solid transparent!important;}
+.btn:disabled{opacity:.45;}
+
+/* ---- 닫기·뒤로(눈에 띄게) ---- */
+button[onclick^="closeS12Viewer"],button[onclick^="closeS13Viewer"],button[onclick^="closeSheet"],button[onclick^="closeSideDetail"],button[onclick^="closeZoneNumberModal"],button[onclick^="clearAdminFocusH148"],button[onclick^="s12BackToList"]{
+  background:var(--tx)!important;color:#fff!important;border:none!important;border-radius:999px!important;font-weight:800!important;min-height:40px;padding:8px 16px!important;box-shadow:0 4px 12px rgba(25,31,40,.22)!important;
+}
+button[onclick^="closeS12Viewer"]::before,button[onclick^="closeS13Viewer"]::before{content:"✕  ";font-weight:900;}
+button[onclick^="closeSheet"]{width:40px;height:40px;padding:0!important;font-size:16px!important;display:inline-flex;align-items:center;justify-content:center;}
+.back-btn{width:40px!important;height:40px!important;border-radius:999px!important;background:var(--tx)!important;color:#fff!important;border:none!important;font-size:18px!important;box-shadow:0 4px 12px rgba(25,31,40,.22);}
+
+/* ---- 입력칸 ---- */
+input[type="text"],input[type="number"],input[type="password"],input[type="email"],input[type="search"],input:not([type]),select,textarea{border-radius:12px!important;border:1px solid transparent!important;background:var(--bg2)!important;color:var(--tx)!important;font-size:15px!important;}
+input[type="text"]:focus,input[type="number"]:focus,input[type="password"]:focus,input[type="email"]:focus,input:not([type]):focus,select:focus,textarea:focus{outline:none!important;border-color:var(--p)!important;background:#fff!important;box-shadow:var(--ring)!important;}
+input[type="checkbox"]{accent-color:var(--p);}
+
+/* ---- 칩(필터) ---- */
+.chip{padding:8px 14px!important;border-radius:999px!important;font-size:13.5px!important;font-weight:700!important;background:#fff!important;color:#4E5968!important;border:1px solid var(--bd)!important;box-shadow:0 1px 3px rgba(0,23,51,.08)!important;}
+.chip.on{background:var(--tx)!important;color:#fff!important;border-color:var(--tx)!important;box-shadow:0 4px 10px rgba(25,31,40,.2)!important;}
+.home-apt-body .chip,.adm-sec .chip{box-shadow:none!important;}
+
+/* ---- 상태 배지 ---- */
+.zc-status{border:none!important;font-size:12.5px!important;font-weight:800!important;padding:5px 10px!important;border-radius:999px!important;}
+.zc-status.done{background:var(--okbg)!important;color:var(--ok)!important;}
+.zc-status.progress{background:var(--warnbg)!important;color:var(--warn)!important;}
+.zc-status.reset{background:var(--pbg)!important;color:var(--pdk)!important;}
+
+/* ---- 홈 목록 카드: 위 줄(번호·이름·날짜) / 아래 줄(상태·카카오맵·봉사) ---- */
+.home-apt-section{border-top:1px solid #EEF0F2!important;}
+.home-apt-header{padding:14px 16px!important;font-size:16px!important;font-weight:800!important;letter-spacing:-.3px;}
+.home-zone-row{grid-template-columns:auto 1fr auto!important;gap:10px 8px!important;border:none!important;border-radius:16px!important;padding:14px 14px 12px!important;margin-bottom:10px!important;box-shadow:var(--shadow-sm)!important;}
+.home-zone-row > :first-child{grid-column:1 / -1;}
+.home-zone-row > .zc-status{justify-self:start;}
+.home-zone-row > .home-zone-action:nth-child(3){justify-self:end;}
+.home-zone-title{font-size:16px!important;font-weight:800!important;line-height:1.3!important;letter-spacing:-.3px;}
+.home-zone-title span{font-size:15px!important;color:var(--p)!important;font-weight:800!important;}
+.home-zone-meta{font-size:13px!important;color:var(--txm)!important;line-height:1.4!important;margin-top:3px;}
+.home-zone-action{padding:9px 14px!important;font-size:14px!important;min-height:40px;border-radius:12px!important;}
+.home-zone-row.selected{box-shadow:0 0 0 2px var(--p),var(--shadow-sm)!important;}
+.svc-date{color:var(--tx2);}
+
+/* ---- 목록 탭 / 관리자 카드 ---- */
+.zc,.admin-zone-row,.apt-complex-row,.leader-card,.vol-row,.trash-row{border:none!important;border-radius:16px!important;box-shadow:var(--shadow-sm)!important;}
+.zc{padding:14px!important;}
+.zc-name{font-size:15px!important;font-weight:800!important;}
+.zc-meta,.admin-zone-meta{font-size:12.5px!important;color:var(--txm)!important;}
+.admin-zone-row{padding:12px!important;gap:8px 10px!important;margin-bottom:10px!important;}
+.admin-zone-no{font-size:15px!important;color:var(--p)!important;}
+.admin-zone-name{font-size:15px!important;font-weight:800!important;}
+.admin-zone-box-label{font-size:12px!important;color:var(--txm)!important;font-weight:700!important;}
+.admin-zone-status-box .btn-sm,.admin-zone-manage-box .btn-sm{min-height:38px;font-size:13.5px!important;}
+.zno{color:var(--p)!important;}
+
+/* ---- 지도 위 버튼 ---- */
+.mbtn{border:none!important;border-radius:14px!important;background:rgba(255,255,255,.97)!important;box-shadow:0 4px 14px rgba(0,23,51,.14)!important;font-size:14px!important;font-weight:800!important;height:44px!important;color:var(--tx)!important;}
+.map-legend{font-size:12.5px;}
+
+/* ---- ☰ 메뉴 / 관리자 원형 버튼 ---- */
+.menu-toggle-btn{background:var(--tx)!important;box-shadow:0 8px 20px rgba(25,31,40,.3)!important;}
+#tabbar{border:none!important;border-radius:20px!important;box-shadow:var(--shadow-md),0 0 0 1px rgba(0,23,51,.05)!important;padding:8px!important;}
+.tab{font-size:15px!important;padding:12px 14px!important;border-radius:12px!important;color:var(--tx2)!important;}
+.tab.on{background:var(--pbg)!important;color:var(--pdk)!important;font-weight:800!important;}
+.adm-fab-items{max-height:calc(100dvh - 260px)!important;}
+.adm-fab-item{width:50px!important;height:50px!important;border:none!important;box-shadow:0 4px 12px rgba(0,23,51,.16)!important;}
+.adm-fab-item .t{font-size:9.5px!important;color:var(--tx2);}
+.adm-fab-item.on .t{color:#fff;}
+.adm-fab-item.on{background:var(--tx)!important;}
+.adm-fab-toggle{background:var(--tx)!important;width:52px!important;height:52px!important;}
+
+/* ---- 로그인 ---- */
+.role-card{border:1.5px solid var(--bd)!important;border-radius:18px!important;box-shadow:none!important;padding:16px 18px!important;}
+.role-card.on,.role-card.active{border-color:var(--p)!important;background:var(--pbg)!important;box-shadow:var(--ring)!important;}
+
+/* ---- 봉사 진행 화면 ---- */
+.svc-panel{box-shadow:0 -6px 24px rgba(0,23,51,.10)!important;}
+.svc-main-btn{border-radius:16px!important;font-size:17px!important;font-weight:800!important;padding:16px 12px!important;}
+.svc-main-btn.done{background:var(--ok)!important;color:#fff!important;}
+.svc-main-btn.pause{background:#FF8A00!important;color:#fff!important;}
+.svc-secondary-btn{border:none!important;background:var(--bg2)!important;color:var(--tx2)!important;border-radius:14px!important;font-size:15px!important;font-weight:800!important;padding:13px 10px!important;}
+.svc-locate-btn{border:none!important;background:var(--pbg)!important;color:var(--pdk)!important;border-radius:12px!important;font-size:14px!important;font-weight:800!important;padding:10px 14px!important;}
+.svc-time-box{min-width:88px!important;text-align:right;}
+.svc-time-box > div:first-child{font-size:22px!important;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--ok)!important;}
+.svc-time-box > div:last-child{white-space:nowrap;font-size:11.5px!important;}
+#apt-svc-card-name,#svc-zone-name{font-size:18px!important;line-height:1.35!important;word-break:keep-all;letter-spacing:-.4px;}
+.apt-svc-point-card{border:none!important;border-radius:16px!important;box-shadow:var(--shadow-sm)!important;padding:14px!important;}
+.apt-svc-point-head{font-size:16px!important;font-weight:800!important;}
+.apt-svc-unit-row{border:none!important;background:var(--bg2)!important;border-radius:10px!important;font-size:15px!important;}
+.apt-svc-point-nav-btn{width:40px!important;height:40px!important;font-size:15px!important;font-weight:800!important;border:none!important;background:#fff!important;box-shadow:var(--shadow-sm);}
+.apt-svc-point-nav-btn.active{background:var(--p)!important;color:#fff!important;}
+.apt-svc-point-nav-btn.done{background:var(--ok)!important;color:#fff!important;}
+
+/* ---- 창(모달) ---- */
+.note-card,.confirm-card,.s13-viewer-card{border:none!important;border-radius:24px!important;box-shadow:0 24px 60px rgba(0,23,51,.22)!important;}
+.note-card,.confirm-card{padding:24px 22px 20px!important;}
+.note-card h3,.confirm-card h3{font-size:19px!important;font-weight:800!important;letter-spacing:-.4px;}
+.confirm-card p{font-size:15px!important;color:var(--tx2)!important;line-height:1.55!important;}
+.confirm-ok{background:var(--p)!important;border:none!important;color:#fff!important;border-radius:14px!important;font-weight:800!important;min-height:50px;}
+.confirm-cancel{background:var(--bg2)!important;border:none!important;color:var(--tx2)!important;border-radius:14px!important;font-weight:800!important;min-height:50px;}
+.note-modal,.confirm-modal,.s13-viewer-modal{background:rgba(0,12,30,.45)!important;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);}
+.zsheet{border:none!important;border-radius:24px 24px 0 0!important;box-shadow:0 -10px 30px rgba(0,23,51,.14)!important;}
+
+/* ---- S-12 / S-13 ---- */
+.s12-viewer{background:#F2F4F6!important;}
+.s12-bar{border-bottom:1px solid #EEF0F2!important;box-shadow:none!important;}
+.s12-bar-title{font-size:19px!important;font-weight:800!important;letter-spacing:-.4px;}
+.s12-row{border:none!important;border-radius:16px!important;box-shadow:var(--shadow-sm)!important;padding:14px!important;}
+.s12-row-no{color:var(--p)!important;font-size:16px!important;}
+.s12-row-name{font-size:15px!important;}
+.s12-row-addr{font-size:13px!important;}
+.s12-type.on{background:var(--tx)!important;border-color:var(--tx)!important;color:#fff!important;}
+.svc-note-banner{border-radius:14px!important;}
+.admin-return-fab,.adm-pick-banner{background:var(--tx)!important;}
+.adm-pick-banner button{color:var(--tx)!important;}
+.toast,#toast{border-radius:14px!important;font-size:14px!important;font-weight:600;}
+/* H150 보정: S-13 머리말 줄바꿈, 관리자 목록 칸 바탕, 인쇄 때는 장식 제거 */
+.s13-viewer-head{flex-wrap:wrap;}
+.s13-viewer-head > div:first-child{flex:1 1 220px;min-width:0;}
+#s13-viewer-title,#s13-congregation-display{word-break:keep-all;}
+.adm-sec:has(> .home-apt-section){background:transparent!important;box-shadow:none!important;padding:0!important;}
+.adm-sec > .home-apt-section{border:none!important;}
+.adm-sec > .home-apt-section > .home-apt-header{background:#fff;border-radius:16px;box-shadow:var(--shadow-sm);margin-bottom:10px;}
+@media print{
+  .s13-viewer-card{border-radius:0!important;box-shadow:none!important;}
+  .s13-viewer-modal{background:#fff!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}
+  .s12-row{box-shadow:none!important;}
+}
