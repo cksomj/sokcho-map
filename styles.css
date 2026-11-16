@@ -2073,3 +2073,12 @@ button[onclick^="clearAdminFocusH148"]{background:var(--g-blue)!important;border
 #apt-svc-fullscreen .svc-main-btn{height:56px!important;padding:0 10px!important;font-size:21px!important;line-height:1!important;display:flex;align-items:center;justify-content:center;gap:5px;}
 /* H173: 지도 이름표의 완료 표시(진한 녹색) */
 .zone-map-label .lbl-done-h173{color:#1F6B0A;font-weight:900;}
+
+/* H174: 선 아이콘은 기본 청색(검정 없앰). 색 바탕 버튼(파랑·초록·주황) 안에서는 흰색, 빨강 글씨 버튼 안에서는 빨강 그대로 */
+.ui-ico-wrap{color:#2B78EE;}
+.btn-p .ui-ico-wrap,button.on .ui-ico-wrap,.chip.on .ui-ico-wrap,.adm-fab-item.on .ui-ico-wrap,.ds-on .ui-ico-wrap,.svc-main-btn .ui-ico-wrap,.menu-toggle-btn .ui-ico-wrap,.adm-fab-toggle .ui-ico-wrap,
+#home-list-handle-icon .ui-ico-wrap,.apt-order-close .ui-ico-wrap,.home-focus-clear .ui-ico-wrap,.rte-totop-h161 .ui-ico-wrap,.zone-card-btn-h158 .ui-ico-wrap,
+[id$="-toggle-icon"] .ui-ico-wrap,#toast .ui-ico-wrap,.btn-dk .ui-ico-wrap,.btn-ok .ui-ico-wrap,.svc-pin-btn .ui-ico-wrap,.svc-note-btn-h162 .ui-ico-wrap,
+.dis-note-h163 .ui-ico-wrap,.dis-open-btn-h163 .ui-ico-wrap,button[onclick^="clearAdminFocusH148"] .ui-ico-wrap,#panel-volunteer .btn-p .ui-ico-wrap{color:inherit;}
+.tab .ti .ui-ico-wrap{color:#2B78EE;}
+.tab.on .ti .ui-ico-wrap{color:inherit;}

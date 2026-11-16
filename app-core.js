@@ -1522,6 +1522,13 @@ function setDateSortH161(key,t,el){
   toggleDateSortH145(key,null);
   document.querySelectorAll(`[data-ds="${key}"]`).forEach(b=>b.classList.toggle('ds-on',+b.dataset.dsm===target));
 }
+// H174: 날짜 버튼 하나로 — 누를 때마다 꺼짐(지난봉사) → 지난봉사(오래전 봉사 먼저) → 최근봉사(최근 봉사 먼저) → 꺼짐
+function cycleDateSortH174(key,el){
+  const m=((dateSortH145[key]||0)+1)%3;
+  dateSortH145[key]=(m+2)%3; // toggleDateSortH145가 +1 하므로 하나 앞에 맞춰 둔다
+  toggleDateSortH145(key,null);
+  document.querySelectorAll(`[data-ds="${key}"]`).forEach(b=>{b.textContent=m===2?'최근봉사':'지난봉사';b.classList.toggle('ds-on',m>0);});
+}
 // H145: 관리자 아파트/인터폰 카드 목록 필터(전체/미완료/완료 — 다른 패널과 같은 기준)
 const admCardFilterH145={apt:'all',int:'all'};
 function setAdmCardFilterH145(k,mode,el){
