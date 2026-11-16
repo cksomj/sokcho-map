@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
-<link rel="stylesheet" href="styles.css?v=20261116-h146-kakao-guard">
+<link rel="stylesheet" href="styles.css?v=20261116-h147-route-return-trash">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -660,6 +660,19 @@
               </div>
             </div>
           </div>
+          <!-- H147: 휴지통(삭제한 구역·카드, 삭제일·복구) -->
+          <div class="adm-sec">
+            <div class="home-apt-section" id="adm-trash-section">
+              <div class="home-apt-header" onclick="toggleAdminTrashSectionH147()">
+                <span>🗑 휴지통 (<span id="adm-trash-count">0</span>)</span>
+                <span id="adm-trash-toggle-icon">▸</span>
+              </div>
+              <div class="home-apt-body hide" id="adm-trash-body">
+                <div style="font-size:12px;color:var(--txm);padding:0 0 8px;">삭제한 구역·카드가 여기에 모입니다. "복구"를 누르면 원래 번호로 되돌아갑니다.</div>
+                <div id="trash-list"></div>
+              </div>
+            </div>
+          </div>
           <!-- 아파트 단지 등록 + 카드 생성 도구: 항상 펼쳐진 별도 블록(안 접힘) -->
           <div class="adm-sec">
             <div class="adm-title">아파트 단지 등록</div>
@@ -968,6 +981,7 @@
   </div>
   <div class="s12-list" id="s12-list"></div>
 </div>
+<button id="admin-return-fab" class="admin-return-fab hide" onclick="returnToAdminH147()">◀ 관리자 페이지로</button>
 <div id="toast"></div>
 
 <script src="leaflet.js?v=20260507-meetup-route"></script>
@@ -982,6 +996,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261116-h146-kakao-guard"></script>
+<script src="app.js?v=20261116-h147-route-return-trash"></script>
 </body>
 </html>

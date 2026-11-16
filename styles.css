@@ -1525,3 +1525,11 @@ html.role-volunteer #menu-toggle-btn{display:none!important;}
 .date-sort-chip.ds-on{background:#7F3FBF!important;border-color:#7F3FBF!important;color:#fff!important;}
 @keyframes flashH145{0%,100%{box-shadow:0 0 0 0 rgba(216,90,48,0)}50%{box-shadow:0 0 0 4px rgba(216,90,48,.55)}}
 .flash-h145{animation:flashH145 .8s ease-in-out 2;}
+
+/* V2 H147: 관리자 페이지로 돌아가기(구역경계그리기·경로그리기·지도보기), 휴지통 */
+.admin-return-fab{position:fixed;left:12px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:7600;padding:12px 16px;border-radius:999px;border:none;background:#7F3FBF;color:#fff;font-size:14px;font-weight:900;box-shadow:0 6px 18px rgba(0,0,0,.28);cursor:pointer;}
+.admin-return-fab.hide{display:none;}
+.trash-row{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--bd);border-radius:10px;background:#fff;margin-bottom:6px;}
+.trash-row .trash-main{flex:1;min-width:0;}
+.trash-row .trash-name{font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.trash-row .trash-meta{font-size:12px;color:var(--txm);}

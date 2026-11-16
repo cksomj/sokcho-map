@@ -114,7 +114,7 @@ const S={
 // 정보가 내 기기에 나타나는 등). 이 두 키만 순수 localStorage로 남긴다.
 // ================================================================
 const FIRESTORE_SYNC_EXCLUDED_KEYS_H105=new Set(['sokcho_auto_login','sokcho_last_login_gps']);
-const FIRESTORE_SYNC_KEYS_H105=['sokcho_zones','sokcho_records','sokcho_progress','sokcho_apartment_registry_v1','sokcho_apartment_cards_v1','sokcho_interphone_cards_v1','sokcho_volunteers','sokcho_leaders','sokcho_contacts','sokcho_routes','sokcho_research_links','sokcho_live','sokcho_s13_v1','sokcho_s13_congregation','sokcho_admin_pin','sokcho_leader_pin','sokcho_admin_recovery_email','sokcho_active_leader','sokcho_h63_import_done','sokcho_builtin_samples_removed','sokcho_deleted_zone_ids','sokcho_deleted_apartment_card_ids'];
+const FIRESTORE_SYNC_KEYS_H105=['sokcho_zones','sokcho_records','sokcho_progress','sokcho_apartment_registry_v1','sokcho_apartment_cards_v1','sokcho_interphone_cards_v1','sokcho_trash_v1','sokcho_volunteers','sokcho_leaders','sokcho_contacts','sokcho_routes','sokcho_research_links','sokcho_live','sokcho_s13_v1','sokcho_s13_congregation','sokcho_admin_pin','sokcho_leader_pin','sokcho_admin_recovery_email','sokcho_active_leader','sokcho_h63_import_done','sokcho_builtin_samples_removed','sokcho_deleted_zone_ids','sokcho_deleted_apartment_card_ids'];
 const FIRESTORE_WRITE_DEBOUNCE_MS_H105=1500;
 let _storageCacheH105={};
 let _firestoreWriteTimersH105={};
@@ -197,7 +197,7 @@ function manualSyncNowH119(){
   persistVolunteers();persistContacts();persistApartmentRegistry();
   persistApartmentCards();persistResearchLinks();
   if(typeof db==='undefined'||!db){toast('⚠️ 반영 실패 - 인터넷 확인');return;}
-  const keys=['sokcho_zones','sokcho_records','sokcho_routes','sokcho_progress','sokcho_apartment_registry_v1','sokcho_apartment_cards_v1','sokcho_interphone_cards_v1','sokcho_volunteers','sokcho_leaders','sokcho_contacts','sokcho_research_links'];
+  const keys=['sokcho_zones','sokcho_records','sokcho_routes','sokcho_progress','sokcho_apartment_registry_v1','sokcho_apartment_cards_v1','sokcho_interphone_cards_v1','sokcho_trash_v1','sokcho_volunteers','sokcho_leaders','sokcho_contacts','sokcho_research_links'];
   toast('☁️ 서버에 반영하는 중입니다...');
   Promise.all(keys.map(key=>{
     const value=_storageCacheH105[key];
@@ -273,6 +273,8 @@ function _reloadAfterRemoteChangeH105(key){
       S._leadersLoaded=false;loadLeaders();
       if(typeof renderLeaderList==='function')renderLeaderList();
       _refreshLoginNameSearchH126(); // H126: 로그인 화면 인도자 검색에도 즉시 반영
+    }else if(key==='sokcho_trash_v1'){
+      if(typeof renderTrashH147==='function')renderTrashH147(); // H147
     }else if(key==='sokcho_contacts'){
       S._contactsLoaded=false;loadContacts();
     }else if(key==='sokcho_routes'){
@@ -552,7 +554,8 @@ function _snapToBuildingH132(pt,z,done){
       // 건물 주소의 대표 좌표(주소점)로 맞춘다 — 카카오맵이 그 주소를 그대로 보여줌
       const exact=await new Promise(ok=>gc.addressSearch(best.road,(res,st)=>ok(st===OK&&res[0]?[Number(res[0].y),Number(res[0].x)]:null)));
       clearTimeout(timer);
-      const p=exact&&Number.isFinite(exact[0])&&Number.isFinite(exact[1])?exact:[best.lat,best.lng];
+      const near=exact&&Number.isFinite(exact[0])&&Number.isFinite(exact[1])&&Math.hypot((exact[0]-best.lat)*111000,(exact[1]-best.lng)*111000*Math.cos(best.lat*Math.PI/180))<=60;
+      const p=near?exact:[best.lat,best.lng]; // H147: 주소 대표지점이 건물에서 60m 넘게 떨어지면(큰 단지 입구 등) 건물 위치 그대로
       finish({pt:p,road:best.road});
       return;
     }
@@ -1311,6 +1314,79 @@ const APARTMENT_CARD_REMAINDER_MERGE_MAX=10; // "마지막 자투리" 병합 기
 // S.apartmentCards는 페이지당 1회만 메모리에 로드되므로(탭을 여러 개 열어두는 등으로)
 // 삭제 시점 이후의 오래된 메모리 상태가 나중에 다시 저장되며 삭제된 카드를 되살릴 수
 // 있다 — persistApartmentCards() 자체에서 항상 걸러내 어떤 저장 경로로도 부활하지 않게 한다.
+// ================================================================
+// H147: 휴지통 — 삭제한 구역(경로 포함)·아파트/인터폰 카드를 삭제일과 함께 보관하고 복구한다.
+// 저장: app_data/sokcho_trash_v1(새 항목). 복구하면 영구 제외 목록에서도 빼서 다시 살아나게 한다.
+// ================================================================
+const TRASH_KEY_H147='sokcho_trash_v1';
+function loadTrashH147(){try{const d=JSON.parse(storageGet(TRASH_KEY_H147)||'null');return d&&Array.isArray(d.items)?d.items:[];}catch(e){return [];}}
+function persistTrashH147(items){storageSet(TRASH_KEY_H147,JSON.stringify({schemaVersion:1,items}));}
+function addToTrashH147(type,obj,extra){
+  const items=loadTrashH147();
+  items.unshift(Object.assign({tid:Date.now()+'-'+Math.random().toString(36).slice(2,7),type,deletedAt:Date.now(),deletedBy:S.user||'',data:JSON.parse(JSON.stringify(obj))},extra||{}));
+  persistTrashH147(items);
+}
+function fmtDateTimeH147(t){const d=new Date(t),p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;}
+function trashKindLabelH147(it){return it.type==='zone'?(it.data&&it.data.type==='commercial'?'🏪 상가':'🏠 주택'):it.type==='interphone'?'📞 인터폰':'🏢 아파트';}
+function renderTrashH147(){
+  const items=loadTrashH147();
+  const cnt=document.getElementById('adm-trash-count');
+  if(cnt)cnt.textContent=items.length;
+  const wrap=document.getElementById('trash-list');
+  if(!wrap)return;
+  wrap.innerHTML=items.length?items.map(it=>{
+    const name=it.type==='zone'?displayZoneNameCleaned(it.data.name||''):aptCardDisplayName(it.data.name||'');
+    return `<div class="trash-row">
+      <div class="trash-main">
+        <div class="trash-name"><span class="zno">${esc(it.label||'')}</span> ${esc(name)}</div>
+        <div class="trash-meta">${trashKindLabelH147(it)} · 삭제 ${fmtDateTimeH147(it.deletedAt)}${it.deletedBy?' · '+esc(it.deletedBy):''}</div>
+      </div>
+      <button class="btn btn-sm btn-p" onclick="restoreFromTrashH147('${jsq(it.tid)}')">복구</button>
+      <button class="btn btn-sm btn-dk" onclick="purgeTrashItemH147('${jsq(it.tid)}')">영구삭제</button>
+    </div>`;
+  }).join(''):'<div style="font-size:12px;color:var(--txm);padding:8px 0;">휴지통이 비어 있습니다.</div>';
+}
+function toggleAdminTrashSectionH147(){
+  const body=document.getElementById('adm-trash-body');
+  const icon=document.getElementById('adm-trash-toggle-icon');
+  if(!body)return;
+  const open=body.classList.contains('hide');
+  body.classList.toggle('hide',!open);
+  if(icon)icon.textContent=open?'▾':'▸';
+  if(open)renderTrashH147();
+  admSectionFullH140(body,open);
+}
+function restoreFromTrashH147(tid){
+  if(S.role!=='admin'){toast('관리자만 복구할 수 있습니다.');return;}
+  const items=loadTrashH147();
+  const it=items.find(x=>x.tid===tid);
+  if(!it)return;
+  if(it.type==='zone'){
+    const z=it.data;
+    if(S.zones.some(x=>String(x.id)===String(z.id))){toast(`#${z.id} 번호가 이미 있어 복구할 수 없습니다. 같은 번호 구역을 먼저 정리하세요.`);return;}
+    try{storageSet('sokcho_deleted_zone_ids',JSON.stringify(loadDeletedZoneIds().filter(x=>String(x)!==String(z.id))));}catch(e){}
+    S.zones.push(z);
+    (it.routes||[]).forEach(r=>{if(!S.rteLines.some(l=>l.id===r.id))S.rteLines.push(r);});
+    persistZones();persistRteLines();
+  }else{
+    loadApartmentCards();
+    const c=it.data;
+    if(S.apartmentCards.some(x=>String(x.id)===String(c.id))){toast(`#${c.number} 카드가 이미 있어 복구할 수 없습니다.`);return;}
+    try{storageSet('sokcho_deleted_apartment_card_ids',JSON.stringify(loadDeletedApartmentCardIds().filter(x=>String(x)!==String(c.id))));}catch(e){}
+    S.apartmentCards.push(c);
+    persistApartmentCards();
+  }
+  persistTrashH147(items.filter(x=>x.tid!==tid));
+  [()=>renderAdmin(),()=>drawAllZones(null),()=>renderSideList(),()=>renderRouteGrid(),()=>renderApartmentCardList(),()=>renderHomeZoneList(document.getElementById('home-zone-search')?.value||''),()=>renderTrashH147()].forEach(f=>{try{f();}catch(e){}});
+  toast('↩ 복구했습니다.');
+}
+function purgeTrashItemH147(tid){
+  if(S.role!=='admin'){toast('관리자만 할 수 있습니다.');return;}
+  if(!confirm('휴지통에서 영구삭제할까요? 다시 복구할 수 없습니다.'))return;
+  persistTrashH147(loadTrashH147().filter(x=>x.tid!==tid));
+  renderTrashH147();
+  toast('영구삭제했습니다.');
+}
 function loadDeletedApartmentCardIds(){
   try{
     const ids=JSON.parse(storageGet('sokcho_deleted_apartment_card_ids')||'[]');
@@ -1875,13 +1951,15 @@ function renameApartmentCard(cardId){
 function deleteApartmentCard(cardId){
   const card=S.apartmentCards.find(c=>c.id===cardId);
   if(!card)return;
-  if(!confirm(`"${aptCardDisplayName(card.name)}" 카드를 삭제하시겠습니까?`))return;
+  if(!confirm(`"${aptCardDisplayName(card.name)}" 카드를 휴지통으로 옮길까요? (관리자 페이지 휴지통에서 복구할 수 있습니다)`))return;
+  addToTrashH147(isInterphoneCard(card)?'interphone':'card',card,{label:'#'+card.number}); // H147
   S.apartmentCards=S.apartmentCards.filter(c=>c.id!==cardId);
   addDeletedApartmentCardId(cardId); // V2 H14: 영구 제외 목록에 기록(어떤 저장 경로로도 재발 방지)
   persistApartmentCards();
   if(apartmentCardOpenId===cardId)apartmentCardOpenId=null;
   renderApartmentCardList();
-  toast('카드 삭제됨');
+  try{renderTrashH147();}catch(e){}
+  toast('🗑 휴지통으로 옮겼습니다.');
 }
 function moveApartmentCardPoint(cardId,pIdx,dir){
   const card=S.apartmentCards.find(c=>c.id===cardId);
@@ -2510,8 +2588,7 @@ function renderAptSvcChecklist(){
   const advanceHtml=allDone?`<div class="apt-svc-advance-banner">
     <div style="font-weight:800;margin-bottom:8px;">✅ 이 지점이 끝났습니다. 다음 진행 장소로 이동하세요.</div>
     ${nextCoord?`<div style="display:flex;gap:8px;">
-      <button class="svc-secondary-btn" onclick="openAptCardPointMapView(${nextCoord[0]},${nextCoord[1]})">카카오지도로 위치 확인</button>
-      <button class="svc-locate-btn" onclick="openAptCardPointNavi(${nextCoord[0]},${nextCoord[1]})">카카오네비 연결</button>
+      <button class="svc-locate-btn" style="flex:1;" onclick="openAptCardPointNavi(${nextCoord[0]},${nextCoord[1]})">카카오네비로 다음 지점</button>
     </div>`:nextPt?'<div style="font-size:12px;color:var(--txm);">다음 지점의 좌표가 없습니다. 관리자 화면에서 동(또는 단지) 좌표를 먼저 등록하세요.</div>':shopNext?`<div style="display:flex;gap:8px;"><button class="svc-secondary-btn" onclick="goToAptSvcPoint(${card.points.length})">🏪 상가로 이동</button><button class="svc-locate-btn" onclick="openZoneKakaoStart(${JSON.stringify(card.shop.zoneId)})">카카오맵</button></div>`:'<div style="font-size:12px;color:var(--txm);">마지막 지점입니다. "봉사 완료"를 눌러 마무리하세요.</div>'}
   </div>`:'';
 
@@ -3509,6 +3586,7 @@ function tryAutoLogin(){
 // 탭 전환
 // ================================================================
 function goTab(name){
+  if(S.adminReturnH147&&name!=='map'&&name!=='route'){S.adminReturnH147=null;updateAdminReturnFabH147();} // H147: 다른 화면으로 가면 돌아가기 버튼 정리
   if(S.role)_ssSetH141(LAST_TAB_KEY_H141,name); // H141
   if(name==='research'){ // H141: 연구자료 검색어 복원/기억
     const inp=document.getElementById('research-search');
@@ -3583,8 +3661,38 @@ function showRouteList(){
   if(S.rdMap)clearRdLayers();
 }
 
+// ================================================================
+// H147: 관리자 페이지로 돌아가기 — 구역경계그리기·경로그리기·지도보기로 가면 왼쪽 아래
+// "◀ 관리자 페이지로" 버튼이 뜨고, 누르면 그리기/패널을 정리하고 보던 위치로 돌아온다.
+// ================================================================
+function setAdminReturnH147(){
+  const pb=document.querySelector('#p-admin .pb');
+  S.adminReturnH147={scrollTop:pb?pb.scrollTop:0};
+  updateAdminReturnFabH147();
+}
+function updateAdminReturnFabH147(){document.getElementById('admin-return-fab')?.classList.toggle('hide',!S.adminReturnH147);}
+function returnToAdminH147(){
+  const ctx=S.adminReturnH147;
+  S.adminReturnH147=null;updateAdminReturnFabH147();
+  try{if(S.drawMode)cancelDraw();}catch(e){}
+  try{if(S.rteDraw&&typeof exitRteEditMode==='function')exitRteEditMode();}catch(e){}
+  try{closeSheet();}catch(e){}
+  try{closeSideDetail();}catch(e){}
+  try{const rv=document.getElementById('rd-view');if(rv&&rv.style.display!=='none')backList();}catch(e){}
+  try{adminZoneMapReturn=null;updateAdminZoneMapReturnUi();}catch(e){}
+  goTab('admin');
+  const pb=document.querySelector('#p-admin .pb');
+  if(pb&&ctx)setTimeout(()=>{pb.scrollTop=ctx.scrollTop||0;},60);
+}
+function goAdminRouteDraw(zoneId){ // H147: 관리자 구역관리 → 경로그리기
+  if(S.role!=='admin')return;
+  setAdminReturnH147();
+  goTab('route');
+  setTimeout(()=>{try{openRd(zoneId);}catch(e){console.error('경로그리기 열기 실패',e);}},250);
+}
 function goAdminZoneDraw(zoneId){
   if(S.role!=='admin')return;
+  setAdminReturnH147(); // H147
   const editZone=zoneId!=null?S.zones.find(z=>z.id===zoneId):null;
   goTab('map');
   setTimeout(()=>{
@@ -3605,6 +3713,7 @@ function goAdminZoneDraw(zoneId){
 let adminZoneMapReturn=null; // {scrollTop} — 관리자 목록에서 지도보기로 왔을 때만 세팅
 function goAdminZoneMapView(zoneId){
   if(S.role!=='admin')return;
+  setAdminReturnH147(); // H147
   const pb=document.querySelector('#p-admin .pb');
   adminZoneMapReturn={scrollTop:pb?pb.scrollTop:0};
   goTab('map');
@@ -4213,7 +4322,7 @@ function renderRouteGrid(keyword){
     const statusClass=meta.cls;
     const statusText=meta.text;
     const statusIcon=meta.icon;
-    const click=S.role==='admin'||!done?`openRd(${z.id})`:`toast('완료된 구역입니다. 관리자가 초기화한 뒤 다시 봉사할 수 있습니다.')`;
+    const click=S.role==='admin'?`toast('경로그리기는 관리자 페이지 구역관리의 경로그리기 버튼에서 합니다.')`:!done?`openRd(${z.id})`:`toast('완료된 구역입니다. 관리자가 초기화한 뒤 다시 봉사할 수 있습니다.')`; // H147
     const selected=String(activeZoneId())===String(z.id);
     return `<div id="rte-zone-item-${z.id}" class="zc ${isRes?'res':'com'} ${selected?'selected':''}" onclick="${click}">
       <div class="zc-dot" style="background:${done?'#3B6D11':inProg?'#D85A30':'#d1d5db'};"></div>
@@ -6181,6 +6290,7 @@ function renderRecords(){
 // 관리자 탭
 // ================================================================
 function renderAdmin(){
+  try{renderTrashH147();}catch(e){} // H147: 휴지통 개수
   loadLeaders();
   loadApartmentRegistry();
   loadApartmentCards();
@@ -6350,6 +6460,7 @@ function renderAdminZoneRowHtml(z){
       <button class="btn btn-sm btn-out" onclick="renameZoneName(${z.id})">✏ 명칭수정</button>
       <button class="btn btn-sm btn-out" onclick="toggleZoneType(${z.id})">${isRes?'유형변경(→상가)':'유형변경(→주택)'}</button>
       <button class="btn btn-sm btn-out" onclick="goAdminZoneDraw(${z.id})">구역경계그리기</button>
+      <button class="btn btn-sm btn-out" onclick="goAdminRouteDraw(${z.id})">🧭 경로그리기</button>
       <button class="btn btn-sm btn-out" onclick="goAdminZoneMapView(${z.id})">🗺 지도보기</button>
       <button class="btn btn-sm btn-dk" onclick="delZone(${z.id})">삭제</button>
     </div>
@@ -6481,7 +6592,11 @@ function editVol(oldName){
   toast(`${oldName} → ${trimmed}로 수정되었습니다.`);
 }
 function delZone(id){
-  if(!confirm('삭제하시겠습니까?'))return;
+  if(!confirm('휴지통으로 옮길까요? (관리자 페이지 휴지통에서 복구할 수 있습니다)'))return;
+  { // H147: 휴지통에 보관(구역 + 그 구역 경로)
+    const _z=S.zones.find(z=>z.id===id);
+    if(_z)addToTrashH147('zone',_z,{label:zoneDisplayLabel(id),routes:S.rteLines.filter(l=>l.zoneId===id).map(({id,zoneId,mode,name,color,pts,visible,createdAt})=>({id,zoneId,mode,name,color,pts,visible,createdAt}))});
+  }
   S.zones=S.zones.filter(z=>z.id!==id);
   S.rteLines=S.rteLines.filter(l=>l.zoneId!==id);
   addDeletedZoneId(id);
@@ -6499,7 +6614,8 @@ function delZone(id){
   try{drawAllZones(null);}catch(e){console.error('구역 삭제 후 drawAllZones 갱신 실패',e);}
   try{renderSideList();}catch(e){console.error('구역 삭제 후 renderSideList 갱신 실패',e);}
   try{renderRouteGrid();}catch(e){console.error('구역 삭제 후 renderRouteGrid 갱신 실패',e);}
-  toast('구역 삭제됨');
+  try{renderTrashH147();}catch(e){}
+  toast('🗑 휴지통으로 옮겼습니다.');
 }
 function currentYm(){
   const now=new Date();
