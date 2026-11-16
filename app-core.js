@@ -4026,7 +4026,7 @@ function drawAllZones(activeId){
     const ctr=zoneCenter(z);
     const op=dimmed?.3:1;
     const labelColor='#111827';
-    const labelPrefix=done?'✅ ':inProg?'⏸ ':meta.state==='standby'?'○ ':'';
+    const labelPrefix=done?'<b class="lbl-done-h173">완료</b> ':inProg?'⏸ ':meta.state==='standby'?'○ ':''; // H173
     const mk=L.marker(ctr,{icon:L.divIcon({html:`<div class="zone-map-label" style="opacity:${op};border:${isActive?'2px':'1.5px'} solid ${sc};color:${labelColor};">${labelPrefix}${zoneMapLabel(z)}</div>`,className:'zone-label-anchor',iconAnchor:[0,0],iconSize:[1,1]})}).addTo(S.mainMap);
     mk.on('click',()=>openSheet(z.id));
     S.mainLayers.push(mk);
@@ -5150,7 +5150,7 @@ function drawHomeZones(activeId){
     const dimmed=activeId!==null&&!isActive;
     const inProg=isInProgress(z.id);
     const sc=zoneStrokeColor(z,isActive);
-    const labelPre=done?'✅ ':inProg?'⏸ ':'○ ';
+    const labelPre=done?'<b class="lbl-done-h173">완료</b> ':inProg?'⏸ ':'○ '; // H173: 완료 구역은 진한 녹색 "완료"
     const html=`<div class="zone-map-label" style="border:${isActive?'2px':'1.5px'} solid ${sc};color:#111827;">${labelPre}${zoneMapLabel(z)}</div>`+(isActive?`<button type="button" class="zone-card-btn-h158" onclick="event.stopPropagation();openHomeZoneCardH158(${JSON.stringify(z.id)})">카드보기</button>`:''); // H158
     const ctr=zoneCenter(z);const ctrKey=ctr?ctr[0]+','+ctr[1]:'';
     if(it.mk&&it.ctrKey!==ctrKey){if(it.mkOn)homeMapInst.removeLayer(it.mk);it.mk=null;it.mkOn=false;}

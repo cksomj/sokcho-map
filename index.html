@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"><!-- H150: 가독성 좋은 한글 글꼴 -->
-<link rel="stylesheet" href="styles.css?v=20261116-h171-stroke">
+<link rel="stylesheet" href="styles.css?v=20261116-h173-done-label">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -165,8 +165,6 @@
           </div>
           <div class="draw-ind" id="draw-ind">✏️ 지도를 클릭해 꼭짓점을 찍으세요</div>
           <div class="map-legend">
-            <div class="leg"><div class="ld" style="background:#378ADD"></div>주택</div>
-            <div class="leg"><div class="ld" style="background:#EF9F27"></div>상가</div>
             <div class="leg"><div class="ld" style="background:#1F6B0A;border-radius:50%;width:10px;height:10px;"></div>완료</div>
             <div class="leg"><div class="ld" style="background:#C2410C;border-radius:50%;width:10px;height:10px;"></div>미완료</div>
             <div class="leg"><div class="ld" style="background:#0B4A8F;border-radius:50%;width:10px;height:10px;"></div>봉사대기</div>
@@ -416,8 +414,6 @@
             </div>
             <!-- 범례 -->
             <div class="map-legend" style="bottom:0;">
-              <div class="leg"><div class="ld" style="background:#378ADD"></div>주택</div>
-              <div class="leg"><div class="ld" style="background:#EF9F27"></div>상가</div>
               <div class="leg"><div class="ld" style="background:#1F6B0A;border-radius:50%;width:10px;height:10px;"></div>완료</div>
               <div class="leg"><div class="ld" style="background:#C2410C;border-radius:50%;width:10px;height:10px;"></div>미완료</div>
               <div class="leg"><div class="ld" style="background:#0B4A8F;border-radius:50%;width:10px;height:10px;"></div>봉사대기</div>
@@ -837,13 +833,14 @@
           <button type="button" id="svc-note-btn-h162" class="svc-note-btn-h162 hide" onclick="togglePrevNoteH162('zone')">📝 이전 봉사자 메모</button>
 
           <div class="resume-pin-box">
-            <div class="resume-pin-text">다음 봉사를 위해 마지막 집앞에서 핀버튼을 눌러주세요.</div>
+            <div class="resume-pin-text">다음 봉사를 위해 <b class="pin-hl">마지막 집앞</b>에서 핀버튼을 눌러주세요.</div>
             <button onclick="pinResumePoint()" class="svc-pin-btn">📍 이어하기 핀 찍기</button>
+            <!-- H172: 미완료는 핀과 함께 쓰는 버튼이라 주황 상자 안에 넣어 강조 -->
+            <button onclick="pauseSession()" class="svc-main-btn pause">📍 미완료</button>
           </div>
 
           <!-- 2행: 주요 버튼 -->
           <div style="display:flex;gap:10px;">
-            <button onclick="pauseSession()" class="svc-main-btn pause">📍 미완료</button>
             <button onclick="completeSession()" class="svc-main-btn done">✅ 봉사 완료</button>
           </div>
         </div>
@@ -1042,6 +1039,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261116-h171-stroke"></script>
+<script src="app.js?v=20261116-h173-done-label"></script>
 </body>
 </html>

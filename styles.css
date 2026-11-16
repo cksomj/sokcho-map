@@ -2062,3 +2062,14 @@ button[onclick^="clearAdminFocusH148"]{background:var(--g-blue)!important;border
 #apt-svc-status-label{grid-column:2;grid-row:1;align-self:start;margin-top:2px!important;}
 #apt-svc-assignee{grid-column:1 / -1;grid-row:2;}
 #apt-svc-fullscreen > .svc-panel:first-child > div:first-child{width:100%;}
+
+/* H172: 핀 안내 한 줄 유지(화면 폭에 맞춰 글자 크기 조절) + "마지막 집앞" 강조 */
+.resume-pin-text{white-space:nowrap!important;font-size:clamp(12px,3.75vw,16.5px)!important;letter-spacing:-.6px!important;overflow:hidden;text-overflow:clip;}
+.resume-pin-text .pin-hl{color:#E03100;font-weight:900;font-size:1.12em;background:linear-gradient(transparent 62%,#FFD8A8 62%);padding:0 1px;}
+/* H172: 미완료는 주황 상자 안(핀과 함께), 봉사 완료는 상자 밖 — 글씨만 크게, 버튼 높이는 그대로 */
+#svc-fullscreen .resume-pin-box{flex-direction:column!important;align-items:stretch!important;gap:8px!important;border:2.5px solid #F08C00!important;}
+#svc-fullscreen .resume-pin-box .svc-main-btn.pause{width:100%;flex:none;}
+#svc-fullscreen .svc-main-btn{height:39px!important;padding:0 8px!important;font-size:19px!important;line-height:1!important;display:flex;align-items:center;justify-content:center;gap:4px;}
+#apt-svc-fullscreen .svc-main-btn{height:56px!important;padding:0 10px!important;font-size:21px!important;line-height:1!important;display:flex;align-items:center;justify-content:center;gap:5px;}
+/* H173: 지도 이름표의 완료 표시(진한 녹색) */
+.zone-map-label .lbl-done-h173{color:#1F6B0A;font-weight:900;}
