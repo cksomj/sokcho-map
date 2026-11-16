@@ -2750,6 +2750,7 @@ function completeAptSvcSession(){
   showAppConfirm('봉사를 완료할까요?',`"${aptCardDisplayName(card.name)}" 카드를 완료 처리합니다.`,'완료',()=>{
     card.status='완료';
     card.endTime=new Date().toISOString();
+    card.note=''; // H162: 카드가 완료되면 이전 봉사자 메모 삭제
     recordS13Completion(s13TerritoryIdForAptCard(card.id),Date.now()); // V2 J1: S-13 완료 기록
     persistApartmentCards();
     S.aptSession.active=false;
@@ -3508,7 +3509,7 @@ function finishLogin(opts={}){
     const sd=document.getElementById('seg-draw-btn');if(sd)sd.style.display='none';
   } else if(S.role==='leader'){
     document.getElementById('t-map').classList.add('hide');
-    document.getElementById('t-home').classList.toggle('hide',S.leaderMode!=='both');
+    document.getElementById('t-home').classList.remove('hide'); // H162: 인도자도 모드와 상관없이 전도인과 같은 홈(구역 목록·지도보기)
     document.getElementById('t-route').classList.remove('hide');
     document.getElementById('t-monitor').classList.remove('hide');
     document.getElementById('t-record').classList.add('hide');
@@ -4501,7 +4502,7 @@ function renderRouteGrid(keyword){
     const statusClass=meta.cls;
     const statusText=meta.text;
     const statusIcon=meta.icon;
-    const click=S.role==='admin'?`toast('수정·경로그리기는 관리자 페이지 구역관리에서 합니다.')`:!done?`openRd(${z.id})`:`toast('완료된 구역입니다. 관리자가 초기화한 뒤 다시 봉사할 수 있습니다.')`; // H147
+    const click=S.role==='admin'?`toast('수정·경로그리기는 관리자 페이지 구역관리에서 합니다.')`:S.role==='leader'?`toast('봉사는 홈 화면의 구역 목록에서 시작합니다.')`:!done?`openRd(${z.id})`:`toast('완료된 구역입니다. 관리자가 초기화한 뒤 다시 봉사할 수 있습니다.')`; // H147
     const selected=String(activeZoneId())===String(z.id);
     return `<div id="rte-zone-item-${z.id}" class="zc ${isRes?'res':'com'} ${selected?'selected':''}" onclick="${click}">
       <div class="zc-dot" style="background:${done?'#3B6D11':inProg?'#D85A30':'#d1d5db'};"></div>
@@ -4537,7 +4538,7 @@ function renderRouteGrid(keyword){
     const statusIcon=done?'✓':inProg?'!':'○';
     const total=apartmentCardCheckableUnits(card);
     const doneCnt=apartmentCardCompletedUnits(card);
-    const click=S.role==='admin'?`toast('카드 수정은 관리자 페이지 구역관리에서 합니다.')`:done?`toast('완료된 카드입니다. 관리자가 초기화해야 다시 시작할 수 있습니다.')`:`startApartmentCardAndGo(${card.id},${inProg})`; // H154: 관리자는 목록에서 카드로 들어가지 않음
+    const click=S.role==='admin'?`toast('카드 수정은 관리자 페이지 구역관리에서 합니다.')`:S.role==='leader'?`toast('봉사는 홈 화면의 구역 목록에서 시작합니다.')`:done?`toast('완료된 카드입니다. 관리자가 초기화해야 다시 시작할 수 있습니다.')`:`startApartmentCardAndGo(${card.id},${inProg})`; // H154: 관리자는 목록에서 카드로 들어가지 않음
     return `<div id="rte-apt-item-${card.id}" class="zc" style="border-left:3px solid #7F3FBF;" onclick="${click}">
       <div class="zc-dot" style="background:${done?'#3B6D11':inProg?'#D85A30':'#d1d5db'};"></div>
       <div class="zc-badge"><span class="badge" style="background:#F1E9FA;color:#7F3FBF;">${isInterphoneCard(card)?'인터폰':'아파트'}</span></div>
@@ -6032,9 +6033,11 @@ function showZoneNoteBannerH145(z){
   const el=document.getElementById('svc-note-banner');
   if(!el)return;
   const n=z&&z.progress&&z.progress.note;
-  if(!n){el.classList.add('hide');el.innerHTML='';return;}
+  const nb=document.getElementById('svc-note-btn-h162');
+  el.classList.add('hide'); // H162: 자동으로 띄우지 않고 "이전 봉사자 메모" 버튼으로 본다
+  if(!n){el.innerHTML='';if(nb)nb.classList.add('hide');return;}
   el.innerHTML=noteBannerHtmlH145(n,`clearZoneNoteH145(${JSON.stringify(z.id)})`);
-  el.classList.remove('hide');
+  if(nb)nb.classList.remove('hide');
 }
 function clearZoneNoteH145(zoneId){
   S.pendingNoteZoneId=zoneId;
@@ -6042,19 +6045,29 @@ function clearZoneNoteH145(zoneId){
   S.pendingNoteZoneId=null;
   const el=document.getElementById('svc-note-banner');
   if(el){el.classList.add('hide');el.innerHTML='';}
+  document.getElementById('svc-note-btn-h162')?.classList.add('hide'); // H162
 }
 function showAptNoteBannerH145(card){
   const el=document.getElementById('apt-svc-note-banner');
   if(!el)return;
-  if(!card||!card.note){el.classList.add('hide');el.innerHTML='';return;}
+  const nb=document.getElementById('apt-svc-note-btn-h162');
+  el.classList.add('hide'); // H162: 버튼으로 본다
+  if(!card||!card.note){el.innerHTML='';if(nb)nb.classList.add('hide');return;}
   el.innerHTML=noteBannerHtmlH145(card.note,`clearAptNoteH145(${JSON.stringify(card.id)})`);
-  el.classList.remove('hide');
+  if(nb)nb.classList.remove('hide');
+}
+// H162: "📝 이전 봉사자 메모" 버튼 — 누르면 메모가 열리고 다시 누르면 닫힘
+function togglePrevNoteH162(which){
+  const el=document.getElementById(which==='apt'?'apt-svc-note-banner':'svc-note-banner');
+  if(!el||!el.innerHTML.trim()){toast('이전 봉사자 메모가 없습니다.');return;}
+  el.classList.toggle('hide');
 }
 function clearAptNoteH145(cardId){
   const card=S.apartmentCards.find(c=>c.id===cardId);
   if(card){card.note='';persistApartmentCards();renderHomeApartmentCardList();}
   const el=document.getElementById('apt-svc-note-banner');
   if(el){el.classList.add('hide');el.innerHTML='';}
+  document.getElementById('apt-svc-note-btn-h162')?.classList.add('hide'); // H162
   toast('메모를 삭제했습니다.');
 }
 

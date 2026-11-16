@@ -1817,3 +1817,24 @@ input,textarea,select,[contenteditable="true"]{-webkit-user-select:text;user-sel
 .rte-totop-h161.show{display:block;}
 /* H161: "봉사대기" 필터 버튼은 눌렀을 때 검정이 아니라 청색 */
 #rte-filter-standby.on{background:#1B64DA!important;border-color:#1B64DA!important;color:#fff!important;}
+
+/* H162: 봉사 화면 — 경과 시간·검정 사람 아이콘 없애고 빈 공간 없이 간격 정리, "이전 봉사자 메모" 버튼 */
+#svc-fullscreen .svc-time-box,#apt-svc-fullscreen .svc-time-box,#svc-fullscreen .svc-person-icon{display:none!important;}
+.svc-note-btn-h162{border:none;border-radius:12px;background:#FFF3E0;color:#B86E00;font-size:15px;font-weight:800;padding:11px 14px;cursor:pointer;}
+#svc-fullscreen .svc-note-btn-h162{display:block;width:100%;margin:0 0 8px;}
+.svc-note-btn-h162.hide{display:none!important;}
+#svc-fullscreen .svc-panel{padding-top:10px!important;}
+#svc-fullscreen .svc-panel > div:first-child{margin-bottom:2px!important;}
+#svc-companions{margin-bottom:8px!important;font-size:13.5px!important;color:#64748b!important;}
+#svc-fullscreen .resume-pin-box{margin-bottom:8px!important;}
+#apt-svc-fullscreen > .svc-panel:first-child{padding:12px 16px 8px!important;}
+#apt-svc-fullscreen > .svc-panel:first-child > div:first-child{margin-bottom:6px!important;}
+#apt-svc-fullscreen > .svc-panel:first-child > div:last-child{margin-bottom:0!important;flex-wrap:wrap;}
+#apt-svc-checklist{padding-top:10px!important;}
+/* H162 보정: 주택 봉사 화면 아래 빈 공간 제거(☰ 자리 여백 불필요), 아파트 메모 주변 검은 띠 제거 */
+@media(max-width:767px){
+  #svc-fullscreen > div:last-child{padding-bottom:calc(14px + env(safe-area-inset-bottom) + var(--nav-gap,0px))!important;}
+  #apt-svc-fullscreen > .svc-panel:last-child{padding-bottom:calc(14px + env(safe-area-inset-bottom) + var(--nav-gap,0px))!important;}
+}
+#apt-svc-fullscreen{background:#f4f6f8!important;}
+#apt-svc-note-banner{margin:8px 16px 0!important;}
