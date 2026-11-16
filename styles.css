@@ -1533,3 +1533,20 @@ html.role-volunteer #menu-toggle-btn{display:none!important;}
 .trash-row .trash-main{flex:1;min-width:0;}
 .trash-row .trash-name{font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .trash-row .trash-meta{font-size:12px;color:var(--txm);}
+
+/* V2 H148: 관리자 원형 버튼 묶음(오른쪽 아래, ☰ 위) + 항목별 집중 보기 */
+.adm-fab-stack{display:none;position:fixed;right:16px;bottom:calc(80px + env(safe-area-inset-bottom));z-index:6560;flex-direction:column;align-items:center;gap:6px;}
+html.role-admin .adm-fab-stack{display:flex;}
+.adm-fab-items{display:flex;flex-direction:column;gap:6px;max-height:calc(100dvh - 170px);overflow-y:auto;padding:2px;-webkit-overflow-scrolling:touch;}
+.adm-fab-stack.collapsed .adm-fab-items{display:none;}
+.adm-fab-item{width:54px;height:54px;border-radius:50%;border:1px solid rgba(15,23,42,.08);background:#fff;color:var(--tx);box-shadow:0 3px 10px rgba(15,23,42,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;flex-shrink:0;padding:0;}
+.adm-fab-item .i{font-size:18px;line-height:1;}
+.adm-fab-item .t{font-size:9.5px;font-weight:900;line-height:1.05;letter-spacing:-.4px;white-space:nowrap;}
+.adm-fab-item.on{background:var(--p);color:#fff;border-color:var(--p);}
+.adm-fab-toggle{width:54px;height:54px;border-radius:50%;border:none;background:#7F3FBF;color:#fff;font-size:24px;box-shadow:0 6px 18px rgba(0,0,0,.28);cursor:pointer;flex-shrink:0;}
+html.role-admin #t-admin{display:none!important;}
+html.adm-fab-open #p-admin .pb{padding-right:78px;}
+.adm-hidden-h148{display:none!important;}
+.adm-focus-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 2px 10px;}
+.adm-focus-bar.hide{display:none;}
+.adm-focus-title{font-size:18px;font-weight:900;}

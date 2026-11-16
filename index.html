@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
-<link rel="stylesheet" href="styles.css?v=20261116-h147-route-return-trash">
+<link rel="stylesheet" href="styles.css?v=20261116-h148-admin-fab">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -558,21 +558,22 @@
 
       <!-- 관리자 -->
       <div class="page" id="p-admin">
-        <div class="ph"><h2>관리자</h2><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-sm btn-p" onclick="manualSyncNowH119()">☁️ 바로 반영하기</button><button class="btn btn-sm btn-out" id="s13-open-btn" onclick="openS13Viewer()">📋 구역 배정 기록</button><button class="btn btn-sm btn-out" onclick="openS12Viewer()">🗂️ S-12 구역 카드</button><button class="btn btn-sm btn-dk" onclick="doLogout()">로그아웃</button></div></div>
+        <div class="ph"><h2>관리자</h2><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-sm btn-p" onclick="manualSyncNowH119()">☁️ 바로 반영하기</button><button class="btn btn-sm btn-dk" onclick="doLogout()">로그아웃</button></div></div>
         <div class="pb">
-          <div class="adm-sec">
+          <div id="adm-focus-bar" class="adm-focus-bar hide"><span class="adm-focus-title" id="adm-focus-title"></span><button class="btn btn-sm btn-out" onclick="clearAdminFocusH148()">전체 보기</button></div>
+          <div class="adm-sec" data-admgroup="monthly">
             <div class="adm-title">전체 통계</div>
             <div class="stat-grid">
               <div class="sc"><div class="sc-n" id="a-tot">0</div><div class="sc-l">전체 봉사 기록</div></div>
               <div class="sc"><div class="sc-n" id="a-vol">0</div><div class="sc-l">등록 봉사자</div></div>
             </div>
           </div>
-          <div class="adm-sec">
+          <div class="adm-sec" data-admgroup="monthly">
             <div class="adm-title">월별 현황</div>
             <div class="chart-box" id="mon-chart"></div>
           </div>
           <!-- H142: 구역별 현황 → 구역별 봉사현황(접힘, 누르면 펼쳐서 횟수 보기) -->
-          <div class="adm-sec">
+          <div class="adm-sec" data-admgroup="zonestat">
             <div class="home-apt-section" id="adm-zonestat-section">
               <div class="home-apt-header" onclick="toggleAdminZoneStatSection()">
                 <span>📊 구역별 봉사현황 <span style="font-size:12px;font-weight:600;color:var(--txm);">(펼쳐서 횟수보기)</span></span>
@@ -583,7 +584,7 @@
               </div>
             </div>
           </div>
-          <div class="adm-sec">
+          <div class="adm-sec" data-admgroup="zones">
             <div class="adm-title">구역관리</div>
             <div class="route-list-controls admin-zone-controls">
               <div class="route-search">
@@ -613,7 +614,7 @@
             </div>
           </div>
           <!-- V2 H35: 관리자 구역관리 상가 섹션(H21 홈 화면과 동일 패턴 재사용) -->
-          <div class="adm-sec">
+          <div class="adm-sec" data-admgroup="zones">
             <div class="home-apt-section" id="adm-com-section">
               <div class="home-apt-header" onclick="toggleAdminComSection()">
                 <span>🏪 상가 (<span id="adm-com-count">0</span>)</span>
@@ -625,7 +626,7 @@
             </div>
           </div>
           <!-- 아파트 카드 목록: 상가 바로 아래, 접기/펼치기 -->
-          <div class="adm-sec">
+          <div class="adm-sec" data-admgroup="zones">
             <div class="home-apt-section" id="adm-aptcards-section">
               <div class="home-apt-header" onclick="toggleAdminAptCardsSection()">
                 <span>📇 아파트 카드 목록 (<span id="adm-aptcards-count">0</span>)</span>
@@ -643,7 +644,7 @@
             </div>
           </div>
           <!-- H143: 인터폰 아파트 카드 목록 -->
-          <div class="adm-sec">
+          <div class="adm-sec" data-admgroup="zones">
             <div class="home-apt-section" id="adm-intcards-section">
               <div class="home-apt-header" onclick="toggleAdminIntCardsSection()">
                 <span>📞 인터폰 아파트 카드 목록 (<span id="adm-intcards-count">0</span>)</span>
@@ -661,7 +662,7 @@
             </div>
           </div>
           <!-- H147: 휴지통(삭제한 구역·카드, 삭제일·복구) -->
-          <div class="adm-sec">
+          <div class="adm-sec" data-admgroup="zones">
             <div class="home-apt-section" id="adm-trash-section">
               <div class="home-apt-header" onclick="toggleAdminTrashSectionH147()">
                 <span>🗑 휴지통 (<span id="adm-trash-count">0</span>)</span>
@@ -674,7 +675,7 @@
             </div>
           </div>
           <!-- 아파트 단지 등록 + 카드 생성 도구: 항상 펼쳐진 별도 블록(안 접힘) -->
-          <div class="adm-sec">
+          <div class="adm-sec" data-admgroup="apt">
             <div class="adm-title">아파트 단지 등록</div>
             <div class="add-row">
               <input type="text" id="apt-complex-name" placeholder="단지 이름 (예: 주공 4차)">
@@ -682,7 +683,7 @@
             </div>
             <div id="apt-complex-list"></div>
           </div>
-          <div class="adm-sec">
+          <div class="adm-sec" data-admgroup="apt">
             <div class="adm-title">아파트 카드 자동생성</div>
             <div style="font-size:11px;color:var(--txm);margin-bottom:8px;">
               단지/동을 선택하고 필터를 고른 뒤 미리보기를 눌러 약 50호 단위 카드 분할을 확인하세요.
@@ -692,7 +693,7 @@
             <button class="btn btn-sm btn-p" onclick="previewApartmentCardGen()">미리보기</button>
             <div id="apt-card-gen-preview"></div>
           </div>
-          <div class="adm-sec">
+          <div class="adm-sec" data-admgroup="apt">
             <div class="adm-title">아파트 카드 수동 만들기</div>
             <div style="font-size:11px;color:var(--txm);margin-bottom:8px;">
               자동생성(60호 단위)과 별개로, 단지→동→층→호수 단위로 직접 골라 카드를 만듭니다. 체크한 순서대로 동(point) 순서가 정해집니다.
@@ -706,7 +707,7 @@
             <button class="btn btn-sm btn-p" id="apt-cardbuilder-create-btn" onclick="createCardBuilderCard()" disabled>카드 생성</button>
           </div>
           <!-- V2: 상가/아파트와 동일한 접기/펼치기 패턴 -->
-          <div class="adm-sec">
+          <div class="adm-sec" data-admgroup="leaders">
             <div class="home-apt-section" id="adm-leader-section">
               <div class="home-apt-header" onclick="toggleAdminLeaderSection()">
                 <span>🧭 인도자 명단 (<span id="adm-leader-count">0</span>)</span>
@@ -721,7 +722,7 @@
               </div>
             </div>
           </div>
-          <div class="adm-sec">
+          <div class="adm-sec" data-admgroup="security">
             <div class="adm-title">관리자 보안</div>
             <div class="add-row" style="margin-bottom:8px;">
               <input type="password" id="leader-pin-new" inputmode="numeric" maxlength="4" placeholder="인도자 대표 PIN 4자리">
@@ -739,7 +740,7 @@
               관리자 비밀번호를 잊으면 로그인 화면에서 등록한 Gmail 주소로 초기화할 수 있습니다.
             </div>
           </div>
-          <div class="adm-sec">
+          <div class="adm-sec" data-admgroup="vols">
             <div class="home-apt-section" id="adm-vol-section">
               <div class="home-apt-header" onclick="toggleAdminVolSection()">
                 <span>👥 봉사자 명단 (<span id="adm-vol-count">0</span>)</span>
@@ -754,7 +755,7 @@
               </div>
             </div>
           </div>
-          <div class="adm-sec">
+          <div class="adm-sec" data-admgroup="research">
             <div class="adm-title">📚 연구자료 관리</div>
             <div class="add-row">
               <input type="text" id="adm-nrl-title" placeholder="링크 제목" style="flex:1;">
@@ -763,7 +764,7 @@
             </div>
             <div id="adm-research-link-list"></div>
           </div>
-          <div class="adm-sec">
+          <div class="adm-sec" data-admgroup="data">
             <div class="adm-title">데이터</div>
             <div style="display:flex;gap:8px;margin-bottom:8px;">
               <button class="btn btn-sm btn-out" onclick="exportCSV()">📥 CSV</button>
@@ -981,6 +982,11 @@
   </div>
   <div class="s12-list" id="s12-list"></div>
 </div>
+<!-- H148: 관리자 원형 버튼 묶음(오른쪽 아래) -->
+<div id="adm-fab-stack" class="adm-fab-stack collapsed">
+  <div class="adm-fab-items" id="adm-fab-items"></div>
+  <button class="adm-fab-toggle" id="adm-fab-toggle" onclick="toggleAdmFabH148()" aria-label="관리 메뉴" title="관리 메뉴">⚙</button>
+</div>
 <button id="admin-return-fab" class="admin-return-fab hide" onclick="returnToAdminH147()">◀ 관리자 페이지로</button>
 <div id="toast"></div>
 
@@ -996,6 +1002,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261116-h147-route-return-trash"></script>
+<script src="app.js?v=20261116-h148-admin-fab"></script>
 </body>
 </html>

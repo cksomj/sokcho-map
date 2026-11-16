@@ -664,6 +664,8 @@ function markSelectedCards(id=activeZoneId()){
 }
 function syncRoleUi(){
   document.documentElement.classList.toggle('role-volunteer',S.role==='volunteer'); // V2 H129: 전도인 화면 ☰ 숨김
+  document.documentElement.classList.toggle('role-admin',S.role==='admin'); // H148: 관리자 원형 버튼 묶음
+  if(S.role==='admin')renderAdmFabH148();
   const isAdmin=S.role==='admin';
   const isLeader=S.role==='leader';
   const canUseExternal=S.role==='admin'||S.role==='leader';
@@ -3535,6 +3537,7 @@ function requestLoginGps(){
 }
 
 function doLogout(){
+  document.documentElement.classList.remove('role-admin','adm-fab-open');S.adminFocusH148=null; // H148: 로그인 화면에 관리자 버튼이 남지 않게
   _ssSetH141(LAST_TAB_KEY_H141,'');_ssSetH141(RESEARCH_Q_KEY_H141,''); // H141
   const logoutRole=S.role, logoutUser=S.user;
   clearAutoLogin();
@@ -3586,6 +3589,7 @@ function tryAutoLogin(){
 // 탭 전환
 // ================================================================
 function goTab(name){
+  if(document.documentElement.classList.contains('role-admin'))setAdmFabOpenH148(name==='admin'); // H148: 관리자 페이지에서만 펼침(지도 등은 접어서 가리지 않게)
   if(S.adminReturnH147&&name!=='map'&&name!=='route'){S.adminReturnH147=null;updateAdminReturnFabH147();} // H147: 다른 화면으로 가면 돌아가기 버튼 정리
   if(S.role)_ssSetH141(LAST_TAB_KEY_H141,name); // H141
   if(name==='research'){ // H141: 연구자료 검색어 복원/기억
@@ -3615,6 +3619,7 @@ function goTab(name){
 // V2 H33: 통합 접이식 메뉴. 각 .tab 버튼의 onclick(goTab 등, 위 함수
 // 자체)은 전혀 건드리지 않고, 그 위에 "펼침/접힘 껍데기"만 씌운다.
 function toggleMainMenu(){
+  try{setAdmFabOpenH148(false);}catch(e){} // H148: ☰ 메뉴와 겹치지 않게
   const bar=document.getElementById('tabbar');
   if(!bar)return;
   bar.classList.toggle('menu-open');
@@ -3665,6 +3670,69 @@ function showRouteList(){
 // H147: 관리자 페이지로 돌아가기 — 구역경계그리기·경로그리기·지도보기로 가면 왼쪽 아래
 // "◀ 관리자 페이지로" 버튼이 뜨고, 누르면 그리기/패널을 정리하고 보던 위치로 돌아온다.
 // ================================================================
+// ================================================================
+// H148: 관리자 기능 원형 버튼 묶음 — 오른쪽 아래(☰ 위)에 항목별 원형 버튼을 세로로 세우고,
+// 누르면 관리자 페이지에서 그 항목만 보여준다(S-13·S-12는 각 창을 바로 연다).
+// 관리자 탭(☰의 "관리자")은 이 버튼들이 대신하므로 숨긴다.
+// ================================================================
+const ADM_GROUPS_H148=[
+  {k:'s13',icon:'📋',label:'배정기록',title:'📋 구역 배정 기록(S-13)',act:()=>openS13Viewer()},
+  {k:'s12',icon:'🗂️',label:'구역카드',title:'🗂️ S-12 구역 카드',act:()=>openS12Viewer()},
+  {k:'monthly',icon:'📈',label:'월별현황',title:'📈 전체 통계 · 월별 현황'},
+  {k:'zonestat',icon:'📊',label:'구역별',title:'📊 구역별 봉사현황',autoOpen:true},
+  {k:'zones',icon:'🗺',label:'구역관리',title:'🗺 구역관리'},
+  {k:'apt',icon:'🏢',label:'단지등록',title:'🏢 아파트 단지 등록 · 카드 자동/수동 생성'},
+  {k:'leaders',icon:'🧭',label:'인도자',title:'🧭 인도자 명단',autoOpen:true},
+  {k:'vols',icon:'👥',label:'봉사자',title:'👥 봉사자 명단',autoOpen:true},
+  {k:'security',icon:'🔐',label:'보안',title:'🔐 관리자 보안'},
+  {k:'research',icon:'📚',label:'연구자료',title:'📚 연구자료 관리'},
+  {k:'data',icon:'💾',label:'데이터',title:'💾 데이터'},
+];
+function renderAdmFabH148(){
+  const w=document.getElementById('adm-fab-items');
+  if(!w)return;
+  w.innerHTML=ADM_GROUPS_H148.map(g=>`<button type="button" class="adm-fab-item${S.adminFocusH148===g.k?' on':''}" onclick="openAdminGroupH148('${g.k}')" title="${esc(g.title)}" aria-label="${esc(g.title)}"><span class="i">${g.icon}</span><span class="t">${esc(g.label)}</span></button>`).join('');
+}
+function setAdmFabOpenH148(open){
+  const s=document.getElementById('adm-fab-stack');
+  if(!s)return;
+  s.classList.toggle('collapsed',!open);
+  document.documentElement.classList.toggle('adm-fab-open',!!open&&document.querySelector('.page.on')?.id==='p-admin');
+}
+function toggleAdmFabH148(){
+  const s=document.getElementById('adm-fab-stack');
+  if(!s)return;
+  const open=s.classList.contains('collapsed');
+  if(open)renderAdmFabH148();
+  setAdmFabOpenH148(open);
+}
+function applyAdminFocusH148(){
+  const k=S.adminFocusH148;
+  document.querySelectorAll('#p-admin .adm-sec').forEach(sec=>sec.classList.toggle('adm-hidden-h148',!!k&&sec.dataset.admgroup!==k));
+  const bar=document.getElementById('adm-focus-bar'),title=document.getElementById('adm-focus-title');
+  const g=ADM_GROUPS_H148.find(x=>x.k===k);
+  if(bar)bar.classList.toggle('hide',!g);
+  if(title)title.textContent=g?g.title:'';
+  renderAdmFabH148();
+}
+function openAdminGroupH148(k){
+  if(S.role!=='admin')return;
+  const g=ADM_GROUPS_H148.find(x=>x.k===k);
+  if(!g)return;
+  if(g.act){g.act();return;}
+  if(document.querySelector('.page.on')?.id!=='p-admin')goTab('admin');
+  S.adminFocusH148=k;
+  applyAdminFocusH148();
+  setAdmFabOpenH148(true);
+  if(g.autoOpen){ // 접히는 항목은 바로 펼친다
+    const sec=document.querySelector(`#p-admin .adm-sec[data-admgroup="${k}"]`);
+    const body=sec&&sec.querySelector('.home-apt-body');
+    if(body&&body.classList.contains('hide'))sec.querySelector('.home-apt-header')?.click();
+  }
+  const pb=document.querySelector('#p-admin .pb');
+  if(pb)pb.scrollTop=0;
+}
+function clearAdminFocusH148(){S.adminFocusH148=null;applyAdminFocusH148();}
 function setAdminReturnH147(){
   const pb=document.querySelector('#p-admin .pb');
   S.adminReturnH147={scrollTop:pb?pb.scrollTop:0};
