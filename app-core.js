@@ -607,7 +607,7 @@ function saveZoneStartPin(zoneId,lat,lng,opts={}){
   z.startPoint=[Number(lat),Number(lng)];
   persistZones();
   drawAllZones(S.panelZone||null);
-  if(homeMapInst)drawHomeZones(S.homeSelectedZone||null);
+  if(homeMapInst)redrawHomeFocusH156(); // H156
   if(S.curZone&&String(S.curZone)===String(zoneId)){
     drawRdZone(z);
     drawRoute();
@@ -626,7 +626,7 @@ function clearZoneStartPin(zoneId){
   delete z.startPoint;
   persistZones();
   drawAllZones(S.panelZone||null);
-  if(homeMapInst)drawHomeZones(S.homeSelectedZone||null);
+  if(homeMapInst)redrawHomeFocusH156(); // H156
   if(S.curZone&&String(S.curZone)===String(zoneId)){drawRdZone(z);drawRoute();drawSavedRteLines();}
   renderSideList(document.getElementById('zone-search')?.value||'');
   renderRouteGrid(document.getElementById('rte-search')?.value||'');
@@ -2263,28 +2263,40 @@ function selectHomeApartmentCard(cardId){
   markSelectedApartmentCardRow(cardId);
   const card=S.apartmentCards.find(c=>c.id===cardId);
   drawHomeZones(HOME_APT_ROUTE_ACTIVE); // 모든 구역 Polygon을 비활성화(흐리게) 처리
-  if(card){
-    // H120: showApartmentCardLine()과 완전히 동일한 원인/수정(위 주석 참고).
-    const pts=card.points.map((p,idx)=>apartmentCardPointCoord(card,idx)).filter(Boolean);
-    if(!pts.length){
-      toast('이 카드에는 좌표가 등록된 지점이 없어 지도에 경로를 표시하지 못했습니다.');
-    }else{
-      pts.forEach((p,i)=>{
-        const icon=L.divIcon({
-          html:`<div style="width:24px;height:24px;border-radius:50%;background:#378ADD;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);">${i+1}</div>`,
-          className:'',iconAnchor:[12,12]
-        });
-        homeMapLayers.push(L.marker(p,{icon,zIndexOffset:730}).addTo(homeMapInst));
-      });
-      if(pts.length>=2){
-        homeMapLayers.push(L.polyline(pts,{color:'#378ADD',weight:4,opacity:.88}).addTo(homeMapInst));
-        homeMapLayers.push(...addRouteArrowMarkers(homeMapInst,pts,'#378ADD',720));
-      }
-      if(homeMapInst)fitMapBounds(homeMapInst,L.latLngBounds(pts),{padding:[52,52],maxZoom:18});
-    }
-  }
+  if(card)drawHomeAptRouteH156(card,true); // H156: 경로 그리기를 함수로 분리
   const el=document.getElementById('home-apt-card-item-'+cardId);
   if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function drawHomeAptRouteH156(card,fit){
+  const pts=card.points.map((p,idx)=>apartmentCardPointCoord(card,idx)).filter(Boolean); // H120
+  if(!pts.length){if(fit)toast('이 카드에는 좌표가 등록된 지점이 없어 지도에 경로를 표시하지 못했습니다.');return;}
+  pts.forEach((p,i)=>{
+    const icon=L.divIcon({
+      html:`<div style="width:24px;height:24px;border-radius:50%;background:#378ADD;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);">${i+1}</div>`,
+      className:'',iconAnchor:[12,12]
+    });
+    homeMapLayers.push(L.marker(p,{icon,zIndexOffset:730}).addTo(homeMapInst));
+  });
+  if(pts.length>=2){
+    homeMapLayers.push(L.polyline(pts,{color:'#378ADD',weight:4,opacity:.88}).addTo(homeMapInst));
+    homeMapLayers.push(...addRouteArrowMarkers(homeMapInst,pts,'#378ADD',720));
+  }
+  if(fit&&homeMapInst)fitMapBounds(homeMapInst,L.latLngBounds(pts),{padding:[52,52],maxZoom:18});
+}
+// H156: 구역(또는 아파트 카드)을 고르면 지도에는 그 구역 경계만 색으로 보이고 나머지 경계는 숨긴다.
+// 확대·축소나 자료 갱신 뒤에도 그 상태를 유지하고, "전체 구역 보기"로 풀린다.
+function redrawHomeFocusH156(){
+  if(!homeMapInst)return;
+  if(S.homeSelectedZone!=null){drawHomeZones(S.homeSelectedZone);return;}
+  const card=S.homeSelectedAptCard!=null&&S.apartmentCards.find(c=>c.id===S.homeSelectedAptCard);
+  if(card){drawHomeZones(HOME_APT_ROUTE_ACTIVE);drawHomeAptRouteH156(card,false);return;}
+  drawHomeZones(null);
+}
+function clearHomeFocusH156(){
+  S.homeSelectedZone=null;S.homeSelectedAptCard=null;
+  markSelectedCards(null);
+  document.querySelectorAll('.home-apt-card-row.selected').forEach(el=>el.classList.remove('selected'));
+  drawHomeZones(null);
 }
 function renderHomeApartmentCardList(){
   loadApartmentCards();
@@ -3252,7 +3264,7 @@ function addBaseTiles(map){
 
       if(containerId==='main-map'){if(!S.mainDeferredH155)drawAllZones(S.panelZone||null);}
       else if(containerId==='monitor-map')drawMonitorZones();
-      else if(containerId==='home-map')drawHomeZones(S.homeSelectedZone||null);
+      else if(containerId==='home-map')redrawHomeFocusH156(); // H156
       else if(containerId==='svc-map'&&S.session&&S.session.zoneId!=null){
         const svcZone=S.zones.find(zz=>zz.id===S.session.zoneId);
         if(svcZone)drawSvcZonePolygon(svcZone);
@@ -4124,7 +4136,7 @@ function searchZones(kw){
 }
 function clearSearch(){
   const inp=document.getElementById('zone-search');
-  if(inp){inp.value='';inp.focus();}
+  if(inp){inp.value='';} // H156: 지운 뒤 자판이 저절로 올라오지 않게
   const clearBtn=document.getElementById('search-clear-btn');
   if(clearBtn)clearBtn.style.display='none';
   renderSideList('');
@@ -4137,7 +4149,7 @@ function toggleMobileSearch(){
   if(isOpen){closeMobileSearch();}
   else{
     wrap.style.display='block';
-    setTimeout(()=>document.getElementById('mobile-zone-search').focus(),100);
+    // H156: 검색칸을 직접 누를 때만 자판이 올라오게(자동 포커스 제거)
   }
 }
 function closeMobileSearch(){
@@ -4415,7 +4427,7 @@ function invalidateZonePolygonCache(zoneId){
   if(main){main.polygon.setMap(null);mainKakaoPolygons.delete(key);}
   const home=homeKakaoPolygons.get(key);
   if(home){home.polygon.setMap(null);homeKakaoPolygons.delete(key);}
-  if(homeMapInst)drawHomeZones(S.homeSelectedZone||null);
+  if(homeMapInst)redrawHomeFocusH156(); // H156
 }
 
 // ================================================================
@@ -4535,7 +4547,7 @@ function searchRteZones(kw){
   renderRouteGrid(kw);
 }
 function clearRteSearch(){
-  const inp=document.getElementById('rte-search');if(inp){inp.value='';inp.focus();}
+  const inp=document.getElementById('rte-search');if(inp){inp.value='';} // H156
   const clr=document.getElementById('rte-search-clear');if(clr)clr.style.display='none';
   renderRouteGrid('');
 }
@@ -5036,7 +5048,7 @@ function initHomeMap(){
     homeMapInst=L.map('home-map',stableMapOptions({center:[38.20138,128.59350],zoom:18,zoomControl:false,attributionControl:false}));
     addBaseTiles(homeMapInst);
     stabilizeZoneLabelsOnMove(homeMapInst);
-    homeMapInst.on('zoomend',()=>drawHomeZones(null));
+    homeMapInst.on('zoomend',()=>redrawHomeFocusH156()); // H156: 확대·축소해도 고른 구역만 보이는 상태 유지
   }
   homeMapInst.invalidateSize();
   drawHomeZones(null);
@@ -5072,11 +5084,13 @@ function drawHomeZones(activeId){
       const sc=zoneStrokeColor(z,isActive);
       const fillColor=zoneFillColor(z,isActive);
       item.active=isActive;
+      const focusHide=activeId!=null&&!isActive; // H156: 고른 구역 외 경계 숨김
       item.polygon.setOptions({strokeWeight:zoneStrokeWeightH133(kakaoMap,isActive),strokeColor:sc,strokeOpacity:dimmed?.35:1,fillColor,fillOpacity:dimmed?.01:.05});
-      item.polygon.setMap(show?kakaoMap:null);
+      item.polygon.setMap(show&&!focusHide?kakaoMap:null);
     });
     bindStrokeZoomH133(kakaoMap,homeKakaoPolygons);
   }
+  const fb=document.getElementById('home-focus-clear');if(fb)fb.classList.toggle('hide',activeId==null); // H156
   // H155: 누름 영역(투명 폴리곤)·이름표는 구역마다 한 번만 만들고, 이후에는 색·투명도만 바꾼다
   // (예전엔 누를 때마다 350개씩 지우고 새로 만들어 0.2~0.3초 멈췄음)
   const showLabels=zoneLabelsVisible(homeMapInst);
@@ -5086,12 +5100,13 @@ function drawHomeZones(activeId){
     const key=String(z.id);
     let it=homeHitCacheH155.get(key);
     if(!it){it={};homeHitCacheH155.set(key,it);}
-    const show=homeMapFilter==='all'||
+    const show0=homeMapFilter==='all'||
       (homeMapFilter==='residential'&&z.type==='residential')||
       (homeMapFilter==='commercial'&&z.type==='commercial')||
       (homeMapFilter==='undone'&&getZoneState(z.id)==='progress')||(homeMapFilter==='done'&&getZoneState(z.id)==='done')||
       (homeMapFilter==='standby'&&getZoneState(z.id)==='standby');
     const isActive=activeId===z.id;
+    const show=show0&&(activeId==null||isActive); // H156: 고른 구역만
     if(isActive&&show)addStartPinMarker(homeMapInst,z,homeMapLayers,{label:'시작점'});
     // 누름 영역(V2 H23: Kakao 폴리곤은 클릭을 못 받으므로 투명 Leaflet 폴리곤이 대신 받음)
     const polyKey=Array.isArray(z.polygon)?z.polygon.length+':'+JSON.stringify(z.polygon[0])+JSON.stringify(z.polygon[z.polygon.length-1]):'';
@@ -5239,7 +5254,8 @@ function toggleHomeListPanel(){
   if(!panel)return;
   const willExpand=panel.classList.contains('home-list-collapsed');
   panel.classList.toggle('home-list-collapsed',!willExpand);
-  if(icon)icon.textContent=willExpand?'접기':'열기';
+  if(icon)icon.textContent=willExpand?'🗺 지도보기':'📋 구역 목록'; // H156
+  S.homeListMovedAtH156=Date.now(); // H156
   if(willExpand)resetHomeListSectionsH155();
   updateHomeListTallH129();
 }
@@ -5302,9 +5318,10 @@ function resetHomeListSectionsH155(){
         return;
       }
       const shouldExpand=lastDy<0;
+      S.homeListMovedAtH156=Date.now(); // H156
       if(shouldExpand&&wasCollapsed)resetHomeListSectionsH155(); // H155
       panel.classList.toggle('home-list-collapsed',!shouldExpand);
-      if(icon)icon.textContent=shouldExpand?'접기':'열기';
+      if(icon)icon.textContent=shouldExpand?'🗺 지도보기':'📋 구역 목록'; // H156
       updateHomeListTallH129();
     }
     handle.style.touchAction='none';
@@ -5423,6 +5440,7 @@ function toggleHomeMapCtrlsH129(){
   if(w)w.classList.toggle('home-ctrls-collapsed');
 }
 function updateHomeListTallH129(openedSection){
+  S.homeListMovedAtH156=Date.now(); // H156
   const wrap=document.getElementById('home-body');
   const panel=document.getElementById('home-list-panel');
   const icon=document.getElementById('home-list-handle-icon');
@@ -5431,7 +5449,7 @@ function updateHomeListTallH129(openedSection){
   // 섹션을 새로 열었으면 접혀 있던 목록 패널도 같이 펼친다.
   if(openedSection&&mobile&&panel.classList.contains('home-list-collapsed')){
     panel.classList.remove('home-list-collapsed');
-    if(icon)icon.textContent='접기';
+    if(icon)icon.textContent='🗺 지도보기'; // H156
   }
   const anyOpen=['home-res-body','home-com-body','home-apt-body','home-int-body'].some(id=>{const el=document.getElementById(id);return el&&!el.classList.contains('hide');});
   const tall=mobile&&anyOpen&&!panel.classList.contains('home-list-collapsed');
@@ -5454,7 +5472,7 @@ function showLeaderZonesOnly(){
   document.getElementById('zl-view').style.display='';
   goTab('route');
   renderRouteGrid();
-  setTimeout(()=>{const inp=document.getElementById('rte-search');if(inp)inp.focus();},100);
+  // H156: 목록을 열 때 검색칸 자동 포커스 제거(자판이 저절로 올라오던 문제)
 }
 
 function toggleHomeWide(){
@@ -6523,7 +6541,7 @@ function searchAdminZones(kw){
 }
 function clearAdminZoneSearch(){
   adminZoneKeyword='';
-  const inp=document.getElementById('adm-zone-search');if(inp){inp.value='';inp.focus();}
+  const inp=document.getElementById('adm-zone-search');if(inp){inp.value='';} // H156
   const clr=document.getElementById('adm-zone-search-clear');if(clr)clr.style.display='none';
   renderAdmGrid();
 }
@@ -7785,3 +7803,40 @@ async function printS12Cards(){
 // 방향만, 쓰기 없음). initApp()의 재호출은 이미 붙어 있으면 즉시 반환.
 initFirestoreSyncH105();
 tryAutoLogin();
+
+// ================================================================
+// H156: 폰 아래 기본 버튼(뒤로·홈·최근)과 앱 아래 버튼이 겹치지 않게.
+// 카카오내비 등 다른 앱을 갔다 오면 브라우저가 화면 높이를 잘못 알고 있는 경우가 있어,
+// 실제로 보이는 높이(visualViewport)를 재서 앱 높이(--app-h)와 아래 여백(--nav-gap)을 맞춘다.
+// ================================================================
+(function fitAppHeightH156(){
+  const root=document.documentElement;
+  function fit(){
+    try{
+      const vv=window.visualViewport;
+      const visH=Math.round(vv?vv.height:window.innerHeight);
+      const gap=vv?Math.max(0,Math.round(window.innerHeight-(vv.height+vv.offsetTop))):0;
+      root.style.setProperty('--app-h',visH+'px');
+      root.style.setProperty('--nav-gap',gap+'px');
+    }catch(e){}
+  }
+  function settle(){fit();[120,400,900,1600].forEach(ms=>setTimeout(fit,ms));}
+  fit();
+  window.addEventListener('resize',fit);
+  window.addEventListener('orientationchange',settle);
+  window.addEventListener('pageshow',settle);
+  window.addEventListener('focus',settle);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')settle();});
+  if(window.visualViewport){visualViewport.addEventListener('resize',fit);visualViewport.addEventListener('scroll',fit);}
+})();
+
+// H156: 목록이 열리거나 닫히는 순간(0.7초)에 검색칸이 눌린 것으로 잡히면 자판을 띄우지 않는다.
+// 손가락으로 "구역 목록"을 누르면 목록이 올라오면서 같은 자리에 검색칸이 와서 '헛 탭'으로 자판이 뜨던 문제.
+(function guardHomeSearchFocusH156(){
+  function setup(){
+    const inp=document.getElementById('home-zone-search');
+    if(!inp||inp.__h156)return;inp.__h156=true;
+    inp.addEventListener('focus',()=>{if(Date.now()-(S.homeListMovedAtH156||0)<700)inp.blur();});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
+})();

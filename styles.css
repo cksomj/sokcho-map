@@ -1770,3 +1770,25 @@ html.role-volunteer #home-map-ctrls{right:auto!important;left:8px!important;alig
 
 /* H155: 긴 목록은 화면 밖 줄의 그리기를 미뤄 펼치기·스크롤을 가볍게 */
 .home-zone-row,#rte-grid > .zc{content-visibility:auto;contain-intrinsic-size:auto 118px;}
+
+/* H156: 열기/접기 버튼은 모두 파랑(접기도 같은 색, 색 반전 없음) */
+#home-list-handle-icon,[id$="-toggle-icon"]{background:var(--p)!important;color:#fff!important;box-shadow:0 3px 10px rgba(49,130,246,.28)!important;}
+/* H156: 목록 손잡이 = 큰 버튼 하나("📋 구역 목록" ↔ "🗺 지도보기"), 고른 구역만 볼 때 "전체 구역 보기" */
+#home-list-handle-icon{background:var(--p)!important;min-width:150px;height:42px!important;font-size:15.5px!important;margin-left:0!important;box-shadow:0 4px 12px rgba(49,130,246,.3)!important;}
+.home-focus-clear{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:520;border:none;border-radius:999px;background:var(--tx);color:#fff;font-weight:800;font-size:14px;padding:10px 16px;box-shadow:0 6px 16px rgba(25,31,40,.28);white-space:nowrap;cursor:pointer;}
+.home-focus-clear.hide{display:none;}
+/* H156: 폰 아래 기본 버튼과 겹치지 않게 — 실제 보이는 높이(--app-h)·아래 여백(--nav-gap)에 맞춤 */
+@media(max-width:767px){
+  #app,#scr-app.active{height:var(--app-h,100dvh)!important;}
+  #svc-fullscreen,#apt-svc-fullscreen{height:var(--app-h,100svh)!important;max-height:var(--app-h,100svh)!important;}
+  #svc-fullscreen > div:last-child{padding-bottom:calc(66px + env(safe-area-inset-bottom) + var(--nav-gap,0px))!important;}
+  #apt-svc-fullscreen > .svc-panel:last-child{padding-bottom:calc(22px + env(safe-area-inset-bottom) + var(--nav-gap,0px))!important;}
+  .zsheet{padding-bottom:calc(94px + env(safe-area-inset-bottom) + var(--nav-gap,0px))!important;}
+  .route-start-fixed{bottom:calc(104px + env(safe-area-inset-bottom) + var(--nav-gap,0px))!important;}
+  #rd-side-panel.show-draw{bottom:calc(112px + env(safe-area-inset-bottom) + var(--nav-gap,0px))!important;}
+  #toast{bottom:calc(92px + env(safe-area-inset-bottom) + var(--nav-gap,0px))!important;}
+}
+.menu-toggle-btn{bottom:calc(16px + env(safe-area-inset-bottom) + var(--nav-gap,0px))!important;}
+#tabbar{bottom:calc(76px + env(safe-area-inset-bottom) + var(--nav-gap,0px))!important;}
+.adm-fab-stack{bottom:calc(80px + env(safe-area-inset-bottom) + var(--nav-gap,0px))!important;}
+.admin-return-fab{bottom:calc(16px + env(safe-area-inset-bottom) + var(--nav-gap,0px))!important;}
