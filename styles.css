@@ -2043,3 +2043,22 @@ button[onclick^="clearAdminFocusH148"]{background:var(--g-blue)!important;border
 /* H169: 지도 아래 범례 글씨 진하게 */
 .map-legend .leg{font-weight:800!important;color:#191F28!important;font-size:13px!important;}
 .map-legend .leg .ld{box-shadow:0 0 0 1.5px rgba(0,0,0,.08);}
+/* H170: 이어하기 핀 안내 크게, 미완료·봉사 완료 버튼 더 진한 색+그라데이션으로 글씨 또렷하게 */
+.resume-pin-box{padding:12px!important;border:2px solid #F7B267!important;background:linear-gradient(180deg,#FFF9F0 0%,#FFEFD9 100%)!important;border-radius:16px!important;}
+.resume-pin-text{font-size:16.5px!important;font-weight:800!important;color:#7A2E0B!important;line-height:1.45!important;letter-spacing:-.3px;}
+.svc-pin-btn{font-size:17px!important;font-weight:800!important;padding:14px 12px!important;border-radius:14px!important;border:2px solid #C2410C!important;color:#9A3412!important;
+  background:linear-gradient(180deg,#FFFFFF 0%,#FFF4EA 100%)!important;box-shadow:var(--b-raise)!important;}
+.svc-main-btn{font-size:18.5px!important;font-weight:800!important;letter-spacing:-.3px;text-shadow:0 1px 1px rgba(0,0,0,.28);}
+.svc-main-btn.pause{background:linear-gradient(180deg,#F98A1C 0%,#E06A00 50%,#B85500 100%)!important;border:1.5px solid #9A4600!important;color:#fff!important;}
+.svc-main-btn.done{background:linear-gradient(180deg,#16A864 0%,#0B8A4E 50%,#066B3B 100%)!important;border:1.5px solid #05592F!important;color:#fff!important;}
+/* H170: "봉사 진행중" 표시를 구역 이름 줄 맨 오른쪽으로(작은 초록 표) */
+#svc-fullscreen .svc-panel > div:first-child{align-items:center!important;}
+#svc-fullscreen .svc-panel > div:first-child > div:first-child{display:flex;align-items:center;gap:10px;flex:1;min-width:0;}
+#svc-zone-name{order:1;flex:1;min-width:0;}
+#svc-status-label,#apt-svc-status-label{order:2;margin:0!important;flex-shrink:0;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;font-size:13px!important;font-weight:800!important;color:#0B7A44!important;background:#E5F7EE;border:1.5px solid #8FD9B2;border-radius:999px;padding:4px 10px;}
+#svc-status-label .svc-live-dot,#apt-svc-status-label .svc-live-dot{width:8px;height:8px;}
+#apt-svc-fullscreen > .svc-panel:first-child > div:first-child > div:first-child{display:grid!important;grid-template-columns:1fr auto;column-gap:10px;align-items:start;width:100%;}
+#apt-svc-card-name{grid-column:1;grid-row:1;min-width:0;}
+#apt-svc-status-label{grid-column:2;grid-row:1;align-self:start;margin-top:2px!important;}
+#apt-svc-assignee{grid-column:1 / -1;grid-row:2;}
+#apt-svc-fullscreen > .svc-panel:first-child > div:first-child{width:100%;}
