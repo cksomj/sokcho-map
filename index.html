@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"><!-- H150: 가독성 좋은 한글 글꼴 -->
-<link rel="stylesheet" href="styles.css?v=20261116-h164-login">
+<link rel="stylesheet" href="styles.css?v=20261116-h165-icons">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -208,7 +208,7 @@
           <div class="map-side-inner">
             <div style="font-size:15px;font-weight:700;color:var(--p);margin-bottom:10px;">🗺 구역 목록</div>
             <div style="position:relative;margin-bottom:10px;">
-              <input type="text" id="zone-search" placeholder="🔍 구역 이름 또는 번호 검색..." oninput="searchZones(this.value)"
+              <input type="text" id="zone-search" placeholder="구역 이름 또는 번호 검색..." oninput="searchZones(this.value)"
                 style="width:100%;padding:9px 12px 9px 32px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg2);font-size:13px;outline:none;">
               <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;">🔍</span>
               <button onclick="clearSearch()" id="search-clear-btn" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:14px;color:var(--txm);">✕</button>
@@ -266,7 +266,7 @@
           <div id="zl-view">
             <div class="route-list-controls">
               <div class="route-search">
-                <input type="text" id="rte-search" placeholder="🔍 구역 찾기" oninput="searchRteZones(this.value)">
+                <input type="text" id="rte-search" placeholder="구역 찾기" oninput="searchRteZones(this.value)">
                 <button onclick="clearRteSearch()" id="rte-search-clear">✕</button>
               </div>
               <div class="admin-zone-toolbar route-list-toolbar">
@@ -432,7 +432,7 @@
           <div style="width:100%;background:var(--bg);border-top:1px solid var(--bd);display:flex;flex-direction:column;max-height:45vh;overflow:hidden;" id="home-list-panel" class="home-list-collapsed">
             <div style="padding:10px 14px 6px;flex-shrink:0;">
               <div style="position:relative;">
-                <input type="text" id="home-zone-search" placeholder="🔍 구역 이름 또는 번호 검색..." oninput="searchHomeZones(this.value)"
+                <input type="text" id="home-zone-search" placeholder="구역 이름 또는 번호 검색..." oninput="searchHomeZones(this.value)"
                   style="width:100%;padding:9px 36px 9px 14px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg2);font-size:13px;outline:none;">
                 <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--txm);font-size:14px;pointer-events:none;">🔍</span>
               </div>
@@ -520,7 +520,7 @@
         <div class="ph"><h2>📚 연구자료</h2></div>
         <div class="pb">
           <div class="add-row" style="margin-bottom:10px;">
-            <input type="text" id="research-search" placeholder="🔍 JW.ORG에서 검색할 단어..."
+            <input type="text" id="research-search" placeholder="JW.ORG에서 검색할 단어..."
               style="flex:1;padding:9px 14px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg2);font-size:13px;outline:none;"
               onkeydown="if(event.key==='Enter')openJwOrgSearch();">
             <button class="btn btn-sm btn-p" onclick="openJwOrgSearch()">검색</button>
@@ -598,7 +598,7 @@
             <button class="btn btn-sm btn-dk dis-open-btn-h163" onclick="openDisabledSetupH163()">🚫 비활성 구역 설정하기</button><!-- H163 -->
             <div class="route-list-controls admin-zone-controls">
               <div class="route-search">
-                <input type="text" id="adm-zone-search" placeholder="🔍 구역 찾기" oninput="searchAdminZones(this.value)">
+                <input type="text" id="adm-zone-search" placeholder="구역 찾기" oninput="searchAdminZones(this.value)">
                 <button onclick="clearAdminZoneSearch()" id="adm-zone-search-clear">✕</button>
               </div>
               <div class="admin-zone-toolbar">
@@ -981,7 +981,7 @@
       <button class="btn btn-sm btn-out s12-type" data-type="interphone" onclick="setS12Type('interphone')">📞 인터폰</button>
     </div>
     <div class="s12-bar-row">
-      <input type="text" id="s12-search" class="s12-search" placeholder="🔍 구역 번호 또는 이름" oninput="onS12Search(this.value)">
+      <input type="text" id="s12-search" class="s12-search" placeholder="구역 번호 또는 이름" oninput="onS12Search(this.value)">
       <select id="s12-paper" class="s12-paper" title="용지">
         <option value="auto">용지에 맞게 여러 장</option>
         <option value="card">카드 크기 1장씩(146×94mm)</option>
@@ -1042,6 +1042,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261116-h164-login"></script>
+<script src="app.js?v=20261116-h165-icons"></script>
 </body>
 </html>

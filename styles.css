@@ -1932,3 +1932,25 @@ input,textarea,select,[contenteditable="true"]{-webkit-user-select:text;user-sel
 #scr-login .name-search-inputwrap{position:relative;}
 #scr-login .name-search-icon{position:absolute!important;left:16px;top:0;bottom:0;height:auto!important;display:flex;align-items:center;pointer-events:none;}
 #scr-login input[type="text"].name-search-input{padding-left:48px!important;}
+/* H165: 선 아이콘(이모지 대체) — 글자 색을 따라가고 글자 크기에 맞춤 */
+.ui-ico-wrap{display:inline-flex;align-items:center;justify-content:center;vertical-align:-0.18em;line-height:1;}
+.ui-ico{width:1.15em;height:1.15em;flex-shrink:0;display:block;}
+.tab .ti .ui-ico,.tab .ti{color:inherit;}
+.tab .ti .ui-ico{width:20px;height:20px;}
+.adm-fab-item .i .ui-ico{width:21px;height:21px;}
+.adm-fab-item .i{color:#333D4B;}
+.adm-fab-item.on .i{color:#fff;}
+.menu-toggle-btn .ui-ico{width:24px;height:24px;}
+.adm-fab-toggle .ui-ico{width:24px;height:24px;}
+.zone-map-label .ui-ico{width:1em;height:1em;}
+.mbtn .ui-ico,.svc-secondary-btn .ui-ico,.svc-main-btn .ui-ico,.btn .ui-ico{margin-right:1px;}
+.home-apt-header .ui-ico{width:20px;height:20px;color:var(--p);}
+.role-card-icon .ui-ico{width:25px;height:25px;}
+.dis-h163::before{content:"비활성"!important;}
+.part-dis-h163::before{content:"일부 동 비활성"!important;}
+
+/* H165 보정: 관리자 구역관리 필터 버튼 줄바꿈(세로로 쪼개지던 문제), S-13 미리보기 버튼 숨김 */
+.admin-zone-toolbar{flex-wrap:wrap!important;gap:6px!important;overflow:visible!important;}
+.admin-zone-toolbar > button,.admin-zone-toolbar > div{white-space:nowrap!important;flex:0 0 auto!important;width:auto!important;}
+#s13-preview-btn{display:none!important;}
+.ui-ico-wrap{margin-right:.18em;}

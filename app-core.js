@@ -3752,7 +3752,7 @@ const ADM_GROUPS_H148=[
   {k:'pickzone',icon:'✏️',label:'구역수정',title:'✏️ 지도에서 구역 골라 경계 수정',act:()=>startAdminPickH149('zone')}, // H149
   {k:'pickroute',icon:'🧭',label:'경로그리기',title:'🧭 지도에서 구역 골라 경로 그리기',act:()=>startAdminPickH149('route')}, // H149
   {k:'apt',icon:'🏢',label:'단지등록',title:'🏢 아파트 단지 등록 · 카드 자동/수동 생성'},
-  {k:'leaders',icon:'🧭',label:'인도자',title:'🧭 인도자 명단',autoOpen:true},
+  {k:'leaders',icon:'🚩',label:'인도자',title:'🧭 인도자 명단',autoOpen:true},
   {k:'vols',icon:'👥',label:'봉사자',title:'👥 봉사자 명단',autoOpen:true},
   {k:'security',icon:'🔐',label:'보안',title:'🔐 관리자 보안'},
   {k:'research',icon:'📚',label:'연구자료',title:'📚 연구자료 관리'},
@@ -8165,6 +8165,102 @@ function setComplexDisabledH163(cn,on){
     document.addEventListener('mousemove',e=>{if(drag||timer)move(e);});
     document.addEventListener('mouseup',end);
     list.addEventListener('contextmenu',e=>e.preventDefault());
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
+})();
+
+// ================================================================
+// H165: 앱 안의 이모지 아이콘을 선 아이콘(글자색을 따르는 SVG)으로 바꾼다.
+// 코드 속 이모지는 그대로 두고, 화면에 그려질 때 자동으로 바꾼다(새로 그려지는 목록도 자동).
+// 입력칸·선택상자·알림창(브라우저 기본)은 건드리지 않는다.
+// ================================================================
+(function lineIconsH165(){
+  const P={
+    pin:'<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+    check:'<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8 5.7-5.8"/>',
+    store:'<path d="M4 10v10h16V10"/><path d="M2.5 10l2-6h15l2 6z"/><path d="M10 20v-5h4v5"/>',
+    pencil:'<path d="M16.5 3.5l4 4L8 20H4v-4z"/><path d="M14 6l4 4"/>',
+    map:'<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
+    search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/>',
+    building:'<rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 7h1M14 7h1M9 11h1M14 11h1M9 15h1M14 15h1M10.5 21v-3h3v3"/>',
+    home:'<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
+    compass:'<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
+    clipboard:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 10h6M9 14h6M9 18h4"/>',
+    phone:'<path d="M5 3h3.5l1.5 5-2.2 1.5a11 11 0 0 0 6.7 6.7L16 14l5 1.5V19a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2z"/>',
+    save:'<path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3M7 21v-7h10v7"/>',
+    expand:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+    shrink:'<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
+    ban:'<circle cx="12" cy="12" r="9"/><path d="M5.7 5.7l12.6 12.6"/>',
+    eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    live:'<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19A10 10 0 0 1 5 5"/>',
+    trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14"/><path d="M10 11v6M14 11v6"/>',
+    book:'<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21a2 2 0 0 1 2-2h13"/>',
+    calendar:'<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+    refresh:'<path d="M20 11a8 8 0 0 0-14.3-4.5L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.3 4.5L20 16"/><path d="M20 20v-4h-4"/>',
+    chart:'<path d="M4 20h16"/><path d="M7 16v-5M12 16V7M17 16v-8"/>',
+    users:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M15.5 14.4c3 .2 5.5 2.3 5.5 5.6"/>',
+    note:'<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>',
+    folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    alert:'<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.5v.01"/>',
+    pause:'<path d="M9 6v12M15 6v12"/>',
+    locate:'<circle cx="12" cy="12" r="7"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="1.5"/>',
+    cloud:'<path d="M7 18h10a4 4 0 0 0 .5-8A6 6 0 0 0 6 9.5 4.3 4.3 0 0 0 7 18z"/><path d="M12 11v5M9.5 13.5L12 11l2.5 2.5"/>',
+    exit:'<path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M10 16l-4-4 4-4M6 12h10"/>',
+    trend:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+    lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    flag:'<path d="M5.5 21V4"/><path d="M5.5 4.5h11.5l-2.2 4 2.2 4H5.5"/>',
+    gear:'<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+    contact:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.5-1.5 1.7-2.3 3-2.3s2.5.8 3 2.3M14 10h4M14 14h3"/>',
+    download:'<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v3h16v-3"/>',
+    printer:'<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
+    file:'<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>',
+    hand:'<path d="M9 11V5a1.5 1.5 0 0 1 3 0v5M12 10a1.5 1.5 0 0 1 3 0v1M15 11a1.5 1.5 0 0 1 3 0v4a6 6 0 0 1-6 6h-1a5 5 0 0 1-4.5-2.8L4.5 15a1.5 1.5 0 0 1 2.6-1.5L9 16"/>',
+    signal:'<path d="M5 19a10 10 0 0 1 0-14M19 5a10 10 0 0 1 0 14M8.5 15.5a5 5 0 0 1 0-7M15.5 8.5a5 5 0 0 1 0 7"/><circle cx="12" cy="12" r="1.5"/>',
+    link:'<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+    up:'<path d="M12 19V5M5 12l7-7 7 7"/>',
+    menu:'<path d="M4 7h16M4 12h16M4 17h16"/>'
+  };
+  const MAP={'📍':'pin','✅':'check','🏪':'store','✏':'pencil','🖊':'pencil','🗺':'map','🔍':'search','🏢':'building','🏠':'home','🧭':'compass','📋':'clipboard','📞':'phone','💾':'save','⛶':'expand','▣':'shrink','⛔':'ban','🚫':'ban','🛑':'ban','👁':'eye','🗑':'trash','📚':'book','📅':'calendar','🔄':'refresh','📊':'chart','👥':'users','📝':'note','🗂':'folder','📂':'folder','⚠':'alert','⏸':'pause','⌖':'locate','☁':'cloud','🚪':'exit','↩':'exit','📈':'trend','🔐':'lock','🚩':'flag','⚙':'gear','📇':'contact','📥':'download','🖨':'printer','📄':'file','👆':'hand','📡':'signal','🔗':'link','⬆':'up','☰':'menu'};
+  const keys=Object.keys(MAP).sort((a,b)=>b.length-a.length).map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
+  const RE=new RegExp('('+keys.join('|')+')\\uFE0F?','g');
+  const TEST=new RegExp('('+keys.join('|')+')');
+  const SKIP=new Set(['SCRIPT','STYLE','TEXTAREA','INPUT','OPTION','SELECT','TITLE','svg','SVG','NOSCRIPT']);
+  function iconFor(ch,ctx){
+    let k=MAP[ch];
+    if(k==='eye'&&!/미리보기/.test(ctx))k='live'; // 실시간·봉사자 관리의 눈 → "실시간 신호" 아이콘
+    return `<svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[k]}</svg>`;
+  }
+  function convertText(tn){
+    const s=tn.nodeValue;if(!s||!TEST.test(s))return;
+    const par=tn.parentNode;if(!par||SKIP.has(par.nodeName)||par.closest&&par.closest('svg,textarea,select,[contenteditable="true"],.no-ico'))return;
+    const ctx=(par.textContent||'');
+    const frag=document.createDocumentFragment();let last=0;s.replace(RE,(m,ch,idx)=>{
+      if(idx>last)frag.appendChild(document.createTextNode(s.slice(last,idx)));
+      const span=document.createElement('span');span.className='ui-ico-wrap';span.innerHTML=iconFor(ch,ctx);frag.appendChild(span);
+      last=idx+m.length;return m;});
+    if(last<s.length)frag.appendChild(document.createTextNode(s.slice(last)));
+    par.replaceChild(frag,tn);
+  }
+  function convert(root){
+    if(!root)return;
+    if(root.nodeType===3){convertText(root);return;}
+    if(root.nodeType!==1||SKIP.has(root.nodeName))return;
+    const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null);
+    const list=[];let n;while((n=w.nextNode()))if(TEST.test(n.nodeValue))list.push(n);
+    list.forEach(convertText);
+  }
+  window.convertIconsH165=convert;
+  const pending=new Set();let raf=0;
+  function flush(){raf=0;const roots=[...pending];pending.clear();roots.forEach(r=>{if(r.isConnected)convert(r);});}
+  function setup(){
+    convert(document.body);
+    new MutationObserver(ms=>{
+      for(const m of ms){
+        if(m.type==='characterData'){if(m.target.parentNode)pending.add(m.target.parentNode);}
+        else m.addedNodes.forEach(nd=>pending.add(nd.nodeType===3?nd.parentNode||nd:nd));
+      }
+      if(pending.size&&!raf)raf=requestAnimationFrame(flush);
+    }).observe(document.body,{childList:true,subtree:true,characterData:true});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
 })();
