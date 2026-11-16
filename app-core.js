@@ -474,6 +474,23 @@ function zoneEntryCorner(z){
   }
   return null;
 }
+// H146: "여기까지"(이어하기) 점은 미완료를 누른 순간 폰의 GPS 위치라, 집 등 구역 밖에서 누르면
+// 엉뚱한 곳이 저장된다(점검: 경기도 안성 182km, 6km, 5km, 1.6~2km 등 10곳). 구역 경계에서
+// 150m 안일 때만 이어하기 도착지/진행화면 지도 이동에 쓴다(저장 데이터는 그대로).
+function resumePointNearZoneH146(z,pt,maxM=150){
+  const poly=(z&&Array.isArray(z.polygon)?z.polygon:[]).map(q=>[Number(q[0]),Number(q[1])]);
+  if(!pt||poly.length<3)return !!pt;
+  if(pointInsidePolyStrict(pt,poly))return true;
+  const k=111000,kx=111000*Math.cos(pt[0]*Math.PI/180);
+  let best=Infinity;
+  for(let i=0;i<poly.length;i++){
+    const a=[(poly[i][1]-pt[1])*kx,(poly[i][0]-pt[0])*k],b=[(poly[(i+1)%poly.length][1]-pt[1])*kx,(poly[(i+1)%poly.length][0]-pt[0])*k];
+    const dx=b[0]-a[0],dy=b[1]-a[1],L2=dx*dx+dy*dy;
+    let t=L2?-(a[0]*dx+a[1]*dy)/L2:0;t=Math.max(0,Math.min(1,t));
+    best=Math.min(best,Math.hypot(a[0]+t*dx,a[1]+t*dy));
+  }
+  return best<=maxM;
+}
 function zoneStartPoint(z,mode){
   if(!z)return [38.20138,128.59350];
   const custom=validMapPoint(z.startPoint);
@@ -481,7 +498,7 @@ function zoneStartPoint(z,mode){
   if(isInProgress(z.id)){
     const saved=z.progress&&Array.isArray(z.progress.pts)?z.progress.pts:[];
     const resumePt=saved.length&&validMapPoint(saved[saved.length-1]);
-    if(resumePt)return resumePt;
+    if(resumePt&&resumePointNearZoneH146(z,resumePt))return resumePt; // H146: 구역에서 먼 "여기까지" 점(미완료를 누른 곳의 GPS)은 쓰지 않음
   }
   const route=serviceGuideRoutesFor(z.id,mode||S.routeMode)[0];
   const routePt=route&&route.pts&&validMapPoint(route.pts[0]);
@@ -5933,7 +5950,7 @@ function openSvcFullscreen(zoneId){
   focusSvcMapOnZone(z);
   renderSvcRouteLayers(z.id);
   // 마지막 저장 위치 복원
-  if(!isDone(z.id)&&z.progress&&Array.isArray(z.progress.pts)&&z.progress.pts.length>=1){
+  if(!isDone(z.id)&&z.progress&&Array.isArray(z.progress.pts)&&z.progress.pts.length>=1&&resumePointNearZoneH146(z,validMapPoint(z.progress.pts[z.progress.pts.length-1]))){ // H146: 먼 점이면 지도 이동 안 함
     const lastPt=z.progress.pts[z.progress.pts.length-1];
     svcResumeMarker=addResumeMarkerToMap(svcMapInst,lastPt,svcLayers);
     svcMapInst.setView(lastPt,18);
