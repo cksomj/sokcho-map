@@ -2986,8 +2986,8 @@ function generatedGuideRoutesFor(zoneId,mode){
   return [{id:`auto-${zoneId}-team`,zoneId,mode:'2',name:'자동 경로',color:'#378ADD',pts:[...pts,pts[0]],visible:true}];
 }
 function serviceGuideRoutesFor(zoneId,mode){
-  const saved=serviceRoutesFor(zoneId,mode);
-  return saved.length?saved:generatedGuideRoutesFor(zoneId,mode);
+  // H185: 구역 경계선을 따라 도는 자동 경로는 쓰지 않는다(딘 요청). 저장된 경로만 보여 준다.
+  return serviceRoutesFor(zoneId,mode);
 }
 function clearRteDisplayLayers(){
   S.rdRteLayers.forEach(l=>S.rdMap&&S.rdMap.removeLayer(l));
@@ -6296,6 +6296,7 @@ function drawSvcZonePolygon(z){
   svcKakaoPoly.setMap(kakaoMap);
 }
 function openSvcFullscreen(zoneId){
+  S.svcZoneH185=zoneId; // H185: 봉사 화면 지번 점은 이 구역만
   const z=S.zones.find(z=>z.id===zoneId);
   if(!z)return;
   const fs=document.getElementById('svc-fullscreen');
@@ -8392,3 +8393,56 @@ function renderUndoneH178(){
     </div>`;};
   wrap.innerHTML=it.zones.map(zoneRow).join('')+it.cards.map(cardRow).join('');
 }
+
+// ================================================================
+// H185: 지도를 크게 확대하면(18단계 이상) 화면 안 구역의 S-12 집 점과 번지를 보여 준다.
+// 카카오 지도 위에 직접 그려(CustomOverlay) 바탕지도의 집 위치와 정확히 맞는다.
+// 홈 지도(고른 구역이 있으면 그 구역만)·봉사 화면 지도·전체 지도에 적용.
+// ================================================================
+const PARCEL_OVL_H185={};
+const PARCEL_MIN_ZOOM_H185=18;
+function clearParcelOverlayH185(id){const st=PARCEL_OVL_H185[id];if(!st)return;st.ovs.forEach(o=>o.setMap(null));st.ovs=[];st.key='';}
+async function refreshParcelOverlayH185(map){
+  if(!map||!map._mapPane||!window.kakao?.maps?.CustomOverlay)return;
+  const id=map.getContainer().id;const k=_kakaoInstances[id];
+  const st=PARCEL_OVL_H185[id]||(PARCEL_OVL_H185[id]={ovs:[],key:''});
+  if(!k||map.getZoom()<PARCEL_MIN_ZOOM_H185){clearParcelOverlayH185(id);return;}
+  try{await s12LoadParcels();}catch(e){return;}
+  const b=map.getBounds().pad(0.15);
+  let zones=S.zones;
+  if(id==='home-map'&&S.homeSelectedZone!=null)zones=zones.filter(z=>z.id===S.homeSelectedZone);
+  if(id==='svc-map'){const sz=S.svcZoneH185!=null?S.svcZoneH185:(S.session&&S.session.zoneId);zones=zones.filter(z=>String(z.id)===String(sz));} // 봉사 화면은 그 구역만
+  const pts=[];const used=[];
+  for(const z of zones){
+    if(!Array.isArray(z.polygon)||z.polygon.length<3)continue;
+    const lats=z.polygon.map(p=>+p[0]),lngs=z.polygon.map(p=>+p[1]);
+    if(Math.max(...lats)<b.getSouth()||Math.min(...lats)>b.getNorth()||Math.max(...lngs)<b.getWest()||Math.min(...lngs)>b.getEast())continue;
+    const ps=s12ParcelsFor(z);if(!ps)continue;used.push(z.id);
+    ps.forEach(p=>{if(b.contains([p[0],p[1]]))pts.push(p);});
+    if(pts.length>700)break;
+  }
+  const showLabel=map.getZoom()>=19; // 18단계는 점만, 19단계(최대)에서 번지 글씨
+  const key=used.join(',')+'|'+map.getZoom()+'|'+pts.length;
+  if(key===st.key)return;
+  clearParcelOverlayH185(id);st.key=key;
+  pts.forEach(p=>{
+    const el=document.createElement('div');el.className='parcel-h185';
+    el.innerHTML=showLabel?`<i></i><span>${esc(p[2])}</span>`:'<i></i>';
+    const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(p[0],p[1]),content:el,xAnchor:0.5,yAnchor:0.5,zIndex:3});
+    ov.setMap(k);st.ovs.push(ov);
+  });
+}
+(function hookParcelOverlayH185(){
+  if(!window.L||!L.Map||!L.Map.addInitHook)return;
+  L.Map.addInitHook(function(){
+    const map=this;const id=map.getContainer&&map.getContainer().id;
+    if(!['home-map','svc-map','main-map'].includes(id))return;
+    let t=null;const run=()=>{clearTimeout(t);t=setTimeout(()=>refreshParcelOverlayH185(map),180);};
+    map.on('zoomend moveend',run);
+  });
+})();
+// 구역을 고르거나 풀 때도 다시 그림
+(function wrapFocusH185(){
+  const r=window.redrawHomeFocusH156;
+  if(typeof r==='function')window.redrawHomeFocusH156=function(){const out=r.apply(this,arguments);try{if(homeMapInst)refreshParcelOverlayH185(homeMapInst);}catch(e){}return out;};
+})();
