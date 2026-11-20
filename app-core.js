@@ -8456,17 +8456,23 @@ async function refreshParcelOverlayH185(map){
   let proj=null;try{proj=k.getProjection();}catch(e){}
   const boxes=[];
   if(proj&&showLabel)pts.forEach(p=>{const q=proj.containerPointFromCoords(new kakao.maps.LatLng(p[0],p[1]));boxes.push({x:q.x-6,y:q.y-6,w:12,h:12,dot:true,lat:p[0],lng:p[1]});}); // 점 자리도 피함
-  const freeLabel=(p,txt)=>{
-    if(!proj)return true;
+  // H193: 번호는 겹쳐도 늘 표시. 오른쪽→왼쪽→위→아래 중 덜 겹치는 자리, 많이 겹치면 작은 글씨
+  const placeLabel=(p,txt)=>{
+    if(!proj)return {pos:'r',small:false};
     const q=proj.containerPointFromCoords(new kakao.maps.LatLng(p[0],p[1]));
-    const w=txt.length*6.6+10,h=15,x=q.x+5,y=q.y-8;
-    for(const bx of boxes){if(bx.dot&&bx.lat===p[0]&&bx.lng===p[1])continue;if(x<bx.x+bx.w+2&&x+w+2>bx.x&&y<bx.y+bx.h&&y+h>bx.y)return false;}
-    boxes.push({x,y,w,h});return true;
+    const cand=small=>{const w=small?txt.length*5.2+7:txt.length*6.3+9,h=small?12:15;
+      return [['r',q.x+6,q.y-h/2],['l',q.x-6-w,q.y-h/2],['u',q.x-w/2,q.y-7-h],['d',q.x-w/2,q.y+7]].map(([pos,x,y])=>({pos,small,x,y,w,h}));};
+    const over=c=>{let a=0;for(const bx of boxes){if(bx.dot&&bx.lat===p[0]&&bx.lng===p[1])continue;const ox=Math.min(c.x+c.w,bx.x+bx.w)-Math.max(c.x,bx.x),oy=Math.min(c.y+c.h,bx.y+bx.h)-Math.max(c.y,bx.y);if(ox>0&&oy>0)a+=ox*oy;}return a/(c.w*c.h);};
+    let best=null;
+    for(const c of cand(false)){c.o=over(c);if(c.o===0){best=c;break;}if(!best||c.o<best.o)best=c;}
+    if(best.o>0.3){let sb=null;for(const c of cand(true)){c.o=over(c);if(!sb||c.o<sb.o)sb=c;if(c.o===0)break;}best=sb;}
+    boxes.push({x:best.x,y:best.y,w:best.w,h:best.h});return best;
   };
   pts.forEach(p=>{
     const el=document.createElement('div');el.className='parcel-h185';
     const txt=s12LabelH191(p[2]);
-    el.innerHTML=showLabel&&freeLabel(p,txt)?`<i></i><span>${esc(txt)}</span>`:'<i></i>';
+    const lp=showLabel?placeLabel(p,txt):null;
+    el.innerHTML=lp?`<i></i><span class="pl-${lp.pos}${lp.small?' pl-sm':''}">${esc(txt)}</span>`:'<i></i>';
     const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(p[0],p[1]),content:el,xAnchor:0.5,yAnchor:0.5,zIndex:3});
     ov.setMap(k);st.ovs.push(ov);
   });

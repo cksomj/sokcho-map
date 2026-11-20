@@ -2185,3 +2185,11 @@ body.route-editing .admin-return-fab{top:calc(70px + env(safe-area-inset-top))!i
 #home-map-ctrls .home-exit-h189 .ui-ico,.mbtn.home-exit-h189 .ui-ico,.home-exit-h189 .ui-ico,.home-go-h189 .ui-ico{color:#fff!important;}
 /* H189b: 목록이 지도를 덮고 펼쳐진 동안 지도 버튼(앱 나가기·내 위치)이 목록 손잡이를 가리지 않게 숨김 */
 #home-body.home-list-tall #home-map-ctrls,#home-body.home-list-tall .home-focus-clear{display:none!important;}
+/* H193: 집 번호 자리(오른쪽·왼쪽·위·아래)와 작은 글씨 */
+.parcel-h185 span.pl-r{left:6px!important;right:auto;top:-8px!important;}
+.parcel-h185 span.pl-l{left:auto!important;right:6px;top:-8px!important;}
+.parcel-h185 span.pl-u{left:0!important;transform:translateX(-50%);top:-22px!important;}
+.parcel-h185 span.pl-d{left:0!important;transform:translateX(-50%);top:7px!important;}
+.parcel-h185 span.pl-sm{font-size:8.5px!important;padding:0 3px!important;line-height:12px;}
+.parcel-h185 span.pl-sm.pl-r,.parcel-h185 span.pl-sm.pl-l{top:-6px!important;}
+.parcel-h185 span.pl-sm.pl-u{top:-19px!important;}
