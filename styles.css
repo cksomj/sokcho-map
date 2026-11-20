@@ -2174,3 +2174,12 @@ body.route-editing .admin-return-fab{top:calc(70px + env(safe-area-inset-top))!i
 #home-list-handle-icon{min-width:0!important;padding:0 14px!important;}
 @media(max-width:400px){.home-allview-btn-h187,.home-undone-btn-h178,#home-list-handle-icon{font-size:14px!important;padding:0 10px!important;}}
 .home-wide #home-list-handle{display:flex!important;}
+
+/* H189: 홈/앱 나가기 하나로 — 진한 청색, 실제 버튼 느낌 */
+.home-exit-h189,.home-go-h189{background:linear-gradient(180deg,#2D5FB8 0%,#123F8F 55%,#0B2E6E 100%)!important;border:1.5px solid #0A2F6B!important;color:#fff!important;
+  font-weight:800!important;box-shadow:var(--b-raise-dark)!important;text-shadow:0 1px 1px rgba(0,0,0,.3);}
+.home-exit-h189 .ui-ico-wrap,.home-go-h189 .ui-ico-wrap{color:#fff!important;}
+#home-map-ctrls #home-wide-btn{display:none!important;} /* 크게 보기는 아래 '전체보기'와 같아 숨김 */
+/* H189: S-12 집 점은 검정 */
+.parcel-h185 i{background:#111827!important;border-color:#fff!important;}
+#home-map-ctrls .home-exit-h189 .ui-ico,.mbtn.home-exit-h189 .ui-ico,.home-exit-h189 .ui-ico,.home-go-h189 .ui-ico{color:#fff!important;}

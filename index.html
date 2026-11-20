@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"><!-- H150: 가독성 좋은 한글 글꼴 -->
-<link rel="stylesheet" href="styles.css?v=20261120-h188-areafill">
+<link rel="stylesheet" href="styles.css?v=20261120-h189-homeexit">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -129,7 +129,7 @@
       <button class="tab hide" id="t-admin" onclick="goTab('admin')"><span class="ti">⚙️</span>관리자</button>
       <button class="tab hide external-app-btn" id="t-phone" onclick="openPhoneApp()"><span class="ti">📞</span>전화</button>
       <button class="tab hide external-app-btn" id="t-kakao" onclick="openKakaoApp()"><span class="ti"><span class="kakao-mark">TALK</span></span>카톡</button>
-      <button class="tab hide exit" id="t-exit" onclick="doLogout()"><span class="ti">↩</span>나가기</button>
+      <button class="tab hide exit" id="t-exit" onclick="appExitH189()"><span class="ti">↩</span><span id="t-exit-label">나가기</span></button>
     </div>
 
     <!-- 콘텐츠 -->
@@ -256,7 +256,7 @@
         <div class="ph">
           <h2>구역 목록</h2>
           <div class="home-header-actions">
-            <button class="btn btn-sm btn-out route-home-action hide" onclick="showHomeNormal()">홈</button>
+            <button class="btn btn-sm home-go-h189 route-home-action hide" onclick="showHomeNormal()">🏠 홈</button>
             <span id="rte-user" style="font-size:12px;color:var(--txm);"></span>
           </div>
         </div>
@@ -384,9 +384,9 @@
             <div style="font-size:12px;color:var(--txm);" id="home-role-label">봉사자</div>
           </div>
           <div class="home-header-actions">
-            <button class="btn btn-sm btn-out" id="home-header-home-btn" onclick="showHomeNormal()">홈</button>
+            <button class="btn btn-sm home-exit-h189" id="home-header-home-btn" onclick="appExitH189()">↩ 앱 나가기</button>
             <button class="btn btn-sm btn-out leader-zone-action hide" id="leader-zone-btn" onclick="showLeaderZonesOnly()">구역</button>
-            <button class="btn btn-sm btn-dk" id="home-header-exit-btn" onclick="doLogout()">나가기</button>
+
           </div>
         </div>
         <!-- 본문: 모바일=세로, PC=가로 분할 -->
@@ -395,9 +395,8 @@
           <div style="flex:1;position:relative;min-height:200px;">
             <div style="position:relative;width:100%;height:100%;"><div id="home-map-kakao-bg" class="kakao-bg"></div><div id="home-map" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;"></div></div>
             <button type="button" id="home-focus-clear" class="home-focus-clear hide" onclick="clearHomeFocusH156()">🗺 전체 구역 보기</button><!-- H156 -->
-            <div style="position:absolute;top:8px;right:8px;z-index:500;display:flex;flex-direction:column;gap:7px;" id="home-map-ctrls" class="home-ctrls-collapsed">
-              <button class="mbtn home-mobile-overlay-btn home-ctrl-toggle" onclick="toggleHomeMapCtrlsH129()">🏠 홈</button>
-              <button class="mbtn home-mobile-overlay-btn" onclick="doLogout()">↩ 나가기</button>
+            <div style="position:absolute;top:8px;right:8px;z-index:500;display:flex;flex-direction:column;gap:7px;" id="home-map-ctrls">
+              <button class="mbtn home-mobile-overlay-btn home-ctrl-toggle home-exit-h189" onclick="appExitH189()">↩ 앱 나가기</button><!-- H189: 홈+나가기 하나로 -->
               <button class="mbtn" onclick="zoomHomeMap(1)">＋ 지도 확대</button>
               <button class="mbtn" onclick="zoomHomeMap(-1)">－ 지도 축소</button>
               <button class="mbtn" id="loc-btn-home" onclick="toggleLocateH168('home')">📍 내 위치</button>
@@ -540,7 +539,7 @@
         <div class="ph">
           <h2 id="monitor-title">👁 실시간 현황</h2>
           <div class="home-header-actions">
-            <button class="btn btn-sm btn-out monitor-home-action hide" onclick="showHomeNormal()">홈</button>
+            <button class="btn btn-sm home-go-h189 monitor-home-action hide" onclick="showHomeNormal()">🏠 홈</button>
             <!-- H160: 시뮬레이션 버튼 삭제(요청) -->
             <button class="btn btn-sm btn-p" onclick="refreshMonitor()">🔄 새로고침</button>
           </div>
@@ -1061,6 +1060,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261120-h188-areafill"></script>
+<script src="app.js?v=20261120-h189-homeexit"></script>
 </body>
 </html>

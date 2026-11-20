@@ -3688,6 +3688,7 @@ function goTab(name){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   document.getElementById('p-'+name).classList.add('on');
   if(name==='map'||name==='route')ensureMainDrawnH155(); // H155
+  try{syncHomeExitTabsH189(name);}catch(e){} // H189
   document.getElementById('t-'+name).classList.add('on');
   if(name==='record') renderRecords();
   if(name==='research') renderResearchList(); // V2 H41
@@ -8474,3 +8475,19 @@ function refreshMonitorFillH188(){
   if(!window.L||!L.Map||!L.Map.addInitHook)return;
   L.Map.addInitHook(function(){const id=this.getContainer&&this.getContainer().id;if(id!=='monitor-map')return;this.on('zoomend',()=>setTimeout(refreshMonitorFillH188,120));});
 })();
+
+// ================================================================
+// H189: 홈 버튼과 나가기 버튼을 하나로 — 홈 화면에서는 "앱 나가기", 다른 화면에서는 "홈"(전도인·인도자).
+// ================================================================
+function appExitH189(){
+  const go=()=>doLogout();
+  if(typeof showAppConfirm==='function')showAppConfirm('앱에서 나갈까요?','다시 들어오려면 이름을 다시 고릅니다.','나가기',go);else if(confirm('앱에서 나갈까요?'))go();
+}
+function syncHomeExitTabsH189(name){
+  if(S.role!=='volunteer'&&S.role!=='leader')return; // 관리자는 지금처럼
+  const onHome=name==='home';
+  const th=document.getElementById('t-home'),te=document.getElementById('t-exit'),tl=document.getElementById('t-exit-label');
+  if(th)th.classList.toggle('hide',onHome);
+  if(te){te.classList.toggle('hide',!onHome);}
+  if(tl)tl.textContent='앱 나가기';
+}
