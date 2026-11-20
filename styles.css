@@ -2279,3 +2279,7 @@ body.route-editing .rd-edit-tools .btn.rdt-h198{min-height:44px!important;paddin
 .rte-pick-h200{width:16px;height:16px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.35),0 1px 3px rgba(0,0,0,.4);box-sizing:border-box;}
 .rte-pick-h200.ins{box-shadow:0 0 0 3px #FFFF1A,0 0 0 5px #E5333F;}
 .rte-dot-h200{width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35);box-sizing:border-box;}
+
+/* H201: 돌린 S-12 지도 */
+.s12-rot-h201{position:absolute;left:50%;top:50%;transform-origin:50% 50%;}
+.s12-rot-h201 img,.s12-rot-h201 svg{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;}

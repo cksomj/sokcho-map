@@ -7675,7 +7675,10 @@ function s12ZoneMap(z,W=S12_MAP_W,H=S12_MAP_H,mmW=134){ // H143: 크기 매개�
   // H196: 관리자가 맞춰 저장한 위치·배율이 있으면 그것으로(경계가 바뀌면 무시)
   const vSet=z.s12View&&W===S12_MAP_W&&z.s12View.sig===s12PolySig(z)?z.s12View:null;
   if(vSet){center=LL(vSet.lat,vSet.lng);lv=vSet.lv;let w=vSet.vw;while(w<W&&lv>1){lv--;w*=2;}while(w>2048){lv++;w/=2;}vw=Math.max(200,Math.round(w));}
-  const vh=Math.round(vw*H/W);
+  let vh=Math.round(vw*H/W);
+  // H201: 돌린 지도 — 정사각형으로 넓게 받아 화면에서 돌려 칸을 채운다
+  const rot=vSet&&Number(vSet.rot)?((Number(vSet.rot)%360)+360)%360:0;let mmEff=mmW;
+  if(rot){const D=Math.hypot(W,H)/W;let side=vw*D;while(side>2048&&lv<14){lv++;side/=2;}side=Math.round(side);mmEff=mmW*D;vw=vh=side;}
   el.style.width=vw+'px';el.style.height=vh+'px';m.relayout();
   m.setLevel(lv);m.setCenter(center);
   proj=m.getProjection();
@@ -7687,7 +7690,7 @@ function s12ZoneMap(z,W=S12_MAP_W,H=S12_MAP_H,mmW=134){ // H143: 크기 매개�
   document.body.appendChild(tmp);
   new kakao.maps.StaticMap(tmp,{center,level:lv});
   const img=tmp.querySelector('img');
-  const r={src:img?img.src:'',poly,dots,vw,vh,mmW,lat:center.getLat(),lng:center.getLng(),lv};
+  const r={src:img?img.src:'',poly,dots,vw,vh,mmW:mmEff,rot,lat:center.getLat(),lng:center.getLng(),lv};
   tmp.remove();
   _s12MapCache.set(key,r);
   return r;
@@ -7847,7 +7850,7 @@ function renderS12Cards(){
         const el=bodies[i],it=items[Number(el.dataset.zone)];
         try{
           const r=s12ZoneMap(it.zone);
-          el.innerHTML=`<img src="${esc(r.src)}" alt="" loading="lazy">${s12MapSvg(r)}`; // H138
+          el.innerHTML=s12BodyHtmlH201(r,true); // H138·H201
         }catch(e){el.innerHTML='<div class="s12-msg">지도를 만들 수 없습니다.</div>';}
       }
       _s12Status(i<bodies.length?`지도 준비 ${i}/${bodies.length}`:`지도 ${bodies.length}개 준비 완료`);
@@ -8749,7 +8752,7 @@ function toggleS12EditH196(){
 function s12BodyItemH196(btn){const sc=btn&&btn.closest('.s12-scaler');const body=sc&&sc.querySelector('.s12-body[data-zone]');const it=body&&_s12Items[Number(body.dataset.zone)];return it&&it.zone?{body,it}:null;}
 function s12RedrawBodyH196(body,it){
   const r=s12ZoneMap(it.zone);body._pan=null;body.classList.remove('s12-editing-h196');
-  const nb=body.cloneNode(false);nb.innerHTML='<img src="'+esc(r.src)+'" alt="">'+s12MapSvg(r);body.replaceWith(nb);
+  const nb=body.cloneNode(false);nb.innerHTML=s12BodyHtmlH201(r,false);body.replaceWith(nb);
   if(s12EditH196)setTimeout(()=>s12EditAttachH196(nb),50);
 }
 function s12SaveViewH196(btn){
@@ -8937,3 +8940,53 @@ window.undoRtePt=undoRtePt=function(){if(!S.rtePts.length)return;S.rtePts.pop();
   const st=startRteDraw;window.startRteDraw=startRteDraw=function(){const r=st.apply(this,arguments);_rdInsertAtH200=null;
     try{s12LoadParcels().then(()=>{if(rdHousesH200().length)toast('집 점(검은 점)을 차례로 누르면 집과 집이 이어집니다.');});}catch(e){}return r;};
 })();
+
+/* ===== H201: S-12 카드 지도 돌리기 — 두 손가락으로 키우기·줄이기·옮기기·비틀어 돌리기 → [저장하기] ===== */
+function s12BodyHtmlH201(r,lazy){
+  const inner='<img src="'+esc(r.src)+'" alt=""'+(lazy?' loading="lazy"':'')+'>'+s12MapSvg(r);
+  if(!r.rot)return inner;
+  const D=Math.hypot(S12_MAP_W,S12_MAP_H);
+  return '<div class="s12-rot-h201" style="width:'+(D/S12_MAP_W*100).toFixed(3)+'%;height:'+(D/S12_MAP_H*100).toFixed(3)+'%;transform:translate(-50%,-50%) rotate('+r.rot+'deg);">'+inner+'</div>';
+}
+window.s12EditAttachH196=s12EditAttachH196=function(body){
+  if(!body||body._pan||!body.querySelector('img'))return;
+  const inner=document.createElement('div');inner.className='s12-pan-h196';
+  while(body.firstChild)inner.appendChild(body.firstChild);body.appendChild(inner);
+  const st={s:1,rot:0,tx:0,ty:0};body._pan=st;body.classList.add('s12-editing-h196');
+  const pts=new Map();let last=null;
+  const kk=()=>{const r=body.getBoundingClientRect();return (r.width/body.offsetWidth)||1;};
+  const apply=()=>{inner.style.transform='translate('+st.tx+'px,'+st.ty+'px) rotate('+st.rot+'deg) scale('+st.s+')';};
+  const snap=()=>{const a=[...pts.values()];if(a.length>=2)return {x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2,d:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),a:Math.atan2(a[1].y-a[0].y,a[1].x-a[0].x)*180/Math.PI};return a.length?{x:a[0].x,y:a[0].y,d:0,a:null}:null;};
+  // 손가락 아래 지점이 그대로 따라오게: T' = C - f·R(da)·(L - T)
+  const move=(cx,cy,lx,ly,f,da)=>{const ns=Math.max(.2,Math.min(8,st.s*f));f=ns/st.s;const r=da*Math.PI/180,c=Math.cos(r),sn=Math.sin(r);
+    const vx=lx-st.tx,vy=ly-st.ty;st.tx=cx-f*(c*vx-sn*vy);st.ty=cy-f*(sn*vx+c*vy);st.s=ns;st.rot+=da;apply();};
+  body.addEventListener('pointerdown',e=>{if(!s12EditH196)return;try{body.setPointerCapture(e.pointerId);}catch(_){}pts.set(e.pointerId,{x:e.clientX,y:e.clientY});last=snap();e.preventDefault();});
+  body.addEventListener('pointermove',e=>{if(!s12EditH196||!pts.has(e.pointerId))return;pts.set(e.pointerId,{x:e.clientX,y:e.clientY});const cur=snap();if(!last||!cur)return;
+    const k=kk(),r=body.getBoundingClientRect();
+    let da=0;if(cur.a!=null&&last.a!=null){da=cur.a-last.a;if(da>180)da-=360;if(da<-180)da+=360;}
+    move((cur.x-r.left)/k,(cur.y-r.top)/k,(last.x-r.left)/k,(last.y-r.top)/k,(cur.d&&last.d)?cur.d/last.d:1,da);last=cur;e.preventDefault();});
+  const up=e=>{pts.delete(e.pointerId);last=snap();};
+  body.addEventListener('pointerup',up);body.addEventListener('pointercancel',up);
+  body.addEventListener('wheel',e=>{if(!s12EditH196)return;e.preventDefault();const k=kk(),r=body.getBoundingClientRect();const bx=(e.clientX-r.left)/k,by=(e.clientY-r.top)/k;
+    if(e.shiftKey)move(bx,by,bx,by,1,e.deltaY<0?-3:3);else move(bx,by,bx,by,e.deltaY<0?1.15:1/1.15,0);},{passive:false});
+};
+window.s12SaveViewH196=s12SaveViewH196=function(btn){
+  const x=s12BodyItemH196(btn);if(!x)return;const {body,it}=x;const st=body._pan;
+  if(!st){toast('먼저 위의 [✏ 지도 수정하기]를 누르세요.');return;}
+  if(st.s===1&&!st.tx&&!st.ty&&!st.rot){toast('바뀐 것이 없습니다.');return;}
+  const z=it.zone,r=s12ZoneMap(z),RAD=Math.PI/180;
+  const bw=body.clientWidth,bh=body.clientHeight;
+  // 칸 가운데 → 손질 전 칸 좌표
+  const cx=bw/2-st.tx,cy=bh/2-st.ty,c=Math.cos(-st.rot*RAD),sn=Math.sin(-st.rot*RAD);
+  const px=(c*cx-sn*cy)/st.s,py=(sn*cx+c*cy)/st.s;
+  let ix,iy,kpx;
+  if(r.rot){const D=Math.hypot(S12_MAP_W,S12_MAP_H),iw=bw*D/S12_MAP_W;kpx=r.vw/iw;const dx=px-bw/2,dy=py-bh/2,c0=Math.cos(-r.rot*RAD),s0=Math.sin(-r.rot*RAD);
+    ix=(c0*dx-s0*dy+iw/2)*kpx;iy=(s0*dx+c0*dy+iw/2)*kpx;}
+  else{kpx=r.vw/bw;ix=px*kpx;iy=py*kpx;}
+  const el=document.getElementById('s12-proj-map'),m=_s12ProjMap;
+  el.style.width=r.vw+'px';el.style.height=r.vh+'px';m.relayout();m.setLevel(r.lv);m.setCenter(new kakao.maps.LatLng(r.lat,r.lng));
+  const ll=m.getProjection().coordsFromContainerPoint(new kakao.maps.Point(ix,iy));
+  let rot=(((r.rot||0)+st.rot)%360+360)%360;if(Math.min(rot,360-rot)<0.5)rot=0;rot=Math.round(rot*10)/10;
+  z.s12View={lat:+ll.getLat().toFixed(7),lng:+ll.getLng().toFixed(7),lv:r.lv,vw:Math.round(bw/st.s*kpx*10)/10,rot,sig:s12PolySig(z)};
+  persistZones();s12RedrawBodyH196(body,it);toast('✅ 이 카드의 지도 위치'+(rot?'·방향':'')+'을 저장했습니다.');
+};
