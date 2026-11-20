@@ -2158,3 +2158,11 @@ body:has(#svc-fullscreen[style*="flex"]) #toast,body:has(#apt-svc-fullscreen[sty
 .parcel-h185 i{position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:#E5333F;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35);}
 .parcel-h185 span{position:absolute;left:8px;top:-9px;white-space:nowrap;font-size:11.5px;font-weight:800;color:#191F28;background:rgba(255,255,255,.88);border-radius:6px;padding:1px 5px;box-shadow:0 1px 2px rgba(0,0,0,.15);}
 .parcel-h185 span{font-size:10.5px!important;padding:0 4px!important;left:6px!important;top:-8px!important;}
+/* H186: 경로 그리기 화면 — 실제 보이는 높이에 맞추고 아래 4버튼이 폰 기본 버튼에 가리지 않게 */
+body.route-editing #rd-map-box{height:var(--app-h,100dvh)!important;}
+body.route-editing .rd-edit-tools{bottom:calc(16px + env(safe-area-inset-bottom) + var(--nav-gap,0px))!important;}
+body.route-editing .rd-edit-tools .btn{min-height:46px;}
+body.route-editing .menu-toggle-btn,body.route-editing .adm-fab-stack,body.route-editing #tabbar{display:none!important;}
+body.route-editing .admin-return-fab{top:calc(10px + env(safe-area-inset-top))!important;bottom:auto!important;left:auto!important;right:10px!important;z-index:9100!important;}
+body.route-editing .rd-edit-tools .btn{white-space:nowrap!important;padding:0 4px!important;font-size:14px!important;display:flex;align-items:center;justify-content:center;gap:3px;}
+body.route-editing .admin-return-fab{top:calc(70px + env(safe-area-inset-top))!important;}
