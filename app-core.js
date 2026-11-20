@@ -7532,7 +7532,7 @@ function s12CardHtml(it,idx){
     ${body}
     <div class="s12-note">${S12_NOTE}</div>
     <div class="s12-foot"><span>S-12-KO</span><span>${kindLabel}${hasForbidden?' · 취소선 = 방문 금지':''}</span></div>
-  </div><button class="s12-zoom-h195" onclick="s12ZoomH195(this)">🔍 확대해 보기</button></div>`;
+  </div><div class="s12-btns-h196"><button class="s12-zoom-h195" onclick="s12ZoomH195(this)">🔍 확대해 보기</button>${it.zone?`<button class="s12-save-h196" onclick="s12SaveViewH196(this)">💾 저장하기</button><button class="s12-reset-h196" onclick="s12ResetViewH196(this)">↺ 처음대로</button>`:''}</div></div>`;
 }
 function s12Rescale(){
   const list=document.getElementById('s12-list');
@@ -7541,7 +7541,7 @@ function s12Rescale(){
   const cw=first.offsetWidth,ch=first.offsetHeight;
   const k=Math.min(1,(list.clientWidth-16)/cw);
   list.querySelectorAll('.s12-scaler').forEach(sc=>{
-    sc.style.width=(cw*k)+'px';sc.style.height=(ch*k)+'px';
+    sc.style.width=(cw*k)+'px';sc.style.height=(ch*k+(sc.querySelector('.s12-btns-h196')?46:0))+'px';
     sc.firstElementChild.style.transform=`scale(${k})`;
   });
 }
@@ -7644,7 +7644,7 @@ async function s12BuildAllParcels(){
 }
 function s12ZoneMap(z,W=S12_MAP_W,H=S12_MAP_H,mmW=134){ // H143: 크기 매개변수(기본=S-12 지도칸)
   const parcels=s12ParcelsFor(z)||[];
-  const key=z.id+'|'+s12PolySig(z)+'|'+parcels.length+'|'+W+'x'+H;
+  const key=z.id+'|'+s12PolySig(z)+'|'+parcels.length+'|'+W+'x'+H+'|'+(z.s12View?JSON.stringify(z.s12View):'');
   if(_s12MapCache.has(key))return _s12MapCache.get(key);
   if(!_s12ProjMap){
     const el=document.createElement('div');
@@ -7656,7 +7656,7 @@ function s12ZoneMap(z,W=S12_MAP_W,H=S12_MAP_H,mmW=134){ // H143: 크기 매개�
   const el=document.getElementById('s12-proj-map'),m=_s12ProjMap;
   const LL=(a,b)=>new kakao.maps.LatLng(Number(a),Number(b));
   const lats=z.polygon.map(p=>Number(p[0])),lngs=z.polygon.map(p=>Number(p[1]));
-  const center=LL((Math.min(...lats)+Math.max(...lats))/2,(Math.min(...lngs)+Math.max(...lngs))/2);
+  let center=LL((Math.min(...lats)+Math.max(...lats))/2,(Math.min(...lngs)+Math.max(...lngs))/2);
   // 1) 박스 크기에서 경계가 들어가는 가장 확대된 레벨과 남는 배율
   el.style.width=W+'px';el.style.height=H+'px';m.relayout();
   const b=new kakao.maps.LatLngBounds();
@@ -7669,7 +7669,10 @@ function s12ZoneMap(z,W=S12_MAP_W,H=S12_MAP_H,mmW=134){ // H143: 크기 매개�
   let fit=Math.min(W/bw,H/bh)*0.92; // 경계 둘레 여백 약 4%
   // 2) 한 단계 더 확대한 레벨로, 박스를 채우는 만큼의 영역을 큰 이미지로 받는다
   if(lv>1){lv-=1;fit/=2;}
-  const vw=Math.max(200,Math.min(2048,Math.round(W/fit)));
+  let vw=Math.max(200,Math.min(2048,Math.round(W/fit)));
+  // H196: 관리자가 맞춰 저장한 위치·배율이 있으면 그것으로(경계가 바뀌면 무시)
+  const vSet=z.s12View&&W===S12_MAP_W&&z.s12View.sig===s12PolySig(z)?z.s12View:null;
+  if(vSet){center=LL(vSet.lat,vSet.lng);lv=vSet.lv;let w=vSet.vw;while(w<W&&lv>1){lv--;w*=2;}while(w>2048){lv++;w/=2;}vw=Math.max(200,Math.round(w));}
   const vh=Math.round(vw*H/W);
   el.style.width=vw+'px';el.style.height=vh+'px';m.relayout();
   m.setLevel(lv);m.setCenter(center);
@@ -7682,7 +7685,7 @@ function s12ZoneMap(z,W=S12_MAP_W,H=S12_MAP_H,mmW=134){ // H143: 크기 매개�
   document.body.appendChild(tmp);
   new kakao.maps.StaticMap(tmp,{center,level:lv});
   const img=tmp.querySelector('img');
-  const r={src:img?img.src:'',poly,dots,vw,vh,mmW};
+  const r={src:img?img.src:'',poly,dots,vw,vh,mmW,lat:center.getLat(),lng:center.getLng(),lv};
   tmp.remove();
   _s12MapCache.set(key,r);
   return r;
@@ -8688,7 +8691,7 @@ function s12ZoomLayoutH195(){
   c.style.transform='translate(-50%,-50%) '+(rot?'rotate(90deg) ':'')+'scale('+k+')';
 }
 function s12ZoomH195(btn){
-  const src=btn&&btn.parentElement&&btn.parentElement.querySelector('.s12-card');if(!src)return;
+  const sc=btn&&btn.closest('.s12-scaler');const src=sc&&sc.querySelector('.s12-card');if(!src)return;
   s12ZoomCloseH195(true);
   const ov=document.createElement('div');ov.id='s12-zoom-h195';
   const c=src.cloneNode(true);c.style.transform='';c.style.position='absolute';c.style.left='50%';c.style.top='50%';c.style.transformOrigin='50% 50%';
@@ -8705,3 +8708,69 @@ function s12ZoomCloseH195(silent){
 }
 window.addEventListener('resize',()=>setTimeout(s12ZoomLayoutH195,60));
 document.addEventListener('fullscreenchange',()=>setTimeout(s12ZoomLayoutH195,120));
+
+/* ===== H196: S-12 카드 지도 수정하기 — 두 손가락으로 확대·축소·이동해 맞춘 뒤 [저장하기] ===== */
+let s12EditH196=false;
+function s12EditAttachH196(body){
+  if(!body||body._pan||!body.querySelector('img'))return;
+  const inner=document.createElement('div');inner.className='s12-pan-h196';
+  while(body.firstChild)inner.appendChild(body.firstChild);body.appendChild(inner);
+  const st={s:1,tx:0,ty:0};body._pan=st;body.classList.add('s12-editing-h196');
+  const pts=new Map();let last=null;
+  const kk=()=>{const r=body.getBoundingClientRect();return (r.width/body.offsetWidth)||1;};
+  const apply=()=>{inner.style.transform='translate('+st.tx+'px,'+st.ty+'px) scale('+st.s+')';};
+  const snap=()=>{const a=[...pts.values()];if(a.length>=2)return {x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2,d:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)};return a.length?{x:a[0].x,y:a[0].y,d:0}:null;};
+  const zoomAt=(bx,by,lbx,lby,f)=>{const ns=Math.max(.2,Math.min(8,st.s*f));f=ns/st.s;st.tx=bx-(lbx-st.tx)*f;st.ty=by-(lby-st.ty)*f;st.s=ns;apply();};
+  body.addEventListener('pointerdown',e=>{if(!s12EditH196)return;try{body.setPointerCapture(e.pointerId);}catch(_){}pts.set(e.pointerId,{x:e.clientX,y:e.clientY});last=snap();e.preventDefault();});
+  body.addEventListener('pointermove',e=>{if(!s12EditH196||!pts.has(e.pointerId))return;pts.set(e.pointerId,{x:e.clientX,y:e.clientY});const cur=snap();if(!last||!cur)return;
+    const k=kk(),r=body.getBoundingClientRect();
+    zoomAt((cur.x-r.left)/k,(cur.y-r.top)/k,(last.x-r.left)/k,(last.y-r.top)/k,(cur.d&&last.d)?cur.d/last.d:1);last=cur;e.preventDefault();});
+  const up=e=>{pts.delete(e.pointerId);last=snap();};
+  body.addEventListener('pointerup',up);body.addEventListener('pointercancel',up);
+  body.addEventListener('wheel',e=>{if(!s12EditH196)return;e.preventDefault();const k=kk(),r=body.getBoundingClientRect();const bx=(e.clientX-r.left)/k,by=(e.clientY-r.top)/k;zoomAt(bx,by,bx,by,e.deltaY<0?1.15:1/1.15);},{passive:false});
+}
+function toggleS12EditH196(){
+  if(s12Mode!=='cards')return;
+  const bodies=[...document.querySelectorAll('#s12-list .s12-body[data-zone]')];
+  if(!s12EditH196){
+    if(!bodies.length){toast('수정할 구역 지도가 없습니다.');return;}
+    if(bodies.some(b=>!b.querySelector('img'))){toast('지도를 준비하는 중입니다. 잠시 뒤 다시 누르세요.');return;}
+    s12EditH196=true;document.getElementById('s12-viewer')?.classList.add('s12-edit-h196');
+    bodies.forEach(s12EditAttachH196);renderS12ModeRow();
+    toast('두 손가락으로 지도를 키우거나 줄이고, 끌어서 옮긴 뒤 [저장하기]를 누르세요.');
+  }else{s12EditH196=false;document.getElementById('s12-viewer')?.classList.remove('s12-edit-h196');renderS12Cards();}
+}
+function s12BodyItemH196(btn){const sc=btn&&btn.closest('.s12-scaler');const body=sc&&sc.querySelector('.s12-body[data-zone]');const it=body&&_s12Items[Number(body.dataset.zone)];return it&&it.zone?{body,it}:null;}
+function s12RedrawBodyH196(body,it){
+  const r=s12ZoneMap(it.zone);body._pan=null;body.classList.remove('s12-editing-h196');
+  const nb=body.cloneNode(false);nb.innerHTML='<img src="'+esc(r.src)+'" alt="">'+s12MapSvg(r);body.replaceWith(nb);
+  if(s12EditH196)setTimeout(()=>s12EditAttachH196(nb),50);
+}
+function s12SaveViewH196(btn){
+  const x=s12BodyItemH196(btn);if(!x)return;const {body,it}=x;const st=body._pan;
+  if(!st){toast('먼저 위의 [✏ 지도 수정하기]를 누르세요.');return;}
+  if(st.s===1&&st.tx===0&&st.ty===0){toast('바뀐 것이 없습니다.');return;}
+  const z=it.zone,r=s12ZoneMap(z);
+  const Wb=body.clientWidth,Hb=body.clientHeight,s0=Wb/r.vw;
+  const ix=((Wb/2-st.tx)/st.s)/s0,iy=((Hb/2-st.ty)/st.s)/s0;
+  const el=document.getElementById('s12-proj-map'),m=_s12ProjMap;
+  el.style.width=r.vw+'px';el.style.height=r.vh+'px';m.relayout();m.setLevel(r.lv);m.setCenter(new kakao.maps.LatLng(r.lat,r.lng));
+  const ll=m.getProjection().coordsFromContainerPoint(new kakao.maps.Point(ix,iy));
+  z.s12View={lat:+ll.getLat().toFixed(7),lng:+ll.getLng().toFixed(7),lv:r.lv,vw:Math.round(r.vw/st.s*10)/10,sig:s12PolySig(z)};
+  persistZones();s12RedrawBodyH196(body,it);toast('✅ 이 카드의 지도 위치를 저장했습니다.');
+}
+function s12ResetViewH196(btn){
+  const x=s12BodyItemH196(btn);if(!x)return;const {body,it}=x;
+  if(!it.zone.s12View){if(body._pan){s12RedrawBodyH196(body,it);}toast('처음 위치입니다.');return;}
+  if(!confirm('이 카드 지도를 처음(구역에 꼭 맞춘) 위치로 되돌릴까요?'))return;
+  delete it.zone.s12View;persistZones();s12RedrawBodyH196(body,it);toast('처음 위치로 되돌렸습니다.');
+}
+(function hookS12EditH196(){
+  const row0=renderS12ModeRow;
+  window.renderS12ModeRow=renderS12ModeRow=function(){row0.apply(this,arguments);const row=document.getElementById('s12-mode-row');
+    if(row&&s12Mode!=='list'&&_s12Items.some(it=>it.zone))row.insertAdjacentHTML('beforeend','<button class="btn btn-sm '+(s12EditH196?'btn-dk':'btn-p')+' s12-edit-btn-h196" onclick="toggleS12EditH196()">'+(s12EditH196?'✔ 수정 끝내기':'✏ 지도 수정하기')+'</button>');};
+  const cards0=renderS12Cards;
+  window.renderS12Cards=renderS12Cards=function(){s12EditH196=false;document.getElementById('s12-viewer')?.classList.remove('s12-edit-h196');return cards0.apply(this,arguments);};
+  const close0=closeS12Viewer;
+  window.closeS12Viewer=closeS12Viewer=function(){s12EditH196=false;document.getElementById('s12-viewer')?.classList.remove('s12-edit-h196');return close0.apply(this,arguments);};
+})();

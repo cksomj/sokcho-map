@@ -2206,3 +2206,15 @@ body.route-editing .admin-return-fab{top:calc(70px + env(safe-area-inset-top))!i
 #s12-zoom-h195 .s12-card{box-shadow:0 6px 24px rgba(0,0,0,.45);}
 .s12-zoom-close-h195{position:absolute;left:12px;top:max(10px,env(safe-area-inset-top));z-index:2;padding:9px 16px;border-radius:12px;border:none;background:#fff;color:#111827;font-size:15px;font-weight:900;box-shadow:0 2px 8px rgba(0,0,0,.35);}
 @media print{.s12-zoom-h195,#s12-zoom-h195{display:none!important;}}
+
+/* H196: S-12 카드 아래 버튼줄 + 지도 수정하기 */
+.s12-btns-h196{position:absolute;left:0;right:0;bottom:0;height:40px;display:flex;gap:6px;justify-content:center;align-items:center;}
+.s12-btns-h196 .s12-zoom-h195{position:static;}
+.s12-btns-h196 button{padding:8px 12px;border-radius:10px;font-size:13px;font-weight:900;cursor:pointer;}
+.s12-save-h196{border:1px solid #065f46;background:linear-gradient(180deg,#10b981,#047857);color:#fff;box-shadow:0 2px 6px rgba(4,120,87,.35);display:none;}
+.s12-reset-h196{border:1px solid #9ca3af;background:#fff;color:#374151;display:none;}
+#s12-viewer.s12-edit-h196 .s12-save-h196,#s12-viewer.s12-edit-h196 .s12-reset-h196{display:inline-block;}
+.s12-body.s12-editing-h196{touch-action:none;outline:3px solid #10b981;outline-offset:1px;cursor:grab;}
+.s12-pan-h196{position:absolute;inset:0;transform-origin:0 0;}
+.s12-pan-h196 img,.s12-pan-h196 svg{position:absolute;inset:0;width:100%;height:100%;display:block;}
+@media print{.s12-btns-h196{display:none!important;}}
