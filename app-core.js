@@ -5069,8 +5069,17 @@ function homeVisibleZones(){
 
 function fitHomeMapToVisible(){
   if(!homeMapInst)return;
-  const bounds=boundsForZoneSet(homeVisibleZones());
-  fitMapBounds(homeMapInst,bounds,{padding:[44,44],maxZoom:16});
+  // H187: 구역 경계선만으로 범위를 잡고 여백을 줄여, 전체 구역이 꼭 맞게 보이는 크기로
+  let bounds=null;
+  homeVisibleZones().forEach(z=>(z.polygon||[]).forEach(pt=>{bounds=extendBoundsWithPoint(bounds,pt);}));
+  if(!bounds||!bounds.isValid())return;
+  homeMapInst.invalidateSize();
+  let z=homeMapInst.getBoundsZoom(bounds,false,L.point(12,12));
+  // 화면이 좁은 폰에서 한 단계 멀어져 너무 작게 보이지 않게: 한 단계 가까이에서 가장자리 3% 이하만 잘리면 그 단계로
+  const ctr=bounds.getCenter();const pts=[];homeVisibleZones().forEach(zz=>(zz.polygon||[]).forEach(pt=>pts.push(pt)));
+  homeMapInst.setView(ctr,clampMapZoom(homeMapInst,Math.min(16,z+1)),{animate:false});
+  const vb=homeMapInst.getBounds();const outside=pts.filter(pt=>!vb.contains([+pt[0],+pt[1]])).length;
+  if(outside/Math.max(1,pts.length)>0.03)homeMapInst.setView(ctr,clampMapZoom(homeMapInst,Math.min(16,z)),{animate:false});
 }
 
 function renderHome(){
@@ -5526,6 +5535,7 @@ function toggleHomeWide(){
   const wide=page.classList.toggle('home-wide');
   const btn=document.getElementById('home-wide-btn');
   if(btn)btn.textContent=wide?'▣ 기본 보기':'⛶ 크게 보기';
+  const ab=document.getElementById('home-allview-btn-h187');if(ab){ab.textContent=wide?'기본보기':'전체보기';ab.classList.toggle('on',wide);} // H187
   const leaderBtn=document.getElementById('leader-zone-btn');
   if(leaderBtn)leaderBtn.classList.toggle('on',wide);
   setTimeout(()=>{if(homeMapInst){homeMapInst.invalidateSize();if(wide)fitHomeMapToVisible();else homeBasicViewH157();}},120);
