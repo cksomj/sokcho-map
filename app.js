@@ -1,3 +1,3 @@
 // QNS narrow restore loader — preserves the exact pre-restore app.js as app-core.js
-document.write('<script src="app-core.js?v=20261120-h183-done-yellow"><\/script>');
+document.write('<script src="app-core.js?v=20261120-h184-done-card"><\/script>');
 document.write('<script src="jw_search_restore.js?v=20260831-h93-full-registry-dump"><\/script>');

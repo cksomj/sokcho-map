@@ -2147,3 +2147,8 @@ body:has(#svc-fullscreen[style*="flex"]) #toast,body:has(#apt-svc-fullscreen[sty
 .zc-status.done{background:#FFF4CC!important;color:#9A6E00!important;font-weight:900!important;}
 .home-zone-action .done-lock-h183{color:#B88400;font-weight:900;font-size:1.35em;}
 :is(#home-zone-list,#home-com-list,#home-apt-card-list,#home-int-card-list) span.home-zone-action{color:#9A6E00!important;}
+/* H184: 완료 카드 = 아주 밝은 노랑 바탕, "완료" 글씨 = 노랑 글씨 + 빨강 테두리 */
+:is(#home-zone-list,#home-com-list,#home-apt-card-list,#home-int-card-list) .home-zone-row:has(.zc-status.done){background:#FFFBE0!important;}
+.home-zone-action .done-lock-h183,.zone-map-label .lbl-done-h173{color:#FFD500!important;-webkit-text-stroke:1.2px #D7141F;paint-order:stroke fill;font-weight:900!important;
+  text-shadow:-1px -1px 0 #D7141F,1px -1px 0 #D7141F,-1px 1px 0 #D7141F,1px 1px 0 #D7141F;}
+.home-zone-action .done-lock-h183{margin-right:3px;}
