@@ -7918,6 +7918,9 @@ tryAutoLogin();
   function fit(){
     try{
       const vv=window.visualViewport;
+      // H199: 글자 입력 중 자판이 올라와 보이는 높이가 크게 줄면(자판) 여백을 바꾸지 않는다 — 그리기 칸이 위로 밀려 사라지던 문제
+      const ae=document.activeElement;
+      if(vv&&ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.isContentEditable)&&(window.innerHeight-vv.height)>120)return;
       const visH=Math.round(vv?vv.height:window.innerHeight);
       const gap=vv?Math.max(0,Math.round(window.innerHeight-(vv.height+vv.offsetTop))):0;
       root.style.setProperty('--app-h',visH+'px');
@@ -7931,6 +7934,7 @@ tryAutoLogin();
   window.addEventListener('pageshow',settle);
   window.addEventListener('focus',settle);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')settle();});
+  document.addEventListener('focusout',()=>setTimeout(settle,50)); // H199: 자판이 내려가면 다시 맞춤
   if(window.visualViewport){visualViewport.addEventListener('resize',fit);visualViewport.addEventListener('scroll',fit);}
 })();
 
