@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>조양회중 구역관리 Ver.1</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"><!-- H150: 가독성 좋은 한글 글꼴 -->
-<link rel="stylesheet" href="styles.css?v=20261120-h196-s12edit">
+<link rel="stylesheet" href="styles.css?v=20261120-h197-admhome">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4b2b3621b70e928f0a40b7bb1aef8f20&libraries=services"></script>
 </head>
 <body>
@@ -398,6 +398,7 @@
             <button type="button" id="home-focus-clear" class="home-focus-clear hide" onclick="clearHomeFocusH156()">🗺 전체 구역 보기</button><!-- H156 -->
             <div style="position:absolute;top:8px;right:8px;z-index:500;display:flex;flex-direction:column;gap:7px;" id="home-map-ctrls">
               <button class="mbtn home-mobile-overlay-btn home-ctrl-toggle home-exit-h189" onclick="appExitH189()">↩ 앱 나가기</button><!-- H189: 홈+나가기 하나로 -->
+              <button class="mbtn home-mobile-overlay-btn adm-newzone-h197" onclick="admHomeNewZoneH197()">＋ 새 구역 그리기</button>
               <button class="mbtn" onclick="zoomHomeMap(1)">＋ 지도 확대</button>
               <button class="mbtn" onclick="zoomHomeMap(-1)">－ 지도 축소</button>
               <button class="mbtn" id="loc-btn-home" onclick="toggleLocateH168('home')">📍 내 위치</button>
@@ -614,7 +615,7 @@
                 <button class="btn btn-sm btn-out" id="adm-filter-standby" onclick="setAdminZoneFilter('standby',this)">대기</button>
                 <button class="btn btn-sm btn-out date-sort-chip" data-ds="adm" onclick="cycleDateSortH174('adm',this)">지난봉사</button>
                 <button class="btn btn-sm btn-dk" onclick="resetDoneZones()">전체 초기화</button>
-                <button class="btn btn-sm btn-out" onclick="goTab('map');setTimeout(()=>startDraw(),200)">그리기</button>
+                <button class="btn btn-sm btn-out" onclick="openAdminHomeH197('zone')">그리기</button>
               </div>
             </div>
             <!-- V2 H102: 주택 목록도 상가/아파트와 동일한 접기/펼치기 패턴(H35 재사용). 검색/필터/전체초기화/그리기 툴바는
@@ -1061,6 +1062,6 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="firebase_config.js?v=20260831-h74-anon-auth"></script>
-<script src="app.js?v=20261120-h196-s12edit"></script>
+<script src="app.js?v=20261120-h197-admhome"></script>
 </body>
 </html>

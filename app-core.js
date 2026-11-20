@@ -8774,3 +8774,74 @@ function s12ResetViewH196(btn){
   const close0=closeS12Viewer;
   window.closeS12Viewer=closeS12Viewer=function(){s12EditH196=false;document.getElementById('s12-viewer')?.classList.remove('s12-edit-h196');return close0.apply(this,arguments);};
 })();
+
+/* ===== H197: 관리자 구역수정·경로그리기 — 전도인 홈과 같은 지도+구역목록 화면에서 고른다 =====
+   줄마다 [카카오맵] 자리 → [✏ 구역그리기], [이어하기/봉사 시작] 자리 → [🧭 경로그리기/경로 수정]
+   지도에서 구역을 누르고 [카드보기]를 누르면 목록의 그 줄로 간다(전도인 화면과 같음) */
+function openAdminHomeH197(kind,zoneId){
+  if(S.role!=='admin')return;
+  S.admHomeH197={kind:kind||'route'};
+  document.documentElement.classList.add('adm-home-h197');
+  goTab('home');
+  admHomeLabelsH197(true);
+  setTimeout(()=>{admHomeFixRowsH197();
+    if(zoneId!=null){try{selectHomeZone(zoneId);}catch(e){}}
+    else toast(kind==='zone'?'고칠 구역의 [✏ 구역그리기]를 누르세요.':'구역의 [🧭 경로그리기]를 누르세요.');},300);
+}
+function admHomeLabelsH197(on){
+  document.querySelectorAll('.home-exit-h189').forEach(b=>{b.textContent=on?'↩ 관리자 페이지':'↩ 앱 나가기';});
+}
+function closeAdminHomeH197(){
+  S.admHomeH197=null;document.documentElement.classList.remove('adm-home-h197');admHomeLabelsH197(false);
+}
+function admHomeZoneDrawH197(id){S.admHomeH197&&(S.admHomeH197.zoneId=id);goAdminZoneDraw(id);}
+function admHomeRouteH197(id){
+  if(S.admHomeH197)S.admHomeH197.zoneId=id;
+  setAdminReturnH147();goTab('route');
+  setTimeout(()=>{try{openRd(id);}catch(e){console.error(e);return;}
+    setTimeout(()=>{try{const panel=document.getElementById('rd-side-panel');if(panel&&!panel.classList.contains('show-draw'))toggleMobileDraw();}catch(e){}},300);},250);
+}
+function admHomeFixRowsH197(){
+  if(!S.admHomeH197)return;
+  document.querySelectorAll('#p-home .home-zone-row:not([data-adm-h197])').forEach(row=>{
+    const kb=[...row.querySelectorAll('button')].find(b=>/openZoneKakaoStart\(/.test(b.getAttribute('onclick')||''));
+    if(!kb)return;
+    const m=(kb.getAttribute('onclick')||'').match(/openZoneKakaoStart\(\s*"?([^)"]+)"?\s*\)/);if(!m)return;
+    const id=Number(m[1]);if(!S.zones.some(z=>z.id===id))return;
+    row.setAttribute('data-adm-h197','1');
+    kb.textContent='✏ 구역그리기';kb.className='btn btn-sm home-zone-action adm-zone-btn-h197';
+    kb.setAttribute('onclick',`event.stopPropagation();admHomeZoneDrawH197(${id})`);
+    const has=(S.rteLines||[]).some(l=>l.zoneId===id);
+    const btn=document.createElement('button');btn.className='btn btn-sm home-zone-action adm-route-btn-h197';
+    btn.textContent=has?'🧭 경로 수정':'🧭 경로그리기';btn.setAttribute('onclick',`event.stopPropagation();admHomeRouteH197(${id})`);
+    const act=kb.nextElementSibling;if(act&&act.classList.contains('home-zone-action'))act.replaceWith(btn);else kb.after(btn);
+  });
+}
+(function hookAdminHomeH197(){
+  window.startAdminPickH149=startAdminPickH149=function(kind){openAdminHomeH197(kind);};
+  const gt=goTab;
+  window.goTab=goTab=function(name){
+    if(S.admHomeH197&&name!=='home'&&name!=='map'&&name!=='route')closeAdminHomeH197();
+    const r=gt.apply(this,arguments);
+    if(name==='home'&&S.admHomeH197){admHomeLabelsH197(true);setTimeout(admHomeFixRowsH197,0);}
+    return r;
+  };
+  const ex=appExitH189;
+  window.appExitH189=appExitH189=function(){if(S.admHomeH197){closeAdminHomeH197();goTab('admin');return;}return ex.apply(this,arguments);};
+  const ret=returnToAdminH147;
+  window.returnToAdminH147=returnToAdminH147=function(){
+    const h=S.admHomeH197;const r=ret.apply(this,arguments);
+    if(h&&document.getElementById('p-admin')?.classList.contains('on'))openAdminHomeH197(h.kind,h.zoneId);
+    return r;
+  };
+  const upd=updateAdminReturnFabH147;
+  window.updateAdminReturnFabH147=updateAdminReturnFabH147=function(){upd.apply(this,arguments);const b=document.getElementById('admin-return-fab');if(b)b.textContent=S.admHomeH197?'◀ 구역목록으로':'◀ 관리자 페이지로';};
+  const startObs=()=>{const home=document.getElementById('p-home');if(!home)return;new MutationObserver(()=>{if(S.admHomeH197)admHomeFixRowsH197();}).observe(home,{childList:true,subtree:true});};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',startObs);else startObs();
+})();
+/* H197b: 구역관리 [그리기] → 구역목록 화면. 원형 버튼의 구역수정·경로그리기는 뺌. 새 구역 그리기는 목록 화면 지도 버튼으로 */
+function admHomeNewZoneH197(){if(S.admHomeH197)S.admHomeH197.zoneId=null;goAdminZoneDraw(null);}
+(function trimAdmFabH197(){
+  for(let i=ADM_GROUPS_H148.length-1;i>=0;i--)if(ADM_GROUPS_H148[i].k==='pickzone'||ADM_GROUPS_H148[i].k==='pickroute')ADM_GROUPS_H148.splice(i,1);
+  try{renderAdmFabH148();}catch(e){}
+})();
