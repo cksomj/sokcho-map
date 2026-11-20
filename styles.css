@@ -2183,3 +2183,5 @@ body.route-editing .admin-return-fab{top:calc(70px + env(safe-area-inset-top))!i
 /* H189: S-12 집 점은 검정 */
 .parcel-h185 i{background:#111827!important;border-color:#fff!important;}
 #home-map-ctrls .home-exit-h189 .ui-ico,.mbtn.home-exit-h189 .ui-ico,.home-exit-h189 .ui-ico,.home-go-h189 .ui-ico{color:#fff!important;}
+/* H189b: 목록이 지도를 덮고 펼쳐진 동안 지도 버튼(앱 나가기·내 위치)이 목록 손잡이를 가리지 않게 숨김 */
+#home-body.home-list-tall #home-map-ctrls,#home-body.home-list-tall .home-focus-clear{display:none!important;}
