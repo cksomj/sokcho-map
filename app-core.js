@@ -4883,6 +4883,7 @@ function onRdMapClick(e){
   if(S.rteDraw){
     S.rtePts.push([e.latlng.lat,e.latlng.lng]);
     updateRteViz();
+    if(S.endPtH198){setEndPtModeH198(false);if(S.rtePts.length>=2){saveRteLine();toast('🏁 끝점을 찍고 경로를 저장했습니다.');}else toast('점이 2개 이상이어야 저장됩니다.');}
     return;
   }
   // 지도 탭 = 기존 "카카오맵" 버튼과 동일 동작 (H1)
@@ -8844,4 +8845,33 @@ function admHomeNewZoneH197(){if(S.admHomeH197)S.admHomeH197.zoneId=null;goAdmin
 (function trimAdmFabH197(){
   for(let i=ADM_GROUPS_H148.length-1;i>=0;i--)if(ADM_GROUPS_H148[i].k==='pickzone'||ADM_GROUPS_H148[i].k==='pickroute')ADM_GROUPS_H148.splice(i,1);
   try{renderAdmFabH148();}catch(e){}
+})();
+
+/* ===== H198: 경로그리기 화면 정리(폰) — 위쪽은 작게, 그리는 중엔 겹치는 버튼 숨김, 아래 버튼줄 작게 =====
+   [되돌리기][초기화][🏁 끝점 찍기][GPS 포인트][저장][닫기] · 시작점은 처음 찍은 점 */
+function setEndPtModeH198(on){
+  S.endPtH198=!!on;
+  const b=document.getElementById('rd-end-btn-h198');if(b)b.classList.toggle('on',S.endPtH198);
+}
+function toggleEndPtH198(){
+  if(!S.rteDraw){toast('먼저 그리기를 시작하세요.');return;}
+  if(!S.rtePts.length){toast('먼저 시작점(첫 점)을 찍으세요.');return;}
+  setEndPtModeH198(!S.endPtH198);
+  if(S.endPtH198)toast('🏁 마칠 곳을 지도에서 누르세요. 누르면 바로 저장됩니다.');
+}
+function clearRtePtsH198(){
+  if(!S.rtePts||!S.rtePts.length){toast('지울 점이 없습니다.');return;}
+  if(!confirm('찍은 점 '+S.rtePts.length+'개를 모두 지울까요?'))return;
+  S.rtePts=[];setEndPtModeH198(false);updateRteViz();toast('점을 모두 지웠습니다. 첫 점이 시작점입니다.');
+}
+(function hookRdH198(){
+  const setOpen=on=>document.documentElement.classList.toggle('rd-open-h198',!!on);
+  const o=openRd;window.openRd=openRd=function(){const r=o.apply(this,arguments);setOpen(true);return r;};
+  const bl=backList;window.backList=backList=function(){
+    const h=S.admHomeH197;setOpen(false);setEndPtModeH198(false);
+    const r=bl.apply(this,arguments);
+    if(h&&S.role==='admin'){S.adminReturnH147=null;try{updateAdminReturnFabH147();}catch(e){}openAdminHomeH197(h.kind,h.zoneId);}
+    return r;};
+  const st=stopRteDraw;window.stopRteDraw=stopRteDraw=function(){setEndPtModeH198(false);return st.apply(this,arguments);};
+  const gt=goTab;window.goTab=goTab=function(name){if(name!=='route')setOpen(false);return gt.apply(this,arguments);};
 })();

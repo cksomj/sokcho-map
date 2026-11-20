@@ -2229,3 +2229,42 @@ html.adm-home-h197 .menu-toggle-btn{bottom:calc(84px + env(safe-area-inset-botto
 html.adm-home-h197 #adm-fab-stack{bottom:calc(146px + env(safe-area-inset-bottom))!important;}
 .adm-newzone-h197{display:none!important;}
 html.adm-home-h197 .adm-newzone-h197{display:inline-flex!important;background:#fff!important;color:#0B4A8F!important;border:1.5px solid #0B4A8F!important;font-weight:900!important;}
+
+/* H198: 경로그리기 화면 정리(폰) */
+@media (max-width:900px){
+  html.rd-open-h198 #p-route>.ph{display:none!important;}
+  html.rd-open-h198 #rd-view .back-row{margin:0 0 4px!important;gap:6px;}
+  html.rd-open-h198 #rd-view .back-btn{width:30px!important;height:30px!important;font-size:14px!important;}
+  html.rd-open-h198 #rd-title{font-size:14px!important;}
+  html.rd-open-h198 #rd-view .seg{margin-bottom:4px!important;padding:2px!important;}
+  html.rd-open-h198 #rd-view .seg-b{padding:5px 6px!important;font-size:13px!important;min-height:0!important;line-height:1.2;}
+  html.rd-open-h198 #rd-view .seg-b small,html.rd-open-h198 #rd-view .seg-b .seg-sub{display:none!important;}
+  html.rd-open-h198 .rd-overlay .rd-btn{font-size:11px!important;padding:5px 8px!important;min-height:0!important;}
+  html.rd-open-h198 #rte-draw-bar{padding:8px!important;}
+  html.rd-open-h198 #rte-draw-bar .draw-panel-title{font-size:12px!important;}
+  html.rd-open-h198 .auto-route-btn-h194{padding:7px 8px!important;font-size:12.5px!important;margin-bottom:6px!important;border-radius:10px!important;}
+  html.rd-open-h198 #rte-name{padding:6px 10px!important;font-size:13px!important;margin-bottom:6px!important;min-height:0!important;}
+  html.rd-open-h198 #rte-draw-bar .color-row{display:flex!important;align-items:center;gap:8px;padding:4px 8px!important;margin-bottom:6px!important;}
+  html.rd-open-h198 #rte-draw-bar .color-row-title{font-size:11px!important;margin:0!important;white-space:nowrap;}
+  html.rd-open-h198 #rte-draw-bar .cdot{width:20px!important;height:20px!important;}
+  html.rd-open-h198 #rte-draw-bar>div[style*="color:var(--warn)"]{display:none!important;}
+  html.rd-open-h198 #rte-draw-bar .draw-panel-btns{margin-top:4px!important;gap:5px!important;}
+  html.rd-open-h198 #rte-draw-bar .draw-panel-btns .btn{padding:6px 4px!important;font-size:12.5px!important;min-height:34px!important;flex:1 1 60px!important;}
+  html.rd-open-h198 .admin-return-fab{display:none!important;}
+}
+/* 그리는 중: 위 왼쪽의 카카오맵·시작핀 설정·핀 삭제·경로그리기·전체지도 숨김(이미 그리는 중), 구역목록으로 숨김 */
+body.route-editing .rd-overlay .rd-btn[onclick^="openZoneKakaoStart"],
+body.route-editing .rd-overlay .admin-pin-action,
+body.route-editing #rd-draw-toggle-btn,
+body.route-editing .admin-return-fab{display:none!important;}
+body.route-editing .zone-start-pin{display:none!important;}
+/* 아래 버튼줄 작게: 6칸, 아이콘 + 작은 글씨 */
+body.route-editing .rd-edit-tools{padding:5px 6px!important;border-radius:10px!important;}
+body.route-editing .rd-edit-tools-head{margin-bottom:4px!important;font-size:11px!important;}
+.rd-edit-tools-actions{grid-template-columns:repeat(6,1fr)!important;gap:4px!important;}
+body.route-editing .rd-edit-tools .btn.rdt-h198{min-height:44px!important;padding:2px 1px!important;flex-direction:column;gap:0!important;font-size:13px!important;line-height:1.1;}
+.rdt-h198 b{font-size:15px;font-weight:900;line-height:1.1;}
+.rdt-h198 small{font-size:10px;font-weight:800;line-height:1.1;margin-top:2px;white-space:nowrap;}
+.rd-end-h198{background:#fff7ed!important;color:#9a3412!important;border:1.5px solid #ea580c!important;}
+.rd-end-h198.on{background:#ea580c!important;color:#fff!important;box-shadow:0 0 0 3px rgba(234,88,12,.3)!important;}
+.rdt-h198 b.rdt-gps-h198{font-size:12.5px;white-space:nowrap;}
