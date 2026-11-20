@@ -2323,3 +2323,6 @@ html.adm-viewer-h204 #s12-viewer,html.adm-viewer-h204 #s13-viewer{right:0!import
 /* H206b: S-12 [확대해 보기]·[저장하기] 아이콘 흰색 */
 .s12-zoom-h195 .ui-ico-wrap,.s12-zoom-h195 svg,.s12-save-h196 .ui-ico-wrap,.s12-save-h196 svg{color:#fff!important;stroke:#fff!important;}
 .s12-zoom-h195 svg *,.s12-save-h196 svg *{stroke:#fff!important;}
+/* H207: 확대해 보기 안에서 두 손가락 확대 */
+.s12-zoom-stage-h207{position:absolute;inset:0;transform-origin:0 0;touch-action:none;}
+#s12-zoom-h195{touch-action:none;}

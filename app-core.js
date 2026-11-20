@@ -9082,3 +9082,27 @@ function s12CurveH206(){const P=[[0,0],[186,80],[211,120],[227,160],[241,215],[2
     document.body.appendChild(d);};
   if(document.body)add();else document.addEventListener('DOMContentLoaded',add);
 })();
+/* ===== H207: S-12 [확대해 보기]에서도 두 손가락으로 키우기·줄이기·옮기기(두 번 톡 치면 원래대로) ===== */
+(function hookZoomPinchH207(){
+  const z0=s12ZoomH195;
+  window.s12ZoomH195=s12ZoomH195=function(){
+    const r=z0.apply(this,arguments);
+    const ov=document.getElementById('s12-zoom-h195');if(!ov)return r;
+    const card=ov.querySelector('.s12-card');if(!card)return r;
+    const stage=document.createElement('div');stage.className='s12-zoom-stage-h207';card.replaceWith(stage);stage.appendChild(card);
+    const st={s:1,tx:0,ty:0};const pts=new Map();let last=null,lastTap=0;
+    const apply=()=>{stage.style.transform='translate('+st.tx+'px,'+st.ty+'px) scale('+st.s+')';};
+    const snap=()=>{const a=[...pts.values()];if(a.length>=2)return {x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2,d:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)};return a.length?{x:a[0].x,y:a[0].y,d:0}:null;};
+    const move=(cx,cy,lx,ly,f)=>{const ns=Math.max(1,Math.min(6,st.s*f));f=ns/st.s;st.tx=cx-(lx-st.tx)*f;st.ty=cy-(ly-st.ty)*f;st.s=ns;if(st.s===1){st.tx=0;st.ty=0;}apply();};
+    stage.addEventListener('pointerdown',e=>{try{stage.setPointerCapture(e.pointerId);}catch(_){}pts.set(e.pointerId,{x:e.clientX,y:e.clientY});last=snap();
+      if(pts.size===1){const t=Date.now();if(t-lastTap<300){st.s=1;st.tx=0;st.ty=0;apply();}lastTap=t;}e.preventDefault();});
+    stage.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,{x:e.clientX,y:e.clientY});const cur=snap();if(!last||!cur)return;
+      if(cur.d&&last.d)move(cur.x,cur.y,last.x,last.y,cur.d/last.d);else if(st.s>1){st.tx+=cur.x-last.x;st.ty+=cur.y-last.y;apply();}
+      last=cur;e.preventDefault();});
+    const up=e=>{pts.delete(e.pointerId);last=snap();};
+    stage.addEventListener('pointerup',up);stage.addEventListener('pointercancel',up);
+    stage.addEventListener('wheel',e=>{e.preventDefault();move(e.clientX,e.clientY,e.clientX,e.clientY,e.deltaY<0?1.15:1/1.15);},{passive:false});
+    ov.__resetH207=()=>{st.s=1;st.tx=0;st.ty=0;apply();};
+    return r;};
+  const lay=s12ZoomLayoutH195;window.s12ZoomLayoutH195=s12ZoomLayoutH195=function(){const ov=document.getElementById('s12-zoom-h195');if(ov&&ov.__resetH207)ov.__resetH207();return lay.apply(this,arguments);};
+})();
