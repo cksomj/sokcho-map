@@ -8452,9 +8452,21 @@ async function refreshParcelOverlayH185(map){
   const key=used.join(',')+'|'+map.getZoom()+'|'+pts.length;
   if(key===st.key)return;
   clearParcelOverlayH185(id);st.key=key;
+  // H192: 번호 글자끼리 겹치면 뒤에 오는 글자는 숨김(점은 모두 표시)
+  let proj=null;try{proj=k.getProjection();}catch(e){}
+  const boxes=[];
+  if(proj&&showLabel)pts.forEach(p=>{const q=proj.containerPointFromCoords(new kakao.maps.LatLng(p[0],p[1]));boxes.push({x:q.x-6,y:q.y-6,w:12,h:12,dot:true,lat:p[0],lng:p[1]});}); // 점 자리도 피함
+  const freeLabel=(p,txt)=>{
+    if(!proj)return true;
+    const q=proj.containerPointFromCoords(new kakao.maps.LatLng(p[0],p[1]));
+    const w=txt.length*6.6+10,h=15,x=q.x+5,y=q.y-8;
+    for(const bx of boxes){if(bx.dot&&bx.lat===p[0]&&bx.lng===p[1])continue;if(x<bx.x+bx.w+2&&x+w+2>bx.x&&y<bx.y+bx.h&&y+h>bx.y)return false;}
+    boxes.push({x,y,w,h});return true;
+  };
   pts.forEach(p=>{
     const el=document.createElement('div');el.className='parcel-h185';
-    el.innerHTML=showLabel?`<i></i><span>${esc(s12LabelH191(p[2]))}</span>`:'<i></i>';
+    const txt=s12LabelH191(p[2]);
+    el.innerHTML=showLabel&&freeLabel(p,txt)?`<i></i><span>${esc(txt)}</span>`:'<i></i>';
     const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(p[0],p[1]),content:el,xAnchor:0.5,yAnchor:0.5,zIndex:3});
     ov.setMap(k);st.ovs.push(ov);
   });
