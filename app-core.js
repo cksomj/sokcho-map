@@ -4003,7 +4003,7 @@ function drawAllZones(activeId){
       const sc=zoneStrokeColor(z,isActive);
       const fillC=zoneFillColor(z,isActive);
       item.active=isActive;
-      item.polygon.setOptions({strokeWeight:zoneStrokeWeightH133(kakaoMap,isActive),strokeColor:sc,strokeOpacity:dimmed?.35:1,fillColor:fillC,fillOpacity:0});
+      item.polygon.setOptions({strokeWeight:zoneStrokeWeightH133(kakaoMap,isActive),strokeColor:sc,strokeOpacity:dimmed?.35:1,fillColor:zoneAreaFillH188(kakaoMap)?sc:fillC,fillOpacity:zoneAreaFillH188(kakaoMap)*(dimmed?.35:1)}); // H188
       item.polygon.setMap(show?kakaoMap:null);
     });
     bindStrokeZoomH133(kakaoMap,mainKakaoPolygons);
@@ -5134,7 +5134,7 @@ function drawHomeZones(activeId){
       const fillColor=zoneFillColor(z,isActive);
       item.active=isActive;
       const focusHide=activeId!=null&&!isActive; // H156: 고른 구역 외 경계 숨김
-      item.polygon.setOptions({strokeWeight:zoneStrokeWeightH133(kakaoMap,isActive),strokeColor:sc,strokeOpacity:dimmed?.35:1,fillColor,fillOpacity:0});
+      item.polygon.setOptions({strokeWeight:zoneStrokeWeightH133(kakaoMap,isActive),strokeColor:sc,strokeOpacity:dimmed?.35:1,fillColor:zoneAreaFillH188(kakaoMap)?sc:fillColor,fillOpacity:zoneAreaFillH188(kakaoMap)*(dimmed?.35:1)}); // H188
       item.polygon.setMap(show&&!focusHide?kakaoMap:null);
     });
     bindStrokeZoomH133(kakaoMap,homeKakaoPolygons);
@@ -7252,6 +7252,7 @@ function toggleMonitorSim(){
   refreshMonitor();
 }
 function drawMonitorZones(){
+  if(S.monMap&&S.monMap._zonesDrawn){refreshMonitorFillH188();return;}
   if(!S.monMap||S.monMap._zonesDrawn)return;
   const kakaoMap=_kakaoInstances['monitor-map'];
   if(!kakaoMap||!window.kakao?.maps?.Polygon)return;
@@ -7259,6 +7260,7 @@ function drawMonitorZones(){
   S.zones.forEach(z=>{
     const path=(z.polygon||[]).map(pt=>new kakao.maps.LatLng(Number(pt[0]),Number(pt[1])));
     const polygon=new kakao.maps.Polygon({path,strokeWeight:3.2,strokeColor:zoneStrokeColor(z,false),strokeOpacity:.98,fillColor:zoneFillColor(z,false),fillOpacity:0}); // V2 H77: 실시간현황 전체보기 — 선택 개념이 없어 항상 통일색
+    (S.monMap._polysH188=S.monMap._polysH188||[]).push({polygon,z}); // H188
     polygon.setMap(kakaoMap);
   });
 }
@@ -8455,4 +8457,20 @@ async function refreshParcelOverlayH185(map){
 (function wrapFocusH185(){
   const r=window.redrawHomeFocusH156;
   if(typeof r==='function')window.redrawHomeFocusH156=function(){const out=r.apply(this,arguments);try{if(homeMapInst)refreshParcelOverlayH185(homeMapInst);}catch(e){}return out;};
+})();
+
+// ================================================================
+// H188: 전체 구역이 다 보일 만큼 축소했을 때(카카오 8단계=전체보기)와 한 단계 확대(7단계)까지는
+// 경계선만이 아니라 구역 전체를 상태 색(완료 노랑·미완료 주황빨강·봉사대기 진한 파랑·비활성 빨강)으로 칠해
+// 범위가 한눈에 보이게 한다. 더 확대하면 지금처럼 경계선만.
+// ================================================================
+function zoneAreaFillH188(kmap){try{return kmap&&kmap.getLevel()>=7?0.45:0;}catch(e){return 0;}}
+function refreshMonitorFillH188(){
+  const k=_kakaoInstances['monitor-map'];if(!S.monMap||!k||!S.monMap._polysH188)return;
+  const op=zoneAreaFillH188(k);
+  S.monMap._polysH188.forEach(({polygon,z})=>{const c=zoneStrokeColor(z,false);polygon.setOptions({strokeColor:c,fillColor:c,fillOpacity:op});});
+}
+(function hookMonitorFillH188(){
+  if(!window.L||!L.Map||!L.Map.addInitHook)return;
+  L.Map.addInitHook(function(){const id=this.getContainer&&this.getContainer().id;if(id!=='monitor-map')return;this.on('zoomend',()=>setTimeout(refreshMonitorFillH188,120));});
 })();
