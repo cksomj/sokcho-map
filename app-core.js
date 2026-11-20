@@ -9058,3 +9058,27 @@ function rdCollapsePanelH205(){
   const sv=saveRteLine;window.saveRteLine=saveRteLine=function(){const r=sv.apply(this,arguments);setTimeout(rdCollapsePanelH205,50);return r;};
   const sa=saveAutoDraftH194;window.saveAutoDraftH194=saveAutoDraftH194=function(){const n0=(S.rteLines||[]).length;const r=sa.apply(this,arguments);if(!_autoDraftH194)setTimeout(rdCollapsePanelH205,50);return r;};
 })();
+/* ===== H206: S-12 카드 지도 — 파란 점·번호를 빼고(바탕지도에 건물번호가 있음), 경계 밖은 흐리게 덮어 경계 안 골목·집·번호가 또렷하게 ===== */
+window.s12MapSvg=s12MapSvg=function(r){
+  const u=r.vw/(r.mmW||134),sw=0.55*u;
+  const pts=String(r.poly||'').trim();
+  const hole=pts?'M'+pts.split(/\s+/).join(' L')+' Z':'';
+  return `<svg viewBox="0 0 ${r.vw} ${r.vh}" preserveAspectRatio="none">`+
+    (hole?`<path d="M0 0 H${r.vw} V${r.vh} H0 Z ${hole}" fill="#ffffff" fill-opacity="0.62" fill-rule="evenodd"/>`:'')+
+    `<polygon points="${r.poly}" fill="none" stroke="#dc2626" stroke-width="${sw.toFixed(1)}" stroke-linejoin="round"/></svg>`;
+};
+/* 원형 버튼: 구역카드·배정기록 창은 폭 전체로, 원형 버튼은 접힌 채(⚙만) 위에 떠 있게 */
+window.syncAdmViewerH204=syncAdmViewerH204=function(){
+  const on=['s12-viewer','s13-viewer'].some(id=>document.getElementById(id)?.classList.contains('on'));
+  document.documentElement.classList.toggle('adm-viewer-h204',on&&S.role==='admin');
+  if(on&&S.role==='admin'){try{setAdmFabOpenH148(false);}catch(e){}}
+};
+/* H206: 바탕(249)은 흰색, 집·골목 회색(186~241)은 단계적으로 진하게 — 카카오 바탕지도 색을 재서 맞춘 곡선 */
+function s12CurveH206(){const P=[[0,0],[186,80],[211,120],[227,160],[241,215],[247,250],[249,255],[255,255]];const v=[];for(let x=0;x<256;x++){let i=0;while(i<P.length-2&&x>P[i+1][0])i++;const [x0,y0]=P[i],[x1,y1]=P[i+1];v.push(((y0+(y1-y0)*(x-x0)/(x1-x0))/255).toFixed(3));}const t=v.join(" ");return ["R","G","B"].map(c=>"<feFunc"+c+" type=\"table\" tableValues=\""+t+"\"/>").join("");}
+/* H206: 연한 회색(집·골목)을 진하게 — 밝은 쪽 차이를 키우는 감마 보정(흰 바탕·진한 글씨는 그대로) */
+(function addS12GammaH206(){
+  const add=()=>{if(document.getElementById('s12-gamma-h206'))return;const d=document.createElement('div');d.style.cssText='position:absolute;width:0;height:0;overflow:hidden';
+    d.innerHTML='<svg width="0" height="0"><filter id="s12-gamma-h206" color-interpolation-filters="sRGB"><feComponentTransfer>'+s12CurveH206()+'</feComponentTransfer></filter></svg>';
+    document.body.appendChild(d);};
+  if(document.body)add();else document.addEventListener('DOMContentLoaded',add);
+})();

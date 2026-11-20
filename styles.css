@@ -2317,3 +2317,6 @@ html.adm-viewer-h204 #s13-viewer{right:84px!important;}
 @media (max-width:900px){
   #rd-side-panel.show-draw:not(.kbd-h199){top:auto!important;bottom:8px!important;}
 }
+/* H206: S-12 카드 창은 폭 전체(원형 버튼은 접힌 채 위에) · 지도 그림 대비를 높여 골목·집 모양·건물번호를 진하게 */
+html.adm-viewer-h204 #s12-viewer,html.adm-viewer-h204 #s13-viewer{right:0!important;}
+.s12-body img{filter:url(#s12-gamma-h206);}
