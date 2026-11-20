@@ -2193,3 +2193,10 @@ body.route-editing .admin-return-fab{top:calc(70px + env(safe-area-inset-top))!i
 .parcel-h185 span.pl-sm{font-size:8.5px!important;padding:0 3px!important;line-height:12px;}
 .parcel-h185 span.pl-sm.pl-r,.parcel-h185 span.pl-sm.pl-l{top:-6px!important;}
 .parcel-h185 span.pl-sm.pl-u{top:-19px!important;}
+/* H194: 자동 경로 */
+.auto-route-btn-h194{width:100%;margin:0 0 8px;padding:11px 10px;font-size:14px;font-weight:900;background:linear-gradient(180deg,#1e5bb8,#0B4A8F)!important;color:#fff!important;border:1px solid #083a72;border-radius:12px;box-shadow:0 2px 6px rgba(11,74,143,.35);}
+#auto-bar-h194{position:absolute;left:8px;right:8px;top:8px;z-index:1200;background:#fff;border:2px solid #0B4A8F;border-radius:14px;padding:8px 10px;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+.auto-bar-txt-h194{font-size:12.5px;color:#191F28;line-height:1.45;margin-bottom:6px;}
+.auto-bar-btns-h194{display:flex;gap:6px;}
+.auto-bar-btns-h194 .btn{flex:1;padding:9px 6px;font-weight:900;}
+.auto-meet-h194{background:#7F3FBF!important;}

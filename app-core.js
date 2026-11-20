@@ -8523,3 +8523,157 @@ function syncHomeExitTabsH189(name){
   if(te){te.classList.toggle('hide',!onHome);}
   if(tl)tl.textContent='앱 나가기';
 }
+
+/* ===== H194: 자동 경로 만들기 — 도로·골목(브이월드 도로중심선)을 따라 S-12 집 점을 잇는다 =====
+   - 시작: 시작핀이 있으면 그곳, 없으면 집들 중 한쪽 끝
+   - 셋길(가지 골목)은 짧은 것부터 들어갔다 나오고, 진행 방향(반대쪽 끝)으로 가는 길은 맨 나중에
+   - 4인2조: 양 끝에서 출발해 가운데(걷는 거리가 비슷해지는 곳)에서 만남
+   - 관리자가 [저장]하기 전에는 실제 경로를 바꾸지 않는다 */
+const _s12RoadsH194={};
+async function s12LoadRoadsH194(zoneId){
+  const k=String(zoneId);
+  if(_s12RoadsH194[k])return _s12RoadsH194[k];
+  let lines=[];
+  try{
+    const d=await db.collection('app_data').doc('s12r_'+k).get();
+    const v=d.exists?d.data():null;
+    if(v&&v.roads)lines=String(v.roads).split('|').filter(Boolean).map(l=>l.split(';').map(t=>t.split(',').map(Number)).filter(p=>Number.isFinite(p[0])&&Number.isFinite(p[1])));
+  }catch(e){console.warn('[H194] 도로 자료 불러오기 실패',e);}
+  _s12RoadsH194[k]=lines;return lines;
+}
+function autoRouteBuildH194(z,houses,roads,opt){
+  opt=opt||{};
+  const lat0=Number(z.polygon[0][0]),lng0=Number(z.polygon[0][1]);
+  const kx=111320*Math.cos(lat0*Math.PI/180),ky=110540;
+  const toXY=(la,ln)=>[(ln-lng0)*kx,(la-lat0)*ky];
+  const toLL=(x,y)=>[lat0+y/ky,lng0+x/kx];
+  const N=[],adj=[],key=new Map();
+  const node=(x,y)=>{const k=Math.round(x/1.5)+','+Math.round(y/1.5);let i=key.get(k);if(i==null){i=N.length;N.push([x,y]);adj.push([]);key.set(k,i);}return i;};
+  const link=(a,b,w)=>{if(a===b)return;w=w==null?Math.hypot(N[a][0]-N[b][0],N[a][1]-N[b][1]):w;adj[a].push([b,w]);adj[b].push([a,w]);};
+  // 구역 안 또는 경계에서 20m 안의 도로만 쓴다(구역 밖으로 돌아가지 않게)
+  const PG=z.polygon.map(p=>toXY(Number(p[0]),Number(p[1])));
+  const near=(x,y)=>{let c=false,md=Infinity;for(let i=0,j=PG.length-1;i<PG.length;j=i++){const [xi,yi]=PG[i],[xj,yj]=PG[j];
+    if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))c=!c;
+    const dx=xj-xi,dy=yj-yi,L2=dx*dx+dy*dy;let t=L2?((x-xi)*dx+(y-yi)*dy)/L2:0;t=Math.max(0,Math.min(1,t));md=Math.min(md,Math.hypot(x-xi-t*dx,y-yi-t*dy));}
+    return c||md<=20;};
+  const nearC=new Map();const isNear=i=>{if(!nearC.has(i))nearC.set(i,near(N[i][0],N[i][1]));return nearC.get(i);};
+  // 도로선을 8m 이하 간격으로 잘게 나눠 그래프로
+  roads.forEach(line=>{let prev=null;for(let i=0;i<line.length;i++){const [x,y]=toXY(line[i][0],line[i][1]);
+    if(prev!=null){const [px,py]=N[prev];const d=Math.hypot(x-px,y-py),n=Math.max(1,Math.ceil(d/8));let last=prev;
+      for(let s=1;s<=n;s++){const c=node(px+(x-px)*s/n,py+(y-py)*s/n);if(isNear(last)&&isNear(c))link(last,c);last=c;}prev=last;}
+    else prev=node(x,y);}});
+  const roadIdx=[];for(let i=0;i<N.length;i++)if(adj[i].length)roadIdx.push(i);
+  const roadCount=roadIdx.length;
+  const nearestRoad=(x,y)=>{let b=-1,bd=Infinity;for(const i of roadIdx){const d=(N[i][0]-x)**2+(N[i][1]-y)**2;if(d<bd){bd=d;b=i;}}return [b,Math.sqrt(bd)];};
+  const spikeRoad=new Map();
+  // 집 → 가까운 도로 지점(25m 넘게 떨어진 집은 집까지 들어갔다 나오는 짧은 길을 붙임)
+  const req=[];const houseOf=new Map();
+  houses.forEach((h,hi)=>{const [x,y]=toXY(h[0],h[1]);let r;
+    if(!roadCount){r=node(x,y);}else{const [b,d]=nearestRoad(x,y);if(d>25){r=node(x,y);link(r,b,d);spikeRoad.set(r,b);}else r=b;}
+    req.push(r);if(!houseOf.has(r))houseOf.set(r,[]);houseOf.get(r).push(hi);});
+  const reqSet=[...new Set(req)];
+  function dijkstra(src){const n=N.length,dist=new Float64Array(n).fill(Infinity),par=new Int32Array(n).fill(-1);dist[src]=0;
+    const h=[[0,src]];const push=e=>{h.push(e);let i=h.length-1;while(i>0){const p=(i-1)>>1;if(h[p][0]<=h[i][0])break;[h[p],h[i]]=[h[i],h[p]];i=p;}};
+    const pop=()=>{const t=h[0],l=h.pop();if(h.length){h[0]=l;let i=0;for(;;){const a=2*i+1,b=a+1;let m=i;if(a<h.length&&h[a][0]<h[m][0])m=a;if(b<h.length&&h[b][0]<h[m][0])m=b;if(m===i)break;[h[m],h[i]]=[h[i],h[m]];i=m;}}return t;};
+    while(h.length){const [d,u]=pop();if(d>dist[u])continue;for(const [v,w] of adj[u]){const nd=d+w;if(nd<dist[v]){dist[v]=nd;par[v]=u;push([nd,v]);}}}
+    return {dist,par};}
+  // 끊어진 도로 조각은 가장 가까운 곳끼리 이어 줌(곧은 선)
+  for(let guard=0;guard<60;guard++){
+    const {dist}=dijkstra(reqSet[0]);const miss=reqSet.find(r=>!Number.isFinite(dist[r]));if(miss==null)break;
+    const comp=[];const seen=new Set([miss]);const st=[miss];while(st.length){const u=st.pop();comp.push(u);for(const [v] of adj[u])if(!seen.has(v)){seen.add(v);st.push(v);}}
+    let best=null;for(const u of comp)for(let v=0;v<N.length;v++){if(!Number.isFinite(dist[v]))continue;const d=Math.hypot(N[u][0]-N[v][0],N[u][1]-N[v][1]);if(!best||d<best[2])best=[u,v,d];}
+    if(!best)break;link(best[0],best[1],best[2]*1.3);
+  }
+  // 양 끝 고르기: 서로 가장 멀리 떨어진 두 끝 집. 출발은 그 집 앞 도로 위에서
+  const DC=new Map();const dj=src=>{if(!DC.has(src))DC.set(src,dijkstra(src));return DC.get(src);};
+  let ha,hb;
+  if(opt.start){const [sx,sy]=toXY(opt.start[0],opt.start[1]);ha=roadCount?nearestRoad(sx,sy)[0]:reqSet[0];}
+  else{const d0=dj(reqSet[0]).dist;ha=reqSet.reduce((m,r)=>d0[r]>d0[m]?r:m,reqSet[0]);}
+  {const da=dj(ha).dist;hb=reqSet.reduce((m,r)=>da[r]>da[m]?r:m,reqSet[0]);}
+  if(opt.reverse&&!opt.start){const t=ha;ha=hb;hb=t;}
+  const rootA=spikeRoad.has(ha)?spikeRoad.get(ha):ha,rootB=spikeRoad.has(hb)?spikeRoad.get(hb):hb;
+  // 나무(시작점에서 각 집까지 가장 짧은 길의 합)를 따라 걷는 순서 만들기
+  // 갈림길에서는 짧은 셋길부터 들어갔다 나오고, 끝(end) 쪽으로 가는 길은 맨 나중에
+  function tour(root,targets,end){
+    const {dist,par}=dj(root);const inT=new Set([root]);const kids=new Map();
+    const add=r=>{let u=r;while(u!==root&&u>=0&&!inT.has(u)){inT.add(u);const p=par[u];if(p<0)break;if(!kids.has(p))kids.set(p,[]);kids.get(p).push(u);u=p;}};
+    targets.forEach(add);if(end!=null)add(end);
+    const sub=new Map(),hasEnd=new Map();
+    (function post(u){let s=0,e=u===end;for(const c of kids.get(u)||[]){post(c);s+=sub.get(c)+(dist[c]-dist[u]);if(hasEnd.get(c))e=true;}sub.set(u,s);hasEnd.set(u,e);})(root);
+    const path=[];let len=0;const order=[],reqOrder=[];const seenH=new Set();const want=new Set(targets);
+    const go=(u,main)=>{path.push(u);if(want.has(u)&&!seenH.has(u)){seenH.add(u);reqOrder.push(u);if(houseOf.has(u))order.push(...houseOf.get(u));}
+      const ch=(kids.get(u)||[]).slice().sort((p,q)=>{const pe=main&&hasEnd.get(p)?1:0,qe=main&&hasEnd.get(q)?1:0;return pe-qe||sub.get(p)-sub.get(q);});
+      ch.forEach(c=>{const m=main&&hasEnd.get(c);go(c,m);if(!m)path.push(u);});};
+    go(root,true);
+    for(let i=1;i<path.length;i++)len+=Math.hypot(N[path[i]][0]-N[path[i-1]][0],N[path[i]][1]-N[path[i-1]][1]);
+    return {path,len,order,reqOrder};
+  }
+  const simplify=(path)=>{// 1.5m보다 덜 휘는 점은 뺌
+    const P=path.map(i=>N[i]);const keep=new Uint8Array(P.length);keep[0]=keep[P.length-1]=1;const st=[[0,P.length-1]];
+    while(st.length){const [s,e]=st.pop();let md=0,mi=-1;const [x1,y1]=P[s],[x2,y2]=P[e];const L=Math.hypot(x2-x1,y2-y1);
+      for(let i=s+1;i<e;i++){const d=L<1e-6?Math.hypot(P[i][0]-x1,P[i][1]-y1):Math.abs((x2-x1)*(y1-P[i][1])-(x1-P[i][0])*(y2-y1))/L;if(d>md){md=d;mi=i;}}
+      if(md>1.5){keep[mi]=1;st.push([s,mi],[mi,e]);}}
+    return P.filter((_,i)=>keep[i]).map(p=>{const ll=toLL(p[0],p[1]);return [+ll[0].toFixed(6),+ll[1].toFixed(6)];});};
+  const out=t=>{const p=simplify(t.path);if(p.length<2)p.push(p[0].slice());return {pts:p,len:t.len,houses:t.order.length};};
+  const full=tour(rootA,reqSet,hb);
+  if(opt.mode!=='4'||full.reqOrder.length<2)return {mode:opt.mode==='4'?'4':'2',lines:[out(full)],houses:houses.length};
+  // 4인2조: 2인1조 순서를 앞(1조, 한쪽 끝에서)과 뒤(2조, 반대쪽 끝에서)로 나눠 두 조 거리가 가장 비슷한 곳에서 만남
+  const R=full.reqOrder,n=R.length;let best=null;
+  const tryK=k=>{const t1=R.slice(0,k),t2=R.slice(k);const r1=tour(rootA,t1,t1[k-1]),r2=tour(rootB,t2,t2[0]);const sc=Math.max(r1.len,r2.len);if(!best||sc<best.sc)best={sc,k,r1,r2};};
+  const step=Math.max(1,Math.ceil(n/60));
+  const lo=n>=4?2:1,hi=n>=4?n-2:n-1;
+  for(let k=lo;k<=hi;k+=step)tryK(k);
+  const k0=best.k;for(let k=Math.max(lo,k0-step+1);k<=Math.min(hi,k0+step-1);k++)if(k!==k0)tryK(k);
+  return {mode:'4',lines:[out(best.r1),out(best.r2)],houses:houses.length};
+}
+let _autoDraftH194=null;
+function clearAutoDraftH194(){
+  if(_autoDraftH194&&S.rdMap)_autoDraftH194.layers.forEach(l=>{try{S.rdMap.removeLayer(l);}catch(e){}});
+  _autoDraftH194=null;const bar=document.getElementById('auto-bar-h194');if(bar)bar.remove();
+}
+async function autoRouteH194(reverse){
+  if(S.role!=='admin'){toast('관리자만 자동 경로를 만들 수 있습니다.');return;}
+  const z=S.zones.find(x=>x.id===S.curZone);if(!z||!S.rdMap){toast('구역을 먼저 선택하세요.');return;}
+  if(S.routeMode!=='2'&&S.routeMode!=='4'){toast('2인 1조 또는 4인 2조를 먼저 고르세요.');return;}
+  clearAutoDraftH194();toast('자동 경로를 만드는 중...');
+  await s12LoadParcels();
+  const houses=s12ParcelsFor(z)||[];
+  if(houses.length<2){toast('이 구역의 집 점이 부족해 자동 경로를 만들 수 없습니다.');return;}
+  const roads=await s12LoadRoadsH194(z.id);
+  await new Promise(r=>setTimeout(r,30));
+  let res;try{res=autoRouteBuildH194(z,houses,roads,{mode:S.routeMode,start:hasCustomStartPoint(z)?z.startPoint:null,reverse:!!reverse});}
+  catch(e){console.error(e);toast('자동 경로를 만들지 못했습니다.');return;}
+  const colors=['#378ADD','#3B6D11'];const layers=[];
+  res.lines.forEach((ln,i)=>{
+    const c=colors[i]||colors[0];
+    layers.push(L.polyline(ln.pts,{color:c,weight:5,opacity:.9,interactive:false}).addTo(S.rdMap));
+    layers.push(...addRouteArrowMarkers(S.rdMap,ln.pts,c,720));
+    const lab=res.mode==='4'?`🚩 ${i+1}조 시작`:'🚩 시작';
+    layers.push(L.marker(ln.pts[0],{icon:L.divIcon({html:`<div class="route-start-marker">${lab}</div>`,className:'',iconAnchor:[34,14]}),interactive:false,zIndexOffset:800}).addTo(S.rdMap));
+  });
+  if(res.mode==='4'&&res.lines.length===2)res.lines.forEach((ln,i)=>{const e=ln.pts[ln.pts.length-1];
+    layers.push(L.marker(e,{icon:L.divIcon({html:'<div class="route-start-marker auto-meet-h194">🏁 '+(i+1)+'조 끝</div>',className:'',iconAnchor:[34,14]}),interactive:false,zIndexOffset:790}).addTo(S.rdMap));});
+  _autoDraftH194={zoneId:z.id,mode:res.mode,lines:res.lines,layers,reverse:!!reverse};
+  const info=res.lines.map((ln,i)=>`${res.mode==='4'?(i+1)+'조 ':''}${(ln.len/1000).toFixed(2)}km·집 ${ln.houses}곳`).join(' / ');
+  const bar=document.createElement('div');bar.id='auto-bar-h194';
+  bar.innerHTML=`<div class="auto-bar-txt-h194"><b>자동 경로 초안</b> (${res.mode==='4'?'4인 2조':'2인 1조'}) · ${info}${roads.length?'':' · 도로 자료 없음(직선)'}</div>
+    <div class="auto-bar-btns-h194"><button class="btn btn-sm btn-p" onclick="saveAutoDraftH194()">💾 이대로 저장</button>
+    <button class="btn btn-sm btn-out" onclick="autoRouteH194(${hasCustomStartPoint(z)?'false':'!_autoDraftH194.reverse'})">${hasCustomStartPoint(z)?'↻ 다시':'⇄ 반대쪽에서'}</button>
+    <button class="btn btn-sm btn-dk" onclick="clearAutoDraftH194()">취소</button></div>`;
+  const box=document.getElementById('rd-map-box');if(box)box.appendChild(bar);
+}
+function saveAutoDraftH194(){
+  const d=_autoDraftH194;if(!d)return;
+  const old=S.rteLines.filter(l=>l.zoneId===d.zoneId&&(l.mode||'2')===d.mode);
+  if(old.length&&!confirm(`이 구역의 ${d.mode==='4'?'4인 2조':'2인 1조'} 경로 ${old.length}개를 지우고 자동 경로로 바꿀까요?`))return;
+  S.rteLines=S.rteLines.filter(l=>!old.includes(l));
+  const now=Date.now();
+  d.lines.forEach((ln,i)=>S.rteLines.push({id:now+i,mode:d.mode,name:d.mode==='4'?`${i+1}조 자동 경로`:'자동 경로',color:['#378ADD','#3B6D11'][i]||'#378ADD',pts:ln.pts,zoneId:d.zoneId,visible:true,createdAt:new Date().toISOString()}));
+  persistRteLines();clearAutoDraftH194();
+  drawRoute();drawSavedRteLines();renderRteLines();renderRouteGrid();
+  const size=(_storageCacheH105['sokcho_routes']||'').length;
+  toast(size>800000?'✅ 저장했습니다. (경로 저장 공간이 거의 찼습니다)':'✅ 자동 경로를 저장했습니다. "수정하기"로 손볼 수 있습니다.');
+}
+(function hookAutoDraftClearH194(){
+  ['setMode','backList'].forEach(n=>{const f=window[n];if(typeof f!=='function')return;window[n]=function(){clearAutoDraftH194();return f.apply(this,arguments);};});
+})();
