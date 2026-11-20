@@ -8795,7 +8795,7 @@ function openAdminHomeH197(kind,zoneId){
   admHomeLabelsH197(true);
   setTimeout(()=>{admHomeFixRowsH197();
     if(zoneId!=null){try{selectHomeZone(zoneId);}catch(e){}}
-    else toast(kind==='zone'?'고칠 구역의 [✏ 구역그리기]를 누르세요.':'구역의 [🧭 경로그리기]를 누르세요.');},300);
+    else toast('구역의 [✏ 구역그리기]나 [🧭 경로그리기]를 누르세요.');},300);
 }
 function admHomeLabelsH197(on){
   document.querySelectorAll('.home-exit-h189').forEach(b=>{b.textContent=on?'↩ 관리자 페이지':'↩ 앱 나가기';});
@@ -9047,4 +9047,14 @@ function syncAdmViewerH204(){
       if(isClose&&(S.adminFocusH148==='s12'||S.adminFocusH148==='s13')&&!['s12-viewer','s13-viewer'].some(id=>document.getElementById(id)?.classList.contains('on'))){S.adminFocusH148=null;try{applyAdminFocusH148();}catch(e){}}
       syncAdmViewerH204();return r;};
   });
+})();
+/* ===== H205: 경로를 저장하면 그리기 칸을 접어 그린 경로가 다 보이게(다시 그리려면 [✏ 경로그리기]) ===== */
+function rdCollapsePanelH205(){
+  if(S.rteDraw)return;
+  const panel=document.getElementById('rd-side-panel');
+  if(panel&&panel.classList.contains('show-draw')&&window.innerWidth<=900){try{toggleMobileDraw();}catch(e){}}
+}
+(function hookRouteSaveH205(){
+  const sv=saveRteLine;window.saveRteLine=saveRteLine=function(){const r=sv.apply(this,arguments);setTimeout(rdCollapsePanelH205,50);return r;};
+  const sa=saveAutoDraftH194;window.saveAutoDraftH194=saveAutoDraftH194=function(){const n0=(S.rteLines||[]).length;const r=sa.apply(this,arguments);if(!_autoDraftH194)setTimeout(rdCollapsePanelH205,50);return r;};
 })();

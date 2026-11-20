@@ -2313,3 +2313,7 @@ html.zone-draw-h202 #p-map .zone-map-label,html.zone-draw-h202 #p-map .zone-map-
 html.adm-viewer-h204 .adm-fab-stack{z-index:9100!important;}
 html.adm-viewer-h204 #s12-viewer{right:84px!important;}
 html.adm-viewer-h204 #s13-viewer{right:84px!important;}
+/* H205: 경로 그리기 칸은 지도 가운데가 아니라 지도 아래쪽에 붙임 */
+@media (max-width:900px){
+  #rd-side-panel.show-draw:not(.kbd-h199){top:auto!important;bottom:8px!important;}
+}
