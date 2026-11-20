@@ -7532,7 +7532,7 @@ function s12CardHtml(it,idx){
     ${body}
     <div class="s12-note">${S12_NOTE}</div>
     <div class="s12-foot"><span>S-12-KO</span><span>${kindLabel}${hasForbidden?' · 취소선 = 방문 금지':''}</span></div>
-  </div></div>`;
+  </div><button class="s12-zoom-h195" onclick="s12ZoomH195(this)">🔍 확대해 보기</button></div>`;
 }
 function s12Rescale(){
   const list=document.getElementById('s12-list');
@@ -8677,3 +8677,31 @@ function saveAutoDraftH194(){
 (function hookAutoDraftClearH194(){
   ['setMode','backList'].forEach(n=>{const f=window[n];if(typeof f!=='function')return;window[n]=function(){clearAutoDraftH194();return f.apply(this,arguments);};});
 })();
+
+/* ===== H195: S-12 구역카드 확대해 보기 — 카드 한 장을 화면 가득(세로 폰은 90° 돌려 가로로) ===== */
+function s12ZoomLayoutH195(){
+  const ov=document.getElementById('s12-zoom-h195');if(!ov)return;
+  const c=ov.querySelector('.s12-card');if(!c)return;
+  const vw=window.innerWidth,vh=window.innerHeight,w=c.offsetWidth,h=c.offsetHeight,pad=16;
+  const rot=vh>vw;
+  const k=rot?Math.min((vh-pad*2-44)/w,(vw-pad*2)/h):Math.min((vw-pad*2)/w,(vh-pad*2-44)/h);
+  c.style.transform='translate(-50%,-50%) '+(rot?'rotate(90deg) ':'')+'scale('+k+')';
+}
+function s12ZoomH195(btn){
+  const src=btn&&btn.parentElement&&btn.parentElement.querySelector('.s12-card');if(!src)return;
+  s12ZoomCloseH195(true);
+  const ov=document.createElement('div');ov.id='s12-zoom-h195';
+  const c=src.cloneNode(true);c.style.transform='';c.style.position='absolute';c.style.left='50%';c.style.top='50%';c.style.transformOrigin='50% 50%';
+  ov.innerHTML='<button class="s12-zoom-close-h195" onclick="s12ZoomCloseH195()">✕ 닫기</button>';
+  ov.appendChild(c);document.body.appendChild(ov);
+  s12ZoomLayoutH195();
+  try{const el=document.documentElement;const p=el.requestFullscreen&&el.requestFullscreen();if(p&&p.then)p.then(()=>{try{screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{});}catch(e){}}).catch(()=>{});}catch(e){}
+}
+function s12ZoomCloseH195(silent){
+  const ov=document.getElementById('s12-zoom-h195');if(ov)ov.remove();
+  if(silent)return;
+  try{screen.orientation&&screen.orientation.unlock&&screen.orientation.unlock();}catch(e){}
+  try{if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(()=>{});}catch(e){}
+}
+window.addEventListener('resize',()=>setTimeout(s12ZoomLayoutH195,60));
+document.addEventListener('fullscreenchange',()=>setTimeout(s12ZoomLayoutH195,120));
