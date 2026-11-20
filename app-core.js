@@ -8990,3 +8990,61 @@ window.s12SaveViewH196=s12SaveViewH196=function(btn){
   z.s12View={lat:+ll.getLat().toFixed(7),lng:+ll.getLng().toFixed(7),lv:r.lv,vw:Math.round(bw/st.s*kpx*10)/10,rot,sig:s12PolySig(z)};
   persistZones();s12RedrawBodyH196(body,it);toast('✅ 이 카드의 지도 위치'+(rot?'·방향':'')+'을 저장했습니다.');
 };
+
+/* ===== H202: 구역 그리기 화면 정리(폰) =====
+   아래 칸은 구역번호·이름 + [되돌리기][초기화][그리기][저장]. 주택/상가·거리명 칸은 숨김(거리명은 이름으로 자동).
+   [그리기]를 누르면 지도가 화면 가득(아래엔 버튼 한 줄만). 지도를 누르면 꼭짓점, 번호 점은 끌어 옮기기, 두 손가락 확대·축소.
+   그리는 동안 지도 왼쪽 걸러보기·연필·원형 버튼은 숨김. */
+function setZoneFsH202(on){
+  document.documentElement.classList.toggle('zone-fs-h202',!!on);
+  const b=document.getElementById('zd-fs-btn-h202');if(b)b.textContent=on?'📝 번호·이름':'⛶ 그리기';
+  setTimeout(()=>{try{S.mainMap&&S.mainMap.invalidateSize();}catch(e){}},120);
+}
+function toggleZoneFsH202(){
+  const on=!document.documentElement.classList.contains('zone-fs-h202');setZoneFsH202(on);
+  if(on)toast('지도를 눌러 꼭짓점을 찍으세요. 번호 점은 끌어서 옮깁니다.');
+}
+(function hookZoneDrawH202(){
+  const sd=startDraw;window.startDraw=startDraw=function(){const r=sd.apply(this,arguments);document.documentElement.classList.add('zone-draw-h202');setZoneFsH202(false);return r;};
+  const cd=cancelDraw;window.cancelDraw=cancelDraw=function(){document.documentElement.classList.remove('zone-draw-h202');setZoneFsH202(false);return cd.apply(this,arguments);};
+  const sz=saveZone;window.saveZone=saveZone=function(){
+    const nm=document.getElementById('draw-name'),sr=document.getElementById('draw-streets');
+    if(nm&&!nm.value.trim()){setZoneFsH202(false);setTimeout(()=>nm.focus(),150);}
+    if(nm&&sr&&!sr.value.trim()&&nm.value.trim())sr.value=nm.value.trim();
+    return sz.apply(this,arguments);};
+})();
+/* ===== H203: 자동 경로 초안 저장이 안 보이던 문제 =====
+   - 그리기 칸을 위로 올리는 것(H199)은 글자 입력칸을 누를 때만(버튼을 누를 때는 아님)
+   - 초안이 떠 있는 동안 그리기 칸을 숨기고, 초안이 있을 때 [저장]을 누르면 초안을 저장 */
+(function hookAutoDraftH203(){
+  document.addEventListener('focusin',e=>{const t=e.target;if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA')&&t.closest&&t.closest('#rd-side-panel'))document.getElementById('rd-side-panel')?.classList.add('kbd-h199');});
+  document.addEventListener('focusout',e=>{const t=e.target;if(t&&t.closest&&t.closest('#rd-side-panel'))setTimeout(()=>{const a=document.activeElement;if(!(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA')&&a.closest('#rd-side-panel')))document.getElementById('rd-side-panel')?.classList.remove('kbd-h199');},60);});
+  const ar=autoRouteH194;window.autoRouteH194=autoRouteH194=async function(){try{document.activeElement&&document.activeElement.blur&&document.activeElement.blur();}catch(e){}
+    const r=await ar.apply(this,arguments);document.documentElement.classList.toggle('auto-draft-h203',!!_autoDraftH194);return r;};
+  const cl=clearAutoDraftH194;window.clearAutoDraftH194=clearAutoDraftH194=function(){document.documentElement.classList.remove('auto-draft-h203');return cl.apply(this,arguments);};
+  const sv=saveRteLine;window.saveRteLine=saveRteLine=function(){if(_autoDraftH194&&!S.rteDraw)return saveAutoDraftH194();return sv.apply(this,arguments);};
+})();
+/* ===== H204: 배정기록(S-13)·구역카드(S-12)도 다른 관리 버튼과 같은 방식 =====
+   창이 열려 있어도 오른쪽 원형 버튼들이 보이고, 다른 버튼을 누르면 창을 닫고 그 항목으로 간다. */
+function syncAdmViewerH204(){
+  const on=['s12-viewer','s13-viewer'].some(id=>document.getElementById(id)?.classList.contains('on'));
+  document.documentElement.classList.toggle('adm-viewer-h204',on&&S.role==='admin');
+  if(on&&S.role==='admin'){try{setAdmFabOpenH148(true);}catch(e){}}
+}
+(function hookAdmViewerH204(){
+  const og=openAdminGroupH148;
+  window.openAdminGroupH148=openAdminGroupH148=function(k){
+    if(S.role==='admin'){
+      if(k!=='s12'&&document.getElementById('s12-viewer')?.classList.contains('on'))closeS12Viewer();
+      if(k!=='s13'&&document.getElementById('s13-viewer')?.classList.contains('on'))closeS13Viewer();
+    }
+    const r=og.apply(this,arguments);
+    if(S.role==='admin'&&(k==='s12'||k==='s13')){S.adminFocusH148=k;try{renderAdmFabH148();}catch(e){}syncAdmViewerH204();}
+    return r;};
+  [['openS12Viewer',false],['openS13Viewer',false],['closeS12Viewer',true],['closeS13Viewer',true]].forEach(([n,isClose])=>{
+    const f=window[n];if(typeof f!=='function')return;
+    window[n]=function(){const r=f.apply(this,arguments);
+      if(isClose&&(S.adminFocusH148==='s12'||S.adminFocusH148==='s13')&&!['s12-viewer','s13-viewer'].some(id=>document.getElementById(id)?.classList.contains('on'))){S.adminFocusH148=null;try{applyAdminFocusH148();}catch(e){}}
+      syncAdmViewerH204();return r;};
+  });
+})();

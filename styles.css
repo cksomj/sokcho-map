@@ -2270,7 +2270,7 @@ body.route-editing .rd-edit-tools .btn.rdt-h198{min-height:44px!important;paddin
 .rdt-h198 b.rdt-gps-h198{font-size:12.5px;white-space:nowrap;}
 /* H199: 경로 이름 등 글자 입력 중(자판)에는 그리기 칸을 지도 위쪽으로 올려 자판에 가리지 않게 */
 @media (max-width:900px){
-  #rd-side-panel.show-draw:focus-within{top:8px!important;bottom:auto!important;}
+  #rd-side-panel.show-draw.kbd-h199{top:8px!important;bottom:auto!important;}
 }
 
 /* H200: 진행 방향 = 빨강 테두리·형광 노랑 삼각형(원 없음), 경로 점은 번호 없이 */
@@ -2283,3 +2283,33 @@ body.route-editing .rd-edit-tools .btn.rdt-h198{min-height:44px!important;paddin
 /* H201: 돌린 S-12 지도 */
 .s12-rot-h201{position:absolute;left:50%;top:50%;transform-origin:50% 50%;}
 .s12-rot-h201 img,.s12-rot-h201 svg{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;}
+
+/* H202: 구역 그리기 화면 정리 */
+html.zone-draw-h202 #p-map .map-left,
+html.zone-draw-h202 #draw-toggle-btn,
+html.zone-draw-h202 .menu-toggle-btn,
+html.zone-draw-h202 .adm-fab-stack{display:none!important;}
+#draw-bar #draw-type,#draw-bar #draw-streets{display:none!important;}
+#draw-bar{padding:8px 10px calc(8px + env(safe-area-inset-bottom) + var(--nav-gap,0px))!important;}
+#draw-bar #draw-title{margin-bottom:2px!important;}
+#draw-bar #draw-title+div{font-size:11px!important;margin-bottom:5px!important;}
+#draw-bar #draw-no{display:inline-block!important;width:31%!important;margin-right:2%!important;}
+#draw-bar #draw-name{display:inline-block!important;width:67%!important;}
+#draw-bar .zd-row-h202{display:grid!important;grid-template-columns:repeat(4,1fr);gap:5px!important;}
+#draw-bar .zd-row-h202 .btn{padding:10px 2px!important;font-size:13px!important;white-space:nowrap;justify-content:center;}
+.zd-fs-h202{background:linear-gradient(180deg,#1e5bb8,#0B4A8F)!important;color:#fff!important;border:1px solid #083a72!important;}
+html.adm-home-h197 .zd-cancel-h202{display:none!important;}
+html.zone-draw-h202 .admin-return-fab{top:calc(10px + env(safe-area-inset-top))!important;bottom:auto!important;left:10px!important;right:auto!important;}
+/* 지도 화면 가득: 아래엔 버튼 한 줄만 */
+html.zone-fs-h202 #draw-bar>*:not(.zd-row-h202){display:none!important;}
+html.zone-fs-h202 #draw-bar{padding:6px 8px calc(6px + env(safe-area-inset-bottom) + var(--nav-gap,0px))!important;}
+html.zone-fs-h202 .admin-return-fab,html.zone-fs-h202 #draw-ind{display:none!important;}
+/* H203: 자동 경로 초안이 떠 있는 동안은 그리기 칸을 잠시 숨겨 초안 상자([이대로 저장])가 보이게 */
+html.auto-draft-h203 #rd-side-panel{display:none!important;}
+html.zone-fs-h202 #draw-bar #draw-no,html.zone-fs-h202 #draw-bar #draw-name,html.zone-fs-h202 #draw-bar #draw-title,html.zone-fs-h202 #draw-bar #draw-title+div{display:none!important;}
+/* H202: 구역을 그리는 동안 다른 구역 이름표가 누름을 가로채지 않게(이름표 위를 눌러도 꼭짓점이 찍힘) */
+html.zone-draw-h202 #p-map .zone-map-label,html.zone-draw-h202 #p-map .zone-map-label *,html.zone-draw-h202 #p-map .leaflet-marker-icon:not(.leaflet-marker-draggable){pointer-events:none!important;}
+/* H204: 배정기록·구역카드 창이 열려도 오른쪽 원형 버튼이 보이고 누를 수 있게 */
+html.adm-viewer-h204 .adm-fab-stack{z-index:9100!important;}
+html.adm-viewer-h204 #s12-viewer{right:84px!important;}
+html.adm-viewer-h204 #s13-viewer{right:84px!important;}
