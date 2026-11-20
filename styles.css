@@ -2140,3 +2140,10 @@ body:has(#svc-fullscreen[style*="flex"]) #toast,body:has(#apt-svc-fullscreen[sty
 #home-undone-list-h178 .home-zone-row{border-left:5px solid #C2410C!important;}
 /* H182: '봉사 시작'은 파랑 버튼으로(회색 보조 버튼 규칙에 덮이던 것) */
 .home-zone-action.btn-p{background:var(--g-blue)!important;border:1.5px solid var(--g-blue-bd)!important;color:#fff!important;box-shadow:var(--b-raise-dark)!important;}
+
+/* H183: 완료 = 진한 노랑, "완료" 글씨 굵고 크게 */
+.zone-map-label .lbl-done-h173{color:#B88400!important;font-weight:900!important;font-size:1.3em!important;letter-spacing:-.3px;}
+:is(#home-zone-list,#home-com-list,#home-apt-card-list,#home-int-card-list) .home-zone-row:has(.zc-status.done){border-left-color:#E0A100!important;}
+.zc-status.done{background:#FFF4CC!important;color:#9A6E00!important;font-weight:900!important;}
+.home-zone-action .done-lock-h183{color:#B88400;font-weight:900;font-size:1.35em;}
+:is(#home-zone-list,#home-com-list,#home-apt-card-list,#home-int-card-list) span.home-zone-action{color:#9A6E00!important;}

@@ -2349,7 +2349,7 @@ function renderHomeApartmentCardList(){
     const doneCnt=apartmentCardCompletedUnits(card);
     const selected=S.homeSelectedAptCard===card.id;
     const action=done
-      ?`<span class="home-zone-action" style="font-size:12px;color:#3B6D11;font-weight:800;">완료 잠김</span>`
+      ?`<span class="home-zone-action" style="font-size:12px;color:#3B6D11;font-weight:800;"><b class="done-lock-h183">완료</b> 잠김</span>`
       :inProg
         ?`<button onclick="event.stopPropagation();startApartmentCardAndGo(${card.id},true)" class="btn btn-sm home-zone-action" style="background:#FAEEDA;color:var(--warn);border:1px solid #FAC775;">이어하기</button>`
         :`<button onclick="event.stopPropagation();startApartmentCardAndGo(${card.id},false)" class="btn btn-sm btn-p home-zone-action">봉사 시작</button>`;
@@ -2403,7 +2403,7 @@ function renderHomeInterphoneList(){
     const total=apartmentCardCheckableUnits(card),doneCnt=apartmentCardCompletedUnits(card);
     const selected=S.homeSelectedAptCard===card.id;
     const action=done
-      ?`<span class="home-zone-action" style="font-size:12px;color:#3B6D11;font-weight:800;">완료 잠김</span>`
+      ?`<span class="home-zone-action" style="font-size:12px;color:#3B6D11;font-weight:800;"><b class="done-lock-h183">완료</b> 잠김</span>`
       :inProg
         ?`<button onclick="event.stopPropagation();startApartmentCardAndGo(${card.id},true)" class="btn btn-sm home-zone-action" style="background:#FAEEDA;color:var(--warn);border:1px solid #FAC775;">이어하기</button>`
         :`<button onclick="event.stopPropagation();startApartmentCardAndGo(${card.id},false)" class="btn btn-sm btn-p home-zone-action">봉사 시작</button>`;
@@ -5272,7 +5272,7 @@ function renderHomeZoneList(kw){
     const statusClass=meta.cls;
     const selected=String(activeZoneId())===String(z.id);
     const action=done
-      ?`<span class="home-zone-action" style="font-size:12px;color:#3B6D11;font-weight:800;">완료 잠김</span>`
+      ?`<span class="home-zone-action" style="font-size:12px;color:#3B6D11;font-weight:800;"><b class="done-lock-h183">완료</b> 잠김</span>`
       :hasProg
         ?`<button onclick="event.stopPropagation();startSessionAndRoute(${z.id},true)" class="btn btn-sm home-zone-action" style="background:#FAEEDA;color:var(--warn);border:1px solid #FAC775;">이어하기</button>`
         :`<button onclick="event.stopPropagation();startSessionAndRoute(${z.id},false)" class="btn btn-sm btn-p home-zone-action">봉사 시작</button>`;
@@ -5440,7 +5440,7 @@ function renderHomeCommercialList(){
     const statusClass=meta.cls;
     const selected=String(activeZoneId())===String(z.id);
     const action=done
-      ?`<span class="home-zone-action" style="font-size:12px;color:#3B6D11;font-weight:800;">완료 잠김</span>`
+      ?`<span class="home-zone-action" style="font-size:12px;color:#3B6D11;font-weight:800;"><b class="done-lock-h183">완료</b> 잠김</span>`
       :hasProg
         ?`<button onclick="event.stopPropagation();startSessionAndRoute(${z.id},true)" class="btn btn-sm home-zone-action" style="background:#FAEEDA;color:var(--warn);border:1px solid #FAC775;">이어하기</button>`
         :`<button onclick="event.stopPropagation();startSessionAndRoute(${z.id},false)" class="btn btn-sm btn-p home-zone-action">봉사 시작</button>`;
@@ -8319,7 +8319,7 @@ function toggleLocateH168(k,silent){
 // H169: 지도 구역 색을 아래 범례와 같게 — 테두리=상태(완료 초록·미완료 주황빨강·봉사대기 청색),
 // 바탕=유형(주택 연파랑·상가 연주황). 비활성 구역은 H163대로 빨강. 모든 지도·모든 모드 공통.
 // ================================================================
-const ZONE_STATE_COLOR_H169={done:'#1F6B0A',progress:'#C2410C',standby:'#0B4A8F'}; // H171: 더 진한 경계색
+const ZONE_STATE_COLOR_H169={done:'#E0A100',progress:'#C2410C',standby:'#0B4A8F'}; // H171: 더 진한 경계색
 const ZONE_TYPE_FILL_H169={residential:'#378ADD',commercial:'#EF9F27'};
 window.zoneStrokeColor=function(z,isActive){
   if(!z)return ZONE_DEFAULT_COLOR;
