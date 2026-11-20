@@ -7564,6 +7564,7 @@ function s12FitApt(el){
 const S12P_PREFIX='s12p_';
 let _s12Parcels=null,_s12ParcelBuildToken=0;
 function s12PolySig(z){const s=JSON.stringify(z.polygon||[]);let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return String(h);}
+function s12LabelH191(l){return String(l==null?'':l).split(',')[0];} // H191: "23,청호로7길" → "23"
 function s12EncodePts(a){return a.map(p=>p[0].toFixed(6)+','+p[1].toFixed(6)+','+p[2]).join('|');}
 function s12DecodePts(s){return String(s||'').split('|').filter(Boolean).map(t=>{const parts=t.split(',');return [Number(parts[0]),Number(parts[1]),parts.slice(2).join(',')];}).filter(p=>Number.isFinite(p[0])&&Number.isFinite(p[1]));}
 async function s12LoadParcels(force){
@@ -7573,7 +7574,7 @@ async function s12LoadParcels(force){
     if(typeof db!=='undefined'&&db&&typeof firebase!=='undefined'){
       const FP=firebase.firestore.FieldPath.documentId();
       const snap=await db.collection('app_data').where(FP,'>=',S12P_PREFIX).where(FP,'<',S12P_PREFIX+'').get();
-      snap.forEach(d=>{const v=d.data()||{};if(v.zoneId!=null)map[String(v.zoneId)]={sig:v.sig,pts:s12DecodePts(v.pts)};});
+      snap.forEach(d=>{const v=d.data()||{};if(v.zoneId!=null)map[String(v.zoneId)]={sig:v.sig,pts:s12DecodePts(v.pts),kind:v.kind||'jibun'};});
     }
   }catch(e){console.warn('[S-12] 번지 데이터 불러오기 실패(지도만 표시):',e);}
   _s12Parcels=map;
@@ -7601,9 +7602,11 @@ async function s12ComputeParcels(z){
     while(q.length){
       const [la,lo]=q.shift();
       await new Promise(res=>gc.coord2Address(lo,la,(r,st)=>{
-        if(st===OK&&r[0]&&r[0].road_address&&r[0].address){ // 도로명 주소가 있는 곳 = 건물
-          const a=r[0].address;
-          const k=String(a.main_address_no||'')+(a.sub_address_no&&a.sub_address_no!=='0'?'-'+a.sub_address_no:'');
+        if(st===OK&&r[0]&&r[0].road_address){ // H191: 도로명주소(새 주소) 건물번호로 묶음 — 지도에 적힌 번호와 같음
+          const ra=r[0].road_address;
+          const no=String(ra.main_building_no||'')+(ra.sub_building_no&&ra.sub_building_no!=='0'&&ra.sub_building_no!==''?'-'+ra.sub_building_no:'');
+          const road=String(ra.road_name||'').replace(/[,|]/g,' ');
+          const k=no?no+','+road:'';
           if(k)(groups[k]=groups[k]||[]).push([la,lo]);
         }
         res();
@@ -7620,7 +7623,7 @@ async function s12BuildAllParcels(){
   if(btn)btn.disabled=true;
   await s12LoadParcels(true);
   await new Promise(r=>whenKakaoReady(r,r));
-  const todo=S.zones.filter(z=>Array.isArray(z.polygon)&&z.polygon.length>=3&&!s12ParcelsFor(z));
+  const todo=S.zones.filter(z=>Array.isArray(z.polygon)&&z.polygon.length>=3&&(!s12ParcelsFor(z)||(_s12Parcels[String(z.id)]||{}).kind!=='road')); // H191: 옛 지번 자료도 새 주소로 다시
   let done=0,fail=0;
   for(const z of todo){
     if(token!==_s12ParcelBuildToken)break;
@@ -7628,8 +7631,8 @@ async function s12BuildAllParcels(){
     try{
       const pts=await s12ComputeParcels(z);
       const sig=s12PolySig(z);
-      await db.collection('app_data').doc(S12P_PREFIX+z.id).set({zoneId:z.id,sig,pts:s12EncodePts(pts),count:pts.length,updatedAt:Date.now()});
-      _s12Parcels[String(z.id)]={sig,pts};
+      await db.collection('app_data').doc(S12P_PREFIX+z.id).set({zoneId:z.id,sig,pts:s12EncodePts(pts),count:pts.length,kind:'road',updatedAt:Date.now()});
+      _s12Parcels[String(z.id)]={sig,pts,kind:'road'};
     }catch(e){fail++;console.warn('[S-12] 번지 만들기 실패:',z.id,e);}
     done++;
   }
@@ -7673,7 +7676,7 @@ function s12ZoneMap(z,W=S12_MAP_W,H=S12_MAP_H,mmW=134){ // H143: 크기 매개�
   proj=m.getProjection();
   const px=(lat,lng)=>{const p=proj.containerPointFromCoords(LL(lat,lng));return [Math.round(p.x),Math.round(p.y)];};
   const poly=z.polygon.map(([lat,lng])=>px(lat,lng).join(',')).join(' ');
-  const dots=parcels.map(p=>{const q=px(p[0],p[1]);return [q[0],q[1],String(p[2])];}).filter(q=>q[0]>=0&&q[1]>=0&&q[0]<=vw&&q[1]<=vh);
+  const dots=parcels.map(p=>{const q=px(p[0],p[1]);return [q[0],q[1],s12LabelH191(p[2])];}).filter(q=>q[0]>=0&&q[1]>=0&&q[0]<=vw&&q[1]<=vh);
   const tmp=document.createElement('div');
   tmp.style.cssText=`position:fixed;left:-10000px;top:0;width:${vw}px;height:${vh}px;`;
   document.body.appendChild(tmp);
@@ -8451,7 +8454,7 @@ async function refreshParcelOverlayH185(map){
   clearParcelOverlayH185(id);st.key=key;
   pts.forEach(p=>{
     const el=document.createElement('div');el.className='parcel-h185';
-    el.innerHTML=showLabel?`<i></i><span>${esc(p[2])}</span>`:'<i></i>';
+    el.innerHTML=showLabel?`<i></i><span>${esc(s12LabelH191(p[2]))}</span>`:'<i></i>';
     const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(p[0],p[1]),content:el,xAnchor:0.5,yAnchor:0.5,zIndex:3});
     ov.setMap(k);st.ovs.push(ov);
   });
