@@ -2272,3 +2272,10 @@ body.route-editing .rd-edit-tools .btn.rdt-h198{min-height:44px!important;paddin
 @media (max-width:900px){
   #rd-side-panel.show-draw:focus-within{top:8px!important;bottom:auto!important;}
 }
+
+/* H200: 진행 방향 = 빨강 테두리·형광 노랑 삼각형(원 없음), 경로 점은 번호 없이 */
+.route-arrow-label{width:22px!important;height:22px!important;border:none!important;border-radius:0!important;background:none!important;box-shadow:none!important;color:transparent!important;filter:drop-shadow(0 1px 2px rgba(0,0,0,.45));}
+.route-arrow-label:before{content:""!important;position:absolute!important;inset:0!important;left:0!important;top:0!important;border:none!important;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpolygon points='4,3 21,12 4,21' fill='%23FFFF1A' stroke='%23E5333F' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center/contain!important;}
+.rte-pick-h200{width:16px;height:16px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.35),0 1px 3px rgba(0,0,0,.4);box-sizing:border-box;}
+.rte-pick-h200.ins{box-shadow:0 0 0 3px #FFFF1A,0 0 0 5px #E5333F;}
+.rte-dot-h200{width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35);box-sizing:border-box;}

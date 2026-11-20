@@ -3136,9 +3136,9 @@ function drawRouteLineSet(map,routes,zIndexOffset=700,selectable=false){
     layers.push(line);
     layers.push(...addRouteArrowMarkers(map,pts,l.color,zIndexOffset+10,selectable?()=>selectRouteDirectionFromMap(team):null));
     pts.forEach((pt,ptIdx)=>{
-      const label=ptIdx===0?'시작':ptIdx===pts.length-1?'끝':String(ptIdx+1);
+      const label=ptIdx===0?'시작':ptIdx===pts.length-1?'끝':'';
       const bg=ptIdx===pts.length-1?'#D85A30':l.color;
-      const icon=L.divIcon({
+      const icon=!label?L.divIcon({html:`<div class="rte-dot-h200" style="background:${bg};"></div>`,className:'',iconSize:[12,12],iconAnchor:[6,6]}):L.divIcon({
         html:`<div style="min-width:${pointMinW}px;height:${pointH}px;border-radius:${pointRadius}px;background:${bg};color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:${pointFont}px;font-weight:800;padding:0 ${pointPad}px;white-space:nowrap;">${label}</div>`,
         className:'',
         iconSize:[pointMinW,pointH],
@@ -4880,6 +4880,7 @@ function onRdMapClick(e){
     saveZoneStartPin(S.curZone,e.latlng.lat,e.latlng.lng);
     return;
   }
+  if(S.rteDraw&&rdDrawTapH200(e.latlng))return;
   if(S.rteDraw){
     S.rtePts.push([e.latlng.lat,e.latlng.lng]);
     updateRteViz();
@@ -8622,7 +8623,7 @@ function autoRouteBuildH194(z,houses,roads,opt){
       for(let i=s+1;i<e;i++){const d=L<1e-6?Math.hypot(P[i][0]-x1,P[i][1]-y1):Math.abs((x2-x1)*(y1-P[i][1])-(x1-P[i][0])*(y2-y1))/L;if(d>md){md=d;mi=i;}}
       if(md>1.5){keep[mi]=1;st.push([s,mi],[mi,e]);}}
     return P.filter((_,i)=>keep[i]).map(p=>{const ll=toLL(p[0],p[1]);return [+ll[0].toFixed(6),+ll[1].toFixed(6)];});};
-  const out=t=>{const p=simplify(t.path);if(p.length<2)p.push(p[0].slice());return {pts:p,len:t.len,houses:t.order.length};};
+  const out=t=>{const p=t.order.length?t.order.map(hi=>[+Number(houses[hi][0]).toFixed(6),+Number(houses[hi][1]).toFixed(6)]):simplify(t.path);if(p.length<2)p.push(p[0].slice());return {pts:p,len:t.len,houses:t.order.length};}; // H200: 집 순서
   const full=tour(rootA,reqSet,hb);
   if(opt.mode!=='4'||full.reqOrder.length<2)return {mode:opt.mode==='4'?'4':'2',lines:[out(full)],houses:houses.length};
   // 4인2조: 2인1조 순서를 앞(1조, 한쪽 끝에서)과 뒤(2조, 반대쪽 끝에서)로 나눠 두 조 거리가 가장 비슷한 곳에서 만남
@@ -8878,4 +8879,61 @@ function clearRtePtsH198(){
     return r;};
   const st=stopRteDraw;window.stopRteDraw=stopRteDraw=function(){setEndPtModeH198(false);return st.apply(this,arguments);};
   const gt=goTab;window.goTab=goTab=function(name){if(name!=='route')setOpen(false);return gt.apply(this,arguments);};
+})();
+
+/* ===== H200: 경로는 집 점에서 집 점으로 =====
+   - 그리는 중 지도를 누르면 가장 가까운 집 점(S-12)이 골라져 이어진다(아무 곳에나 점이 찍히지 않음)
+   - 이미 이은 점을 누르면 빠지고, 다음에 누르는 집은 빠진 자리에 들어간다(자동 경로 고치기)
+   - 점에는 번호 없이, 진행 방향은 빨강 테두리·형광 노랑 삼각형
+   - GPS찍기: 지금 위치에서 가장 가까운 집 점(40m 안)을 찍는다 */
+let _rdInsertAtH200=null,_rdTapToastH200=0;
+function rdHousesH200(){const z=S.zones.find(x=>x.id===S.curZone);return (z&&typeof s12ParcelsFor==='function'&&s12ParcelsFor(z))||[];}
+function rdAddPtH200(ll){
+  if(_rdInsertAtH200!=null&&_rdInsertAtH200<S.rtePts.length){S.rtePts.splice(_rdInsertAtH200,0,ll);_rdInsertAtH200++;if(_rdInsertAtH200>=S.rtePts.length)_rdInsertAtH200=null;}
+  else{_rdInsertAtH200=null;S.rtePts.push(ll);}
+}
+function rdAfterAddH200(){
+  updateRteViz();
+  if(S.endPtH198){setEndPtModeH198(false);if(S.rtePts.length>=2){saveRteLine();toast('🏁 끝 집을 찍고 경로를 저장했습니다.');}}
+}
+function rdDrawTapH200(latlng){
+  const houses=rdHousesH200();
+  if(!houses.length)return false; // 집 점이 없는 구역은 예전처럼 아무 곳에나
+  const m=S.rdMap,q=m.latLngToContainerPoint(latlng);
+  const near=(pt,lim)=>{const c=m.latLngToContainerPoint(pt);const d=Math.hypot(c.x-q.x,c.y-q.y);return d<=lim?d:Infinity;};
+  // 1) 이미 이은 점을 누르면 빼기
+  let bi=-1,bd=Infinity;S.rtePts.forEach((p,i)=>{const d=near(p,18);if(d<bd){bd=d;bi=i;}});
+  if(bi>=0){S.rtePts.splice(bi,1);_rdInsertAtH200=bi<S.rtePts.length?bi:null;setEndPtModeH198(false);updateRteViz();toast(_rdInsertAtH200!=null?'점을 뺐습니다. 다음에 누르는 집이 이 자리에 들어갑니다.':'점을 뺐습니다.');return true;}
+  // 2) 가까운 집 점 고르기
+  let hb=null,hd=Infinity;houses.forEach(h=>{const d=near([h[0],h[1]],28);if(d<hd){hd=d;hb=h;}});
+  if(!hb){const t=Date.now();if(t-_rdTapToastH200>1500){_rdTapToastH200=t;toast('집 점(검은 점)을 눌러 주세요. 지도를 더 키우면 누르기 쉽습니다.');}return true;}
+  rdAddPtH200([hb[0],hb[1]]);rdAfterAddH200();return true;
+}
+window.updateRteViz=updateRteViz=function(){
+  if(!S.rdMap)return;
+  if(S.rteLine){S.rdMap.removeLayer(S.rteLine);S.rteLine=null;}
+  S.rteMk.forEach(mk=>S.rdMap.removeLayer(mk));S.rteMk=[];
+  const pts=S.rtePts,n=pts.length;updateRtePtCnt(n);if(!n)return;
+  if(n>=2)S.rteLine=L.polyline(pts,{color:S.rteColor,weight:4,opacity:.9,interactive:false}).addTo(S.rdMap);
+  pts.forEach((p,i)=>{const icon=L.divIcon({html:'<div class="rte-pick-h200'+(i===_rdInsertAtH200-1?' ins':'')+'" style="background:'+S.rteColor+';"></div>',className:'',iconSize:[16,16],iconAnchor:[8,8]});
+    S.rteMk.push(L.marker(p,{icon,zIndexOffset:500,interactive:false}).addTo(S.rdMap));});
+  if(n>=2)S.rteMk.push(...addRouteArrowMarkers(S.rdMap,pts,S.rteColor,560));
+  S.rteMk.push(L.marker(pts[0],{icon:L.divIcon({html:'<div class="route-start-marker">🚩 시작</div>',className:'',iconAnchor:[30,30]}),zIndexOffset:600,interactive:false}).addTo(S.rdMap));
+};
+window.undoRtePt=undoRtePt=function(){if(!S.rtePts.length)return;S.rtePts.pop();_rdInsertAtH200=null;updateRteViz();};
+(function hookH200(){
+  const cl=clearRteCurrent;window.clearRteCurrent=clearRteCurrent=function(){_rdInsertAtH200=null;return cl.apply(this,arguments);};
+  const cr=clearRtePtsH198;window.clearRtePtsH198=clearRtePtsH198=function(){_rdInsertAtH200=null;return cr.apply(this,arguments);};
+  const gp=addGPSPt;
+  window.addGPSPt=addGPSPt=function(){
+    const houses=rdHousesH200();
+    if(!houses.length||!S.gpsMk||!S.rteDraw)return gp.apply(this,arguments);
+    const g=S.gpsMk.getLatLng();let hb=null,hd=Infinity;
+    houses.forEach(h=>{const d=S.rdMap.distance(g,[h[0],h[1]]);if(d<hd){hd=d;hb=h;}});
+    if(!hb||hd>40){toast('근처(40m 안)에 집 점이 없습니다. 집 가까이에서 눌러 주세요.');return;}
+    if(S.rtePts.some(p=>S.rdMap.distance(p,[hb[0],hb[1]])<0.5)){toast('이미 이은 집입니다.');return;}
+    rdAddPtH200([hb[0],hb[1]]);rdAfterAddH200();toast('📍 가까운 집('+Math.round(hd)+'m)을 찍었습니다.');
+  };
+  const st=startRteDraw;window.startRteDraw=startRteDraw=function(){const r=st.apply(this,arguments);_rdInsertAtH200=null;
+    try{s12LoadParcels().then(()=>{if(rdHousesH200().length)toast('집 점(검은 점)을 차례로 누르면 집과 집이 이어집니다.');});}catch(e){}return r;};
 })();
